@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'products_screen.dart';
 import 'clients_screen.dart';
+import 'invoices_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -14,13 +15,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
-    ProductsScreen(),
+    InvoicesScreen(),
     ClientsScreen(),
+    ProductsScreen(),
   ];
 
   final List<String> _titles = const [
-    'Products',
+    'Invoices',
     'Clients',
+    'Products',
   ];
 
   @override
@@ -43,8 +46,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onTap: (index) => setState(() => _currentIndex = index),
         selectedItemColor: const Color(0xFF1A1A2E),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: 'Products'),
+          BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), label: 'Invoices'),
           BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Clients'),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: 'Products'),
         ],
       ),
     );

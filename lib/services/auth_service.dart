@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'api_config.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://bigdogg-production.up.railway.app';
+  static const String baseUrl = ApiConfig.baseUrl;
 
   static Future<Map<String, dynamic>> register(
     String email,
