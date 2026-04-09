@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/products_service.dart';
+import '../app_theme.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -55,13 +56,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: descController,
-                  decoration: const InputDecoration(labelText: 'Description (optional)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Description (optional)',
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: priceController,
-                  decoration: const InputDecoration(labelText: 'Price ex. BTW (€)'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Price ex. BTW (€)',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
@@ -82,7 +89,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     DropdownMenuItem(value: 'hour', child: Text('Per hour')),
                     DropdownMenuItem(value: 'day', child: Text('Per day')),
                     DropdownMenuItem(value: 'piece', child: Text('Per piece')),
-                    DropdownMenuItem(value: 'project', child: Text('Per project')),
+                    DropdownMenuItem(
+                      value: 'project',
+                      child: Text('Per project'),
+                    ),
                   ],
                   onChanged: (val) => setDialogState(() => unit = val!),
                 ),
@@ -96,7 +106,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                if (nameController.text.isEmpty || priceController.text.isEmpty) return;
+                if (nameController.text.isEmpty ||
+                    priceController.text.isEmpty)
+                  return;
                 Navigator.pop(context);
                 await ProductsService.createProduct(
                   name: nameController.text.trim(),
@@ -107,10 +119,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 );
                 _loadProducts();
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A1A2E),
-                foregroundColor: Colors.white,
-              ),
               child: const Text('Add'),
             ),
           ],
@@ -122,66 +130,106 @@ class _ProductsScreenState extends State<ProductsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Products', style: TextStyle(color: Colors.white)),
-        automaticallyImplyLeading: false,
-      ),
+      backgroundColor: AppColors.bgPage,
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddProduct,
-        backgroundColor: const Color(0xFF1A1A2E),
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _products.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+          ? const EmptyState(
+              icon: Icons.inventory_2_outlined,
+              title: 'No products yet',
+              subtitle: 'Tap + to add your first product',
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              itemCount: _products.length,
+              itemBuilder: (context, index) {
+                final p = _products[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: AppDecorations.card,
+                  child: Row(
                     children: [
-                      Icon(Icons.inventory_2_outlined, size: 64, color: Color(0xFFD1D5DB)),
-                      SizedBox(height: 16),
-                      Text('No products yet', style: TextStyle(fontSize: 18, color: Color(0xFF6B7280))),
-                      SizedBox(height: 8),
-                      Text('Tap + to add your first product', style: TextStyle(color: Color(0xFF9CA3AF))),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _products.length,
-                  itemBuilder: (context, index) {
-                    final p = _products[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        title: Text(p['name'], style: const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text(p['description'] ?? '', style: const TextStyle(color: Color(0xFF6B7280))),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
+                      // Icon box
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: AppColors.navy.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.inventory_2_outlined,
+                          color: AppColors.navy,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text('€${p['unit_price']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                Text('${p['btw_rate']}% BTW · per ${p['unit']}', style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                              ],
+                            Text(
+                              p['name'],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-                              onPressed: () => _deleteProduct(p['id']),
-                            ),
+                            if (p['description'] != null &&
+                                p['description'].toString().isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  p['description'],
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
-                    );
-                  },
-                ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '€${p['unit_price']}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            '${p['btw_rate']}% BTW · /${p['unit']}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: AppColors.danger,
+                          size: 20,
+                        ),
+                        onPressed: () => _deleteProduct(p['id']),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
     );
   }
 }

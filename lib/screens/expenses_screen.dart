@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/expenses_service.dart';
+import '../app_theme.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -54,8 +55,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: amountController,
-                  decoration: const InputDecoration(labelText: 'Amount ex BTW (€)'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Amount ex BTW (€)',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
@@ -75,9 +80,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   items: const [
                     DropdownMenuItem(value: 'general', child: Text('General')),
                     DropdownMenuItem(value: 'travel', child: Text('Travel')),
-                    DropdownMenuItem(value: 'materials', child: Text('Materials')),
-                    DropdownMenuItem(value: 'software', child: Text('Software')),
-                    DropdownMenuItem(value: 'food', child: Text('Food & Drinks')),
+                    DropdownMenuItem(
+                      value: 'materials',
+                      child: Text('Materials'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'software',
+                      child: Text('Software'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'food',
+                      child: Text('Food & Drinks'),
+                    ),
                     DropdownMenuItem(value: 'office', child: Text('Office')),
                     DropdownMenuItem(value: 'other', child: Text('Other')),
                   ],
@@ -87,10 +101,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
               onPressed: () async {
-                if (descController.text.isEmpty || amountController.text.isEmpty) return;
+                if (descController.text.isEmpty ||
+                    amountController.text.isEmpty)
+                  return;
                 Navigator.pop(context);
                 await ExpensesService.createExpense(
                   description: descController.text.trim(),
@@ -100,10 +119,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 );
                 _loadExpenses();
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A1A2E),
-                foregroundColor: Colors.white,
-              ),
               child: const Text('Add'),
             ),
           ],
@@ -114,127 +129,168 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   IconData _categoryIcon(String category) {
     switch (category) {
-      case 'travel': return Icons.directions_car_outlined;
-      case 'materials': return Icons.build_outlined;
-      case 'software': return Icons.computer_outlined;
-      case 'food': return Icons.restaurant_outlined;
-      case 'office': return Icons.business_outlined;
-      default: return Icons.receipt_outlined;
+      case 'travel':
+        return Icons.directions_car_outlined;
+      case 'materials':
+        return Icons.build_outlined;
+      case 'software':
+        return Icons.computer_outlined;
+      case 'food':
+        return Icons.restaurant_outlined;
+      case 'office':
+        return Icons.business_outlined;
+      default:
+        return Icons.receipt_outlined;
+    }
+  }
+
+  Color _categoryColor(String category) {
+    switch (category) {
+      case 'travel':
+        return const Color(0xFF0EA5E9);
+      case 'materials':
+        return const Color(0xFFF59E0B);
+      case 'software':
+        return const Color(0xFF8B5CF6);
+      case 'food':
+        return const Color(0xFFEF4444);
+      case 'office':
+        return const Color(0xFF10B981);
+      default:
+        return AppColors.navy;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    double totalExBtw = _expenses.fold(0, (sum, e) => sum + (e['amount_ex_btw'] as num).toDouble());
-    double totalBtw = _expenses.fold(0, (sum, e) => sum + (e['btw_amount'] as num).toDouble());
+    final double totalExBtw = _expenses.fold(
+      0,
+      (sum, e) => sum + (e['amount_ex_btw'] as num).toDouble(),
+    );
+    final double totalBtw = _expenses.fold(
+      0,
+      (sum, e) => sum + (e['btw_amount'] as num).toDouble(),
+    );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Expenses', style: TextStyle(color: Colors.white)),
-        automaticallyImplyLeading: false,
-      ),
+      backgroundColor: AppColors.bgPage,
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddExpense,
-        backgroundColor: const Color(0xFF1A1A2E),
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 if (_expenses.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1A2E),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Total ex BTW', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                              Text('€${totalExBtw.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                            ],
-                          ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: GradientStatCard(
+                      stats: [
+                        statItem(
+                          'Ex BTW',
+                          '€${totalExBtw.toStringAsFixed(2)}',
                         ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('BTW', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                              Text('€${totalBtw.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                            ],
-                          ),
+                        statItem(
+                          'BTW',
+                          '€${totalBtw.toStringAsFixed(2)}',
                         ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Total incl BTW', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                              Text('€${(totalExBtw + totalBtw).toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                            ],
-                          ),
+                        statItem(
+                          'Total',
+                          '€${(totalExBtw + totalBtw).toStringAsFixed(2)}',
                         ),
                       ],
                     ),
                   ),
                 Expanded(
                   child: _expenses.isEmpty
-                      ? const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.receipt_outlined, size: 64, color: Color(0xFFD1D5DB)),
-                              SizedBox(height: 16),
-                              Text('No expenses yet', style: TextStyle(fontSize: 18, color: Color(0xFF6B7280))),
-                              SizedBox(height: 8),
-                              Text('Tap + to add an expense', style: TextStyle(color: Color(0xFF9CA3AF))),
-                            ],
-                          ),
+                      ? const EmptyState(
+                          icon: Icons.receipt_outlined,
+                          title: 'No expenses yet',
+                          subtitle: 'Tap + to add an expense',
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                           itemCount: _expenses.length,
                           itemBuilder: (context, index) {
                             final exp = _expenses[index];
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                leading: CircleAvatar(
-                                  backgroundColor: const Color(0xFF1A1A2E).withOpacity(0.1),
-                                  child: Icon(_categoryIcon(exp['category'] ?? 'general'), color: const Color(0xFF1A1A2E)),
-                                ),
-                                title: Text(exp['description'], style: const TextStyle(fontWeight: FontWeight.w600)),
-                                subtitle: Text(
-                                  '${exp['expense_date']} · ${exp['category']} · ${exp['btw_rate']}% BTW',
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.end,
+                            final cat = exp['category'] ?? 'general';
+                            final catColor = _categoryColor(cat);
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(14),
+                              decoration: AppDecorations.card,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: catColor.withOpacity(0.10),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      _categoryIcon(cat),
+                                      color: catColor,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text('€${exp['amount_ex_btw']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        Text('+ €${exp['btw_amount']} BTW', style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                                        Text(
+                                          exp['description'],
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${exp['expense_date']}  ·  $cat  ·  ${exp['btw_rate']}% BTW',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
                                       ],
                                     ),
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-                                      onPressed: () => _deleteExpense(exp['id']),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '€${exp['amount_ex_btw']}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                      Text(
+                                        '+ €${exp['btw_amount']} BTW',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
+                                      color: AppColors.danger,
+                                      size: 20,
                                     ),
-                                  ],
-                                ),
+                                    onPressed: () =>
+                                        _deleteExpense(exp['id']),
+                                  ),
+                                ],
                               ),
                             );
                           },

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/profile_service.dart';
+import '../app_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -48,7 +49,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    setState(() { _saving = true; _error = null; _success = null; });
+    setState(() {
+      _saving = true;
+      _error = null;
+      _success = null;
+    });
     final result = await ProfileService.saveProfile(
       businessName: _businessNameController.text.trim(),
       fullName: _fullNameController.text.trim(),
@@ -73,103 +78,117 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Business Profile', style: TextStyle(color: Colors.white)),
-        automaticallyImplyLeading: false,
-      ),
+      backgroundColor: AppColors.bgPage,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'This information appears on your invoices.',
-                    style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+                  // Header info
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.navy.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.info_outline_rounded,
+                          color: AppColors.navy,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'This information appears on your invoices.',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  if (_error != null)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEE2E2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(_error!, style: const TextStyle(color: Color(0xFFDC2626))),
-                    ),
-                  if (_success != null)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD1FAE5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(_success!, style: const TextStyle(color: Color(0xFF065F46))),
-                    ),
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 20),
+
+                  if (_error != null) ErrorBox(_error!),
+                  if (_success != null) SuccessBox(_success!),
+
+                  // Business details card
+                  _FormCard(
+                    title: 'Business details',
+                    icon: Icons.business_outlined,
+                    children: [
+                      _inputField(_businessNameController, 'Business name'),
+                      const SizedBox(height: 12),
+                      _inputField(_fullNameController, 'Full name'),
+                      const SizedBox(height: 12),
+                      _inputField(_addressController, 'Address'),
+                      const SizedBox(height: 12),
+                      Row(
                         children: [
-                          const Text('Business details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 16),
-                          _inputField(_businessNameController, 'Business name'),
-                          const SizedBox(height: 12),
-                          _inputField(_fullNameController, 'Full name'),
-                          const SizedBox(height: 12),
-                          _inputField(_addressController, 'Address'),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(child: _inputField(_postcodeController, 'Postcode')),
-                              const SizedBox(width: 12),
-                              Expanded(flex: 2, child: _inputField(_cityController, 'City')),
-                            ],
+                          Expanded(
+                            child: _inputField(
+                              _postcodeController,
+                              'Postcode',
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: _inputField(_cityController, 'City'),
                           ),
                         ],
                       ),
-                    ),
+                    ],
                   ),
                   const SizedBox(height: 12),
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Tax & Payment', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 16),
-                          _inputField(_kvkController, 'KVK number'),
-                          const SizedBox(height: 12),
-                          _inputField(_btwController, 'BTW number'),
-                          const SizedBox(height: 12),
-                          _inputField(_ibanController, 'IBAN'),
-                        ],
-                      ),
-                    ),
+
+                  // Tax & Payment card
+                  _FormCard(
+                    title: 'Tax & Payment',
+                    icon: Icons.account_balance_outlined,
+                    children: [
+                      _inputField(_kvkController, 'KVK number'),
+                      const SizedBox(height: 12),
+                      _inputField(_btwController, 'BTW number'),
+                      const SizedBox(height: 12),
+                      _inputField(_ibanController, 'IBAN'),
+                    ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
+
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 50,
                     child: ElevatedButton(
                       onPressed: _saving ? null : _saveProfile,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1A1A2E),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       child: _saving
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Save Profile', style: TextStyle(fontSize: 16)),
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Save profile',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -181,13 +200,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _inputField(TextEditingController controller, String label) {
     return TextField(
       controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF1A1A2E), width: 2),
-        ),
+      decoration: InputDecoration(labelText: label),
+    );
+  }
+}
+
+class _FormCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+
+  const _FormCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: AppDecorations.card,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: AppColors.navy.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: AppColors.navy, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          ...children,
+        ],
       ),
     );
   }

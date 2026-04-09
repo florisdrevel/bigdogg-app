@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_config.dart';
+import '../app_theme.dart';
 
 class ClientOnboardingScreen extends StatefulWidget {
   final String token;
@@ -26,15 +27,21 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> {
   String? _error;
 
   Future<void> _submit() async {
-    if (_contactNameController.text.isEmpty || _emailController.text.isEmpty) {
+    if (_contactNameController.text.isEmpty ||
+        _emailController.text.isEmpty) {
       setState(() => _error = 'Name and email are required');
       return;
     }
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     try {
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/clients/onboarding/${widget.token}'),
+        Uri.parse(
+          '${ApiConfig.baseUrl}/api/v1/clients/onboarding/${widget.token}',
+        ),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contact_name': _contactNameController.text.trim(),
@@ -68,10 +75,10 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.bgPage,
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
           child: Container(
             constraints: const BoxConstraints(maxWidth: 480),
             child: _submitted ? _buildSuccess() : _buildForm(),
@@ -85,14 +92,38 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.check_circle, color: Color(0xFF059669), size: 80),
+        Container(
+          width: 88,
+          height: 88,
+          decoration: BoxDecoration(
+            color: AppColors.success.withOpacity(0.10),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.check_rounded,
+            color: AppColors.success,
+            size: 44,
+          ),
+        ),
         const SizedBox(height: 24),
-        const Text('You\'re all set!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
         const Text(
-          'Your details have been submitted successfully. The freelancer will be in touch soon.',
+          "You're all set!",
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Your details have been submitted successfully.\nThe freelancer will be in touch soon.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Color(0xFF6B7280), fontSize: 16),
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 15,
+            height: 1.5,
+          ),
         ),
       ],
     );
@@ -102,95 +133,185 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Bigdogg', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1A1A2E))),
-        const SizedBox(height: 8),
-        const Text('Please fill in your details', style: TextStyle(fontSize: 16, color: Color(0xFF6B7280))),
-        const SizedBox(height: 24),
-        if (_error != null)
-          Container(
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(8)),
-            child: Text(_error!, style: const TextStyle(color: Color(0xFFDC2626))),
+        // Logo
+        const Text(
+          'Bigdogg',
+          style: TextStyle(
+            fontSize: 36,
+            fontWeight: FontWeight.w800,
+            color: AppColors.navy,
+            letterSpacing: -1.2,
           ),
-        Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Personal details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 16),
-                _field(_contactNameController, 'Full name *'),
-                const SizedBox(height: 12),
-                _field(_emailController, 'Email address *', keyboardType: TextInputType.emailAddress),
-                const SizedBox(height: 12),
-                _field(_phoneController, 'Phone number', keyboardType: TextInputType.phone),
-              ],
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Please fill in your details below',
+          style: TextStyle(
+            fontSize: 15,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 28),
+
+        if (_error != null) ErrorBox(_error!),
+
+        // Personal details
+        _FormSection(
+          title: 'Personal details',
+          icon: Icons.person_outline_rounded,
+          children: [
+            _field(_contactNameController, 'Full name *'),
+            const SizedBox(height: 12),
+            _field(
+              _emailController,
+              'Email address *',
+              keyboardType: TextInputType.emailAddress,
             ),
-          ),
+            const SizedBox(height: 12),
+            _field(
+              _phoneController,
+              'Phone number',
+              keyboardType: TextInputType.phone,
+            ),
+          ],
         ),
         const SizedBox(height: 12),
-        Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+
+        // Business details
+        _FormSection(
+          title: 'Business details',
+          icon: Icons.business_outlined,
+          subtitle: 'Optional',
+          children: [
+            _field(_companyController, 'Company name'),
+            const SizedBox(height: 12),
+            _field(_addressController, 'Address'),
+            const SizedBox(height: 12),
+            Row(
               children: [
-                const Text('Business details (optional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 16),
-                _field(_companyController, 'Company name'),
-                const SizedBox(height: 12),
-                _field(_addressController, 'Address'),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(child: _field(_postcodeController, 'Postcode')),
-                    const SizedBox(width: 12),
-                    Expanded(flex: 2, child: _field(_cityController, 'City')),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _field(_btwController, 'BTW number'),
-                const SizedBox(height: 12),
-                _field(_kvkController, 'KVK number'),
+                Expanded(child: _field(_postcodeController, 'Postcode')),
+                const SizedBox(width: 12),
+                Expanded(flex: 2, child: _field(_cityController, 'City')),
               ],
             ),
-          ),
+            const SizedBox(height: 12),
+            _field(_btwController, 'BTW number'),
+            const SizedBox(height: 12),
+            _field(_kvkController, 'KVK number'),
+          ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
+
         SizedBox(
           width: double.infinity,
-          height: 48,
+          height: 52,
           child: ElevatedButton(
             onPressed: _loading ? null : _submit,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1A1A2E),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _loading
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('Submit', style: TextStyle(fontSize: 16)),
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    'Submit details',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
           ),
         ),
       ],
     );
   }
 
-  Widget _field(TextEditingController controller, String label, {TextInputType? keyboardType}) {
+  Widget _field(
+    TextEditingController controller,
+    String label, {
+    TextInputType? keyboardType,
+  }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF1A1A2E), width: 2),
-        ),
+      decoration: InputDecoration(labelText: label),
+    );
+  }
+}
+
+class _FormSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final String? subtitle;
+  final List<Widget> children;
+
+  const _FormSection({
+    required this.title,
+    required this.icon,
+    this.subtitle,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: AppDecorations.card,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: AppColors.navy.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: AppColors.navy, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.bgPage,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(
+                    subtitle!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 18),
+          ...children,
+        ],
       ),
     );
   }
