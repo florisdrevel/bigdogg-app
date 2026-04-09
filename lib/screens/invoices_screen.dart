@@ -1,35 +1,33 @@
 import 'package:flutter/material.dart';
 import '../services/invoices_service.dart';
+import '../services/clients_service.dart';
+import '../services/products_service.dart';
+import 'invoice_detail_screen.dart';
+import 'prompt_invoice_screen.dart';
 
-class InvoiceDetailScreen extends StatefulWidget {
-  final String invoiceId;
-
-  const InvoiceDetailScreen({super.key, required this.invoiceId});
+class InvoicesScreen extends StatefulWidget {
+  const InvoicesScreen({super.key});
 
   @override
-  State<InvoiceDetailScreen> createState() => _InvoiceDetailScreenState();
+  State<InvoicesScreen> createState() => _InvoicesScreenState();
 }
 
-class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
-  Map<String, dynamic>? _invoice;
-  List<dynamic> _lines = [];
+class _InvoicesScreenState extends State<InvoicesScreen> {
+  List<dynamic> _invoices = [];
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadInvoice();
+    _loadInvoices();
   }
 
-  Future<void> _loadInvoice() async {
+  Future<void> _loadInvoices() async {
     setState(() => _loading = true);
-    final result = await InvoicesService.getInvoice(widget.invoiceId);
+    final result = await InvoicesService.getInvoices();
     setState(() {
       _loading = false;
-      if (result['success']) {
-        _invoice = result['invoice'];
-        _lines = result['lines'];
-      }
+      if (result['success']) _invoices = result['invoices'];
     });
   }
 
@@ -51,226 +49,291 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (_invoice == null) return const Scaffold(body: Center(child: Text('Invoice not found')));
+  void _showCreateInvoice() async {
+    final clientsResult = await ClientsService.getClients();
+    final productsResult = await ProductsService.getProducts();
 
-    final status = _invoice!['status'] ?? 'draft';
-    final client = _invoice!['clients'];
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: Text(_invoice!['invoice_number'], style: const TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: _statusColor(status).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              _statusLabel(status),
-              style: TextStyle(color: _statusColor(status), fontWeight: FontWeight.w600),
-            ),
+    if (!clientsResult['success'] || !productsResult['success']) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load data: ${clientsResult['message']} / ${productsResult['message']}'),
+            backgroundColor: Colors.red,
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Client', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                    const SizedBox(height: 4),
-                    Text(client['contact_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    if (client['company_name'] != null && client['company_name'].toString().isNotEmpty)
-                      Text(client['company_name'], style: const TextStyle(color: Color(0xFF6B7280))),
-                    Text(client['email'] ?? '', style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12)),
-                  ],
+        );
+      }
+      return;
+    }
+
+    final clients = clientsResult['clients'] as List;
+    final products = productsResult['products'] as List;
+
+    if (!mounted) return;
+
+    String? selectedClientId;
+    List<Map<String, dynamic>> lines = [];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('New Invoice'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedClientId,
+                  decoration: const InputDecoration(labelText: 'Client'),
+                  items: clients.map((c) => DropdownMenuItem<String>(
+                    value: c['id'] as String,
+                    child: Text(c['company_name'] ?? c['contact_name']),
+                  )).toList(),
+                  onChanged: (val) => setDialogState(() => selectedClientId = val),
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Invoice date', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                          Text(_invoice!['invoice_date'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Due date', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                          Text(_invoice!['due_date'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Lines', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 12),
-                    const Row(
-                      children: [
-                        Expanded(flex: 3, child: Text('Description', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-                        Expanded(child: Text('Qty', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)), textAlign: TextAlign.right)),
-                        Expanded(child: Text('Price', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)), textAlign: TextAlign.right)),
-                        Expanded(child: Text('Total', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)), textAlign: TextAlign.right)),
-                      ],
-                    ),
-                    const Divider(),
-                    ..._lines.map((line) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                const SizedBox(height: 16),
+                const Text('Lines', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                ...lines.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final line = entry.value;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
                       child: Row(
                         children: [
-                          Expanded(flex: 3, child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(line['description'], style: const TextStyle(fontWeight: FontWeight.w500)),
-                              Text('${line['btw_rate']}% BTW', style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
-                            ],
-                          )),
-                          Expanded(child: Text('${line['quantity']}x', textAlign: TextAlign.right, style: const TextStyle(color: Color(0xFF6B7280)))),
-                          Expanded(child: Text('€${line['unit_price_ex_btw']}', textAlign: TextAlign.right, style: const TextStyle(color: Color(0xFF6B7280)))),
-                          Expanded(child: Text('€${line['line_total_ex_btw']}', textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w600))),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(line['description'], style: const TextStyle(fontWeight: FontWeight.w500)),
+                                Text('${line['quantity']}x €${line['unit_price_ex_btw']} (${line['btw_rate']}% BTW)',
+                                    style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline, color: Color(0xFFEF4444)),
+                            onPressed: () => setDialogState(() => lines.removeAt(i)),
+                          ),
                         ],
                       ),
-                    )),
-                    const Divider(),
-                    _totalRow('Subtotal ex BTW', '€${_invoice!['subtotal_ex_btw']}'),
-                    _totalRow('BTW', '€${_invoice!['btw_amount']}'),
-                    const SizedBox(height: 4),
-                    _totalRow('Total incl BTW', '€${_invoice!['total_incl_btw']}', bold: true, large: true),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (status != 'paid') ...[
-              if (status == 'draft')
-                _actionButton('Mark as Sent', const Color(0xFF2563EB), Icons.send, () async {
-                  await InvoicesService.updateStatus(widget.invoiceId, 'sent');
-                  _loadInvoice();
-                }),
-              if (status == 'sent' || status == 'overdue') ...[
-                _actionButton('Mark as Paid', const Color(0xFF059669), Icons.check_circle_outline, () async {
-                  await InvoicesService.updateStatus(widget.invoiceId, 'paid');
-                  _loadInvoice();
-                }),
-                const SizedBox(height: 8),
-                _actionButton('Send Reminder', const Color(0xFFF59E0B), Icons.notifications_outlined, () async {
-                  await InvoicesService.sendReminder(widget.invoiceId);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Reminder sent'),
-                        backgroundColor: Color(0xFF059669),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                }),
-              ],
-              if (status == 'sent')
-                _actionButton('Mark as Overdue', const Color(0xFFDC2626), Icons.warning_amber_outlined, () async {
-                  await InvoicesService.updateStatus(widget.invoiceId, 'overdue');
-                  _loadInvoice();
-                }),
-              if (status == 'draft') ...[
-                const SizedBox(height: 8),
-                _actionButton('Delete Draft', const Color(0xFF6B7280), Icons.delete_outline, () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Delete Invoice'),
-                      content: const Text('Are you sure you want to delete this draft invoice?'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
-                          child: const Text('Delete'),
-                        ),
-                      ],
                     ),
                   );
-                  if (confirm == true) {
-                    await InvoicesService.deleteInvoice(widget.invoiceId);
-                    if (mounted) Navigator.pop(context, true);
-                  }
                 }),
+                TextButton.icon(
+                  onPressed: () {
+                    _showAddLine(context, products, (line) {
+                      setDialogState(() => lines.add(line));
+                    });
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add line'),
+                ),
               ],
-            ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: selectedClientId == null || lines.isEmpty ? null : () async {
+                Navigator.pop(context);
+                final result = await InvoicesService.createInvoice(
+                  clientId: selectedClientId!,
+                  lines: lines,
+                );
+                if (result['success']) _loadInvoices();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1A1A2E),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Create'),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _totalRow(String label, String value, {bool bold = false, bool large = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(
-            color: bold ? Colors.black : const Color(0xFF6B7280),
-            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-            fontSize: large ? 16 : 14,
-          )),
-          Text(value, style: TextStyle(
-            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-            fontSize: large ? 16 : 14,
-          )),
-        ],
+  void _showAddLine(BuildContext context, List products, Function(Map<String, dynamic>) onAdd) {
+    String? selectedProductId;
+    final qtyController = TextEditingController(text: '1');
+    final priceController = TextEditingController();
+    final descController = TextEditingController();
+    int btwRate = 21;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add Line'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedProductId,
+                  decoration: const InputDecoration(labelText: 'Product (optional)'),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Custom line')),
+                    ...products.map((p) => DropdownMenuItem<String>(
+                      value: p['id'] as String,
+                      child: Text(p['name']),
+                    )),
+                  ],
+                  onChanged: (val) {
+                    setDialogState(() {
+                      selectedProductId = val;
+                      if (val != null) {
+                        final p = products.firstWhere((p) => p['id'] == val);
+                        descController.text = p['name'];
+                        priceController.text = p['unit_price'].toString();
+                        btwRate = p['btw_rate'];
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description')),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: TextField(controller: qtyController, decoration: const InputDecoration(labelText: 'Qty'), keyboardType: TextInputType.number)),
+                    const SizedBox(width: 12),
+                    Expanded(child: TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price ex BTW'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  value: btwRate,
+                  decoration: const InputDecoration(labelText: 'BTW'),
+                  items: const [
+                    DropdownMenuItem(value: 21, child: Text('21%')),
+                    DropdownMenuItem(value: 9, child: Text('9%')),
+                    DropdownMenuItem(value: 0, child: Text('0%')),
+                  ],
+                  onChanged: (val) => setDialogState(() => btwRate = val!),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                if (descController.text.isEmpty || priceController.text.isEmpty) return;
+                Navigator.pop(context);
+                onAdd({
+                  'description': descController.text,
+                  'quantity': double.parse(qtyController.text),
+                  'unit_price_ex_btw': double.parse(priceController.text),
+                  'btw_rate': btwRate,
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1A1A2E),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Add'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _actionButton(String label, Color color, IconData icon, VoidCallback onTap) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, color: Colors.white),
-        label: Text(label, style: const TextStyle(color: Colors.white, fontSize: 16)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: const Text('Invoices', style: TextStyle(color: Colors.white)),
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.auto_awesome, color: Colors.white),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PromptInvoiceScreen()),
+            ).then((created) {
+              if (created == true) _loadInvoices();
+            }),
+          ),
+        ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showCreateInvoice,
+        backgroundColor: const Color(0xFF1A1A2E),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _invoices.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.receipt_long_outlined, size: 64, color: Color(0xFFD1D5DB)),
+                      SizedBox(height: 16),
+                      Text('No invoices yet', style: TextStyle(fontSize: 18, color: Color(0xFF6B7280))),
+                      SizedBox(height: 8),
+                      Text('Tap + to create your first invoice', style: TextStyle(color: Color(0xFF9CA3AF))),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _invoices.length,
+                  itemBuilder: (context, index) {
+                    final inv = _invoices[index];
+                    final status = inv['status'] ?? 'draft';
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => InvoiceDetailScreen(invoiceId: inv['id']),
+                          ),
+                        ).then((_) => _loadInvoices()),
+                        title: Row(
+                          children: [
+                            Text(inv['invoice_number'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _statusColor(status).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _statusLabel(status),
+                                style: TextStyle(fontSize: 12, color: _statusColor(status), fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(inv['clients']?['contact_name'] ?? '', style: const TextStyle(color: Color(0xFF6B7280))),
+                            Text(inv['invoice_date'] ?? '', style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+                          ],
+                        ),
+                        trailing: Text(
+                          '€${inv['total_incl_btw']}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }
