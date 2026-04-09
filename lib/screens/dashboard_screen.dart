@@ -6,6 +6,7 @@ import 'invoices_screen.dart';
 import 'expenses_screen.dart';
 import 'overview_screen.dart';
 import 'profile_screen.dart';
+import 'subscription_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -24,6 +25,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ExpensesScreen(),
     OverviewScreen(),
     ProfileScreen(),
+    SubscriptionScreen(),
   ];
 
   final List<String> _titles = const [
@@ -33,6 +35,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     'Expenses',
     'Overview',
     'Profile',
+    'Subscription',
   ];
 
   @override
@@ -62,6 +65,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.receipt_outlined), label: 'Expenses'),
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Overview'),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.credit_card_outlined), label: 'Plan'),
         ],
       ),
     );

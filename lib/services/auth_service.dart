@@ -47,6 +47,7 @@ class AuthService {
         await prefs.setString('access_token', data['access_token']);
         await prefs.setString('user_id', data['user']['id']);
         await prefs.setString('full_name', data['user']['full_name']);
+        await prefs.setString('user_email', data['user']['email']);
         return {'success': true, 'data': data};
       }
       return {'success': false, 'message': 'Invalid email or password'};
