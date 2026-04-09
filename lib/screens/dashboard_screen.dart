@@ -1,8 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'products_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = const [
+    ProductsScreen(),
+  ];
+
+  final List<String> _titles = const [
+    'Products',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -10,7 +26,7 @@ class DashboardScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Bigdogg', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(_titles[_currentIndex], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
@@ -18,9 +34,7 @@ class DashboardScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: const Center(
-        child: Text('Dashboard — coming in Slice 2', style: TextStyle(fontSize: 18, color: Color(0xFF6B7280))),
-      ),
+      body: _screens[_currentIndex],
     );
   }
 }
