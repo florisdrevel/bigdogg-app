@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/client_onboarding_screen.dart';
+import 'app_theme.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
   runApp(const BigdoggApp());
 }
 
@@ -43,14 +52,7 @@ class BigdoggApp extends StatelessWidget {
       title: 'Bigdogg',
       debugShowCheckedModeBanner: false,
       routerConfig: _router,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1A1A2E),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        fontFamily: 'Inter',
-      ),
+      theme: AppTheme.theme,
     );
   }
 }
