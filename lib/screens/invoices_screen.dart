@@ -3,6 +3,7 @@ import '../services/invoices_service.dart';
 import '../services/clients_service.dart';
 import '../services/products_service.dart';
 import 'invoice_detail_screen.dart';
+import 'prompt_invoice_screen.dart';
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -252,6 +253,17 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         backgroundColor: const Color(0xFF1A1A2E),
         title: const Text('Invoices', style: TextStyle(color: Colors.white)),
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.auto_awesome, color: Colors.white),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PromptInvoiceScreen()),
+            ).then((created) {
+              if (created == true) _loadInvoices();
+            }),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showCreateInvoice,
