@@ -100,7 +100,21 @@ class InvoicesService {
       return {'success': false, 'message': 'Connection error'};
     }
   }
-
+  static Future<Map<String, dynamic>> deleteInvoice(String invoiceId) async {
+  final token = await _getToken();
+  try {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/v1/invoices/$invoiceId'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      return {'success': true};
+    }
+    return {'success': false};
+  } catch (e) {
+    return {'success': false, 'message': 'Connection error'};
+  }
+}
   static Future<Map<String, dynamic>> sendReminder(String invoiceId) async {
     final token = await _getToken();
     try {

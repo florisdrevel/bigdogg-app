@@ -85,7 +85,6 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Client info
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
@@ -104,8 +103,6 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Dates
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
@@ -135,8 +132,6 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Lines
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
@@ -182,8 +177,6 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Actions
             if (status != 'paid') ...[
               if (status == 'draft')
                 _actionButton('Mark as Sent', const Color(0xFF2563EB), Icons.send, () async {
@@ -200,8 +193,41 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   await InvoicesService.sendReminder(widget.invoiceId);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Reminder sent'), backgroundColor: Color(0xFF059669), behavior: SnackBarBehavior.floating),
+                      const SnackBar(
+                        content: Text('Reminder sent'),
+                        backgroundColor: Color(0xFF059669),
+                        behavior: SnackBarBehavior.floating,
+                      ),
                     );
+                  }
+                }),
+              ],
+              if (status == 'sent')
+                _actionButton('Mark as Overdue', const Color(0xFFDC2626), Icons.warning_amber_outlined, () async {
+                  await InvoicesService.updateStatus(widget.invoiceId, 'overdue');
+                  _loadInvoice();
+                }),
+              if (status == 'draft') ...[
+                const SizedBox(height: 8),
+                _actionButton('Delete Draft', const Color(0xFF6B7280), Icons.delete_outline, () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Delete Invoice'),
+                      content: const Text('Are you sure you want to delete this draft invoice?'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    await InvoicesService.deleteInvoice(widget.invoiceId);
+                    if (mounted) Navigator.pop(context, true);
                   }
                 }),
               ],
