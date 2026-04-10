@@ -77,124 +77,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
 
-    return Scaffold(
-      backgroundColor: BigDoggTheme.lightBg,
-      appBar: AppBar(
-        backgroundColor: BigDoggTheme.lightSurface,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Text(isNl ? 'Bedrijfsprofiel' : 'Business Profile',
-            style: const TextStyle(color: BigDoggTheme.lightTextPrimary, fontWeight: FontWeight.w600)),
-        bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(1),
-            child: Container(color: BigDoggTheme.lightBorder, height: 1)),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isNl
-                        ? 'Deze informatie verschijnt op je facturen.'
-                        : 'This information appears on your invoices.',
-                    style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  if (_error != null)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: BigDoggTheme.errorBg,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(_error!, style: const TextStyle(color: BigDoggTheme.error)),
-                    ),
-                  if (_success != null)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: BigDoggTheme.successBg,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(_success!, style: const TextStyle(color: BigDoggTheme.success)),
-                    ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: BigDoggTheme.lightSurface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: BigDoggTheme.lightBorder),
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(isNl ? 'Bedrijfsgegevens' : 'Business details',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
-                        const SizedBox(height: 16),
-                        _inputField(_businessNameController, isNl ? 'Bedrijfsnaam' : 'Business name'),
-                        const SizedBox(height: 12),
-                        _inputField(_fullNameController, isNl ? 'Volledige naam' : 'Full name'),
-                        const SizedBox(height: 12),
-                        _inputField(_addressController, isNl ? 'Adres' : 'Address'),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(child: _inputField(_postcodeController, isNl ? 'Postcode' : 'Postcode')),
-                            const SizedBox(width: 12),
-                            Expanded(flex: 2, child: _inputField(_cityController, isNl ? 'Stad' : 'City')),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: BigDoggTheme.lightSurface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: BigDoggTheme.lightBorder),
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(isNl ? 'BTW & Betaling' : 'Tax & Payment',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
-                        const SizedBox(height: 16),
-                        _inputField(_kvkController, isNl ? 'KVK-nummer' : 'KVK number'),
-                        const SizedBox(height: 12),
-                        _inputField(_btwController, isNl ? 'BTW-nummer' : 'BTW number'),
-                        const SizedBox(height: 12),
-                        _inputField(_ibanController, 'IBAN'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _saving ? null : () => _saveProfile(isNl),
-                      child: _saving
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : Text(isNl ? 'Profiel opslaan' : 'Save Profile', style: const TextStyle(fontSize: 16)),
-                    ),
-                  ),
-                ],
-              ),
+    if (_loading) return const Center(child: CircularProgressIndicator());
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isNl ? 'Deze informatie verschijnt op je facturen.' : 'This information appears on your invoices.',
+            style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 14),
+          ),
+          const SizedBox(height: 16),
+          if (_error != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(color: BigDoggTheme.errorBg, borderRadius: BorderRadius.circular(8)),
+              child: Text(_error!, style: const TextStyle(color: BigDoggTheme.error)),
             ),
+          if (_success != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(color: BigDoggTheme.successBg, borderRadius: BorderRadius.circular(8)),
+              child: Text(_success!, style: const TextStyle(color: BigDoggTheme.success)),
+            ),
+          Container(
+            decoration: BoxDecoration(
+              color: BigDoggTheme.lightSurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: BigDoggTheme.lightBorder),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(isNl ? 'Bedrijfsgegevens' : 'Business details',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+                const SizedBox(height: 16),
+                _inputField(_businessNameController, isNl ? 'Bedrijfsnaam' : 'Business name'),
+                const SizedBox(height: 12),
+                _inputField(_fullNameController, isNl ? 'Volledige naam' : 'Full name'),
+                const SizedBox(height: 12),
+                _inputField(_addressController, isNl ? 'Adres' : 'Address'),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: _inputField(_postcodeController, isNl ? 'Postcode' : 'Postcode')),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 2, child: _inputField(_cityController, isNl ? 'Stad' : 'City')),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: BigDoggTheme.lightSurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: BigDoggTheme.lightBorder),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(isNl ? 'BTW & Betaling' : 'Tax & Payment',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+                const SizedBox(height: 16),
+                _inputField(_kvkController, isNl ? 'KVK-nummer' : 'KVK number'),
+                const SizedBox(height: 12),
+                _inputField(_btwController, isNl ? 'BTW-nummer' : 'BTW number'),
+                const SizedBox(height: 12),
+                _inputField(_ibanController, 'IBAN'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _saving ? null : () => _saveProfile(isNl),
+              child: _saving
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(isNl ? 'Profiel opslaan' : 'Save Profile', style: const TextStyle(fontSize: 16)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _inputField(TextEditingController controller, String label) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(labelText: label),
-    );
+    return TextField(controller: controller, decoration: InputDecoration(labelText: label));
   }
 }

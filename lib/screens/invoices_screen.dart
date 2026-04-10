@@ -226,92 +226,93 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
 
-    return Scaffold(
-      backgroundColor: BigDoggTheme.lightBg,
-      appBar: AppBar(
-        backgroundColor: BigDoggTheme.lightSurface,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Text(isNl ? 'Facturen' : 'Invoices', style: const TextStyle(color: BigDoggTheme.lightTextPrimary, fontWeight: FontWeight.w600)),
-        bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(color: BigDoggTheme.lightBorder, height: 1)),
-        actions: [
-          IconButton(
+    return Stack(
+      children: [
+        _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _invoices.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.receipt_long_outlined, size: 64, color: BigDoggTheme.lightTextHint),
+                        const SizedBox(height: 16),
+                        Text(isNl ? 'Nog geen facturen' : 'No invoices yet',
+                            style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
+                        const SizedBox(height: 8),
+                        Text(isNl ? 'Tik + om je eerste factuur aan te maken' : 'Tap + to create your first invoice',
+                            style: const TextStyle(color: BigDoggTheme.lightTextHint)),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _invoices.length,
+                    itemBuilder: (context, index) {
+                      final inv = _invoices[index];
+                      final status = inv['status'] ?? 'draft';
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: BigDoggTheme.lightSurface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: BigDoggTheme.lightBorder),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          onTap: () => Navigator.push(context,
+                            MaterialPageRoute(builder: (context) => InvoiceDetailScreen(invoiceId: inv['id'])))
+                              .then((_) => _loadInvoices()),
+                          title: Row(
+                            children: [
+                              Text(inv['invoice_number'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: _statusColor(status).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  _statusLabel(status, isNl),
+                                  style: TextStyle(fontSize: 11, color: _statusColor(status), fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(inv['clients']?['contact_name'] ?? '', style: const TextStyle(color: BigDoggTheme.lightTextSecondary)),
+                              Text(inv['invoice_date'] ?? '', style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint)),
+                            ],
+                          ),
+                          trailing: Text('€${inv['total_incl_btw']}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+                        ),
+                      );
+                    },
+                  ),
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: FloatingActionButton(
+            onPressed: () => _showCreateInvoice(isNl),
+            child: const Icon(Icons.add),
+          ),
+        ),
+        Positioned(
+          top: 8,
+          right: 68,
+          child: IconButton(
             icon: const Icon(Icons.auto_awesome, color: BigDoggTheme.teal800),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PromptInvoiceScreen()))
+            onPressed: () => Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const PromptInvoiceScreen()))
                 .then((created) { if (created == true) _loadInvoices(); }),
             tooltip: 'AI',
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showCreateInvoice(isNl),
-        child: const Icon(Icons.add),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _invoices.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.receipt_long_outlined, size: 64, color: BigDoggTheme.lightTextHint),
-                      const SizedBox(height: 16),
-                      Text(isNl ? 'Nog geen facturen' : 'No invoices yet',
-                          style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
-                      const SizedBox(height: 8),
-                      Text(isNl ? 'Tik + om je eerste factuur aan te maken' : 'Tap + to create your first invoice',
-                          style: const TextStyle(color: BigDoggTheme.lightTextHint)),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _invoices.length,
-                  itemBuilder: (context, index) {
-                    final inv = _invoices[index];
-                    final status = inv['status'] ?? 'draft';
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      decoration: BoxDecoration(
-                        color: BigDoggTheme.lightSurface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: BigDoggTheme.lightBorder),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (context) => InvoiceDetailScreen(invoiceId: inv['id'])))
-                            .then((_) => _loadInvoices()),
-                        title: Row(
-                          children: [
-                            Text(inv['invoice_number'], style: const TextStyle(fontWeight: FontWeight.w600)),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: _statusColor(status).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                _statusLabel(status, isNl),
-                                style: TextStyle(fontSize: 11, color: _statusColor(status), fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ],
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(inv['clients']?['contact_name'] ?? '', style: const TextStyle(color: BigDoggTheme.lightTextSecondary)),
-                            Text(inv['invoice_date'] ?? '', style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint)),
-                          ],
-                        ),
-                        trailing: Text('€${inv['total_incl_btw']}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
-                      ),
-                    );
-                  },
-                ),
+        ),
+      ],
     );
   }
 }

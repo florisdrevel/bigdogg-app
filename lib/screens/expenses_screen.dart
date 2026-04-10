@@ -143,139 +143,134 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     double totalExBtw = _expenses.fold(0, (sum, e) => sum + (e['amount_ex_btw'] as num).toDouble());
     double totalBtw = _expenses.fold(0, (sum, e) => sum + (e['btw_amount'] as num).toDouble());
 
-    return Scaffold(
-      backgroundColor: BigDoggTheme.lightBg,
-      appBar: AppBar(
-        backgroundColor: BigDoggTheme.lightSurface,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Text(isNl ? 'Kosten' : 'Expenses',
-            style: const TextStyle(color: BigDoggTheme.lightTextPrimary, fontWeight: FontWeight.w600)),
-        bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(1),
-            child: Container(color: BigDoggTheme.lightBorder, height: 1)),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddExpense(isNl),
-        child: const Icon(Icons.add),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                if (_expenses.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: BigDoggTheme.teal800,
-                      borderRadius: BorderRadius.circular(12),
+    return Stack(
+      children: [
+        _loading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  if (_expenses.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: BigDoggTheme.teal800,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(isNl ? 'Totaal ex BTW' : 'Total ex BTW',
+                                    style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                                Text('€${totalExBtw.toStringAsFixed(2)}',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('BTW', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                                Text('€${totalBtw.toStringAsFixed(2)}',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(isNl ? 'Totaal incl BTW' : 'Total incl BTW',
+                                    style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                                Text('€${(totalExBtw + totalBtw).toStringAsFixed(2)}',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(isNl ? 'Totaal ex BTW' : 'Total ex BTW',
-                                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                              Text('€${totalExBtw.toStringAsFixed(2)}',
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                            ],
+                  Expanded(
+                    child: _expenses.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.receipt_outlined, size: 64, color: BigDoggTheme.lightTextHint),
+                                const SizedBox(height: 16),
+                                Text(isNl ? 'Nog geen kosten' : 'No expenses yet',
+                                    style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
+                                const SizedBox(height: 8),
+                                Text(isNl ? 'Tik + om een uitgave toe te voegen' : 'Tap + to add an expense',
+                                    style: const TextStyle(color: BigDoggTheme.lightTextHint)),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: _expenses.length,
+                            itemBuilder: (context, index) {
+                              final exp = _expenses[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                decoration: BoxDecoration(
+                                  color: BigDoggTheme.lightSurface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: BigDoggTheme.lightBorder),
+                                ),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  leading: CircleAvatar(
+                                    backgroundColor: BigDoggTheme.teal100,
+                                    child: Icon(_categoryIcon(exp['category'] ?? 'general'),
+                                        color: BigDoggTheme.teal800, size: 20),
+                                  ),
+                                  title: Text(exp['description'],
+                                      style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.lightTextPrimary)),
+                                  subtitle: Text(
+                                    '${exp['expense_date']} · ${_categoryLabel(exp['category'] ?? 'general', isNl)} · ${exp['btw_rate']}% BTW',
+                                    style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text('€${exp['amount_ex_btw']}',
+                                              style: const TextStyle(fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
+                                          Text('+ €${exp['btw_amount']} BTW',
+                                              style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 4),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: BigDoggTheme.error),
+                                        onPressed: () => _deleteExpense(exp['id']),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('BTW', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                              Text('€${totalBtw.toStringAsFixed(2)}',
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(isNl ? 'Totaal incl BTW' : 'Total incl BTW',
-                                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                              Text('€${(totalExBtw + totalBtw).toStringAsFixed(2)}',
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
-                Expanded(
-                  child: _expenses.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.receipt_outlined, size: 64, color: BigDoggTheme.lightTextHint),
-                              const SizedBox(height: 16),
-                              Text(isNl ? 'Nog geen kosten' : 'No expenses yet',
-                                  style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
-                              const SizedBox(height: 8),
-                              Text(isNl ? 'Tik + om een uitgave toe te voegen' : 'Tap + to add an expense',
-                                  style: const TextStyle(color: BigDoggTheme.lightTextHint)),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: _expenses.length,
-                          itemBuilder: (context, index) {
-                            final exp = _expenses[index];
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                color: BigDoggTheme.lightSurface,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: BigDoggTheme.lightBorder),
-                              ),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                leading: CircleAvatar(
-                                  backgroundColor: BigDoggTheme.teal100,
-                                  child: Icon(_categoryIcon(exp['category'] ?? 'general'),
-                                      color: BigDoggTheme.teal800, size: 20),
-                                ),
-                                title: Text(exp['description'],
-                                    style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.lightTextPrimary)),
-                                subtitle: Text(
-                                  '${exp['expense_date']} · ${_categoryLabel(exp['category'] ?? 'general', isNl)} · ${exp['btw_rate']}% BTW',
-                                  style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary),
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text('€${exp['amount_ex_btw']}',
-                                            style: const TextStyle(fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
-                                        Text('+ €${exp['btw_amount']} BTW',
-                                            style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 4),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: BigDoggTheme.error),
-                                      onPressed: () => _deleteExpense(exp['id']),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
+                ],
+              ),
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: FloatingActionButton(
+            onPressed: () => _showAddExpense(isNl),
+            child: const Icon(Icons.add),
+          ),
+        ),
+      ],
     );
   }
 }

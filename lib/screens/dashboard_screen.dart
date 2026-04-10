@@ -46,6 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final titles = isNl ? _titlesNl : _titlesEn;
 
     return Scaffold(
+      backgroundColor: BigDoggTheme.lightBg,
       appBar: AppBar(
         backgroundColor: BigDoggTheme.lightSurface,
         elevation: 0,

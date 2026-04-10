@@ -54,34 +54,33 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
 
-    return Scaffold(
-      backgroundColor: BigDoggTheme.lightBg,
-      appBar: AppBar(
-        backgroundColor: BigDoggTheme.teal800,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Text(isNl ? 'Overzicht' : 'Overview',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: BigDoggTheme.gold500,
-          indicatorWeight: 3,
-          labelColor: Colors.white,
-          unselectedLabelColor: BigDoggTheme.teal400,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'PlusJakartaSans'),
-          tabs: [
-            Tab(text: isNl ? 'Dit kwartaal' : 'This Quarter'),
-            Tab(text: isNl ? 'Dit jaar' : 'This Year'),
-          ],
+    return Column(
+      children: [
+        Container(
+          color: BigDoggTheme.teal800,
+          child: TabBar(
+            controller: _tabController,
+            indicatorColor: BigDoggTheme.gold500,
+            indicatorWeight: 3,
+            labelColor: Colors.white,
+            unselectedLabelColor: BigDoggTheme.teal400,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'PlusJakartaSans'),
+            tabs: [
+              Tab(text: isNl ? 'Dit kwartaal' : 'This Quarter'),
+              Tab(text: isNl ? 'Dit jaar' : 'This Year'),
+            ],
+          ),
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildQuarterlyView(isNl),
-          _buildAnnualView(isNl),
-        ],
-      ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildQuarterlyView(isNl),
+              _buildAnnualView(isNl),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -321,8 +320,7 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
-              style: TextStyle(
-                  color: BigDoggTheme.lightTextSecondary, fontSize: large ? 15 : 14)),
+              style: TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: large ? 15 : 14)),
           Text(value,
               style: TextStyle(
                 fontWeight: bold ? FontWeight.bold : FontWeight.normal,

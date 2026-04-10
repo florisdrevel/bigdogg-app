@@ -128,90 +128,85 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
 
-    return Scaffold(
-      backgroundColor: BigDoggTheme.lightBg,
-      appBar: AppBar(
-        backgroundColor: BigDoggTheme.lightSurface,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Text(isNl ? 'Producten' : 'Products',
-            style: const TextStyle(color: BigDoggTheme.lightTextPrimary, fontWeight: FontWeight.w600)),
-        bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(1),
-            child: Container(color: BigDoggTheme.lightBorder, height: 1)),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddProduct(isNl),
-        child: const Icon(Icons.add),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _products.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.inventory_2_outlined, size: 64, color: BigDoggTheme.lightTextHint),
-                      const SizedBox(height: 16),
-                      Text(isNl ? 'Nog geen producten' : 'No products yet',
-                          style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
-                      const SizedBox(height: 8),
-                      Text(isNl ? 'Tik + om een product toe te voegen' : 'Tap + to add a product',
-                          style: const TextStyle(color: BigDoggTheme.lightTextHint)),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _products.length,
-                  itemBuilder: (context, index) {
-                    final product = _products[index];
-                    final isActive = product['is_active'] ?? true;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      decoration: BoxDecoration(
-                        color: BigDoggTheme.lightSurface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: BigDoggTheme.lightBorder),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        leading: CircleAvatar(
-                          backgroundColor: BigDoggTheme.teal100,
-                          child: const Icon(Icons.inventory_2_outlined, color: BigDoggTheme.teal800, size: 20),
+    return Stack(
+      children: [
+        _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _products.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.inventory_2_outlined, size: 64, color: BigDoggTheme.lightTextHint),
+                        const SizedBox(height: 16),
+                        Text(isNl ? 'Nog geen producten' : 'No products yet',
+                            style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
+                        const SizedBox(height: 8),
+                        Text(isNl ? 'Tik + om een product toe te voegen' : 'Tap + to add a product',
+                            style: const TextStyle(color: BigDoggTheme.lightTextHint)),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _products.length,
+                    itemBuilder: (context, index) {
+                      final product = _products[index];
+                      final isActive = product['is_active'] ?? true;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: BigDoggTheme.lightSurface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: BigDoggTheme.lightBorder),
                         ),
-                        title: Row(
-                          children: [
-                            Text(product['name'],
-                                style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.lightTextPrimary)),
-                            const SizedBox(width: 8),
-                            if (!isActive)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: BigDoggTheme.lightTextHint.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(4),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          leading: CircleAvatar(
+                            backgroundColor: BigDoggTheme.teal100,
+                            child: const Icon(Icons.inventory_2_outlined, color: BigDoggTheme.teal800, size: 20),
+                          ),
+                          title: Row(
+                            children: [
+                              Text(product['name'],
+                                  style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.lightTextPrimary)),
+                              const SizedBox(width: 8),
+                              if (!isActive)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: BigDoggTheme.lightTextHint.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(isNl ? 'Inactief' : 'Inactive',
+                                      style: const TextStyle(fontSize: 10, color: BigDoggTheme.lightTextHint)),
                                 ),
-                                child: Text(isNl ? 'Inactief' : 'Inactive',
-                                    style: const TextStyle(fontSize: 10, color: BigDoggTheme.lightTextHint)),
-                              ),
-                          ],
+                            ],
+                          ),
+                          subtitle: Text(
+                            '€${product['unit_price']} / ${_unitLabel(product['unit'] ?? 'hour', isNl)} · ${product['btw_rate']}% BTW',
+                            style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, color: BigDoggTheme.error),
+                            onPressed: () async {
+                              await ProductsService.deleteProduct(product['id']);
+                              _loadProducts();
+                            },
+                          ),
                         ),
-                        subtitle: Text(
-                          '€${product['unit_price']} / ${_unitLabel(product['unit'] ?? 'hour', isNl)} · ${product['btw_rate']}% BTW',
-                          style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13),
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: BigDoggTheme.error),
-                          onPressed: () async {
-                            await ProductsService.deleteProduct(product['id']);
-                            _loadProducts();
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: FloatingActionButton(
+            onPressed: () => _showAddProduct(isNl),
+            child: const Icon(Icons.add),
+          ),
+        ),
+      ],
     );
   }
 }
