@@ -94,11 +94,46 @@ class _ClientsScreenState extends State<ClientsScreen> {
   Future<void> _copyInviteLink(bool isNl) async {
     final result = await ClientsService.createInvite();
     if (result['success'] && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isNl ? 'Link gekopieerd!' : 'Link copied!'),
-          backgroundColor: BigDoggTheme.success,
-          behavior: SnackBarBehavior.floating,
+      final inviteUrl = result['invite_url'];
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(isNl ? 'Uitnodigingslink' : 'Invite Link'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isNl
+                    ? 'Stuur deze link naar je klant:'
+                    : 'Send this link to your client:',
+                style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: BigDoggTheme.lightBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: BigDoggTheme.lightBorder),
+                ),
+                child: SelectableText(
+                  inviteUrl,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: BigDoggTheme.teal800,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(isNl ? 'Sluiten' : 'Close'),
+            ),
+          ],
         ),
       );
     }
