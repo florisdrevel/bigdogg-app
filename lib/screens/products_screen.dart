@@ -30,18 +30,20 @@ class _ProductsScreenState extends State<ProductsScreen> {
     });
   }
 
-  void _showAddProduct(bool isNl) {
-    final nameController = TextEditingController();
-    final descController = TextEditingController();
-    final priceController = TextEditingController();
-    int btwRate = 21;
-    String unit = 'hour';
+  void _showProductDialog(bool isNl, {Map<String, dynamic>? existing}) {
+    final nameController = TextEditingController(text: existing?['name'] ?? '');
+    final descController = TextEditingController(text: existing?['description'] ?? '');
+    final priceController = TextEditingController(text: existing?['unit_price']?.toString() ?? '');
+    int btwRate = existing?['btw_rate'] ?? 21;
+    String unit = existing?['unit'] ?? 'hour';
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(isNl ? 'Product toevoegen' : 'Add Product'),
+          title: Text(existing != null
+              ? (isNl ? 'Product bewerken' : 'Edit Product')
+              : (isNl ? 'Product toevoegen' : 'Add Product')),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -97,16 +99,29 @@ class _ProductsScreenState extends State<ProductsScreen> {
               onPressed: () async {
                 if (nameController.text.isEmpty || priceController.text.isEmpty) return;
                 Navigator.pop(context);
-                await ProductsService.createProduct(
-                  name: nameController.text.trim(),
-                  description: descController.text.trim(),
-                  unitPrice: double.parse(priceController.text),
-                  btwRate: btwRate,
-                  unit: unit,
-                );
+                if (existing != null) {
+                  await ProductsService.updateProduct(
+                    productId: existing['id'],
+                    name: nameController.text.trim(),
+                    description: descController.text.trim(),
+                    unitPrice: double.parse(priceController.text),
+                    btwRate: btwRate,
+                    unit: unit,
+                  );
+                } else {
+                  await ProductsService.createProduct(
+                    name: nameController.text.trim(),
+                    description: descController.text.trim(),
+                    unitPrice: double.parse(priceController.text),
+                    btwRate: btwRate,
+                    unit: unit,
+                  );
+                }
                 _loadProducts();
               },
-              child: Text(isNl ? 'Toevoegen' : 'Add'),
+              child: Text(existing != null
+                  ? (isNl ? 'Opslaan' : 'Save')
+                  : (isNl ? 'Toevoegen' : 'Add')),
             ),
           ],
         ),
@@ -162,6 +177,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         ),
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          onTap: () => _showProductDialog(isNl, existing: product),
                           leading: CircleAvatar(
                             backgroundColor: BigDoggTheme.teal100,
                             child: const Icon(Icons.inventory_2_outlined, color: BigDoggTheme.teal800, size: 20),
@@ -187,12 +203,21 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             '€${product['unit_price']} / ${_unitLabel(product['unit'] ?? 'hour', isNl)} · ${product['btw_rate']}% BTW',
                             style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13),
                           ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, color: BigDoggTheme.error),
-                            onPressed: () async {
-                              await ProductsService.deleteProduct(product['id']);
-                              _loadProducts();
-                            },
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, color: BigDoggTheme.teal800),
+                                onPressed: () => _showProductDialog(isNl, existing: product),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: BigDoggTheme.error),
+                                onPressed: () async {
+                                  await ProductsService.deleteProduct(product['id']);
+                                  _loadProducts();
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       );
@@ -202,7 +227,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           bottom: 16,
           right: 16,
           child: FloatingActionButton(
-            onPressed: () => _showAddProduct(isNl),
+            onPressed: () => _showProductDialog(isNl),
             child: const Icon(Icons.add),
           ),
         ),

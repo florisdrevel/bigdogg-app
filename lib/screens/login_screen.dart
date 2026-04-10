@@ -14,6 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
+  bool _obscurePassword = true;
   String? _error;
 
   Future<void> _login() async {
@@ -116,8 +117,17 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(height: 14),
                               TextField(
                                 controller: _passwordController,
-                                decoration: const InputDecoration(labelText: 'Password'),
-                                obscureText: true,
+                                decoration: InputDecoration(
+                                  labelText: 'Password',
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                      color: BigDoggTheme.lightTextSecondary,
+                                    ),
+                                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                  ),
+                                ),
+                                obscureText: _obscurePassword,
                                 onSubmitted: (_) => _login(),
                               ),
                               const SizedBox(height: 24),

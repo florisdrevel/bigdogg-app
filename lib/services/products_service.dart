@@ -33,15 +33,49 @@ class ProductsService {
 
   static Future<Map<String, dynamic>> createProduct({
     required String name,
-    String? description,
     required double unitPrice,
-    required int btwRate,
-    required String unit,
+    String? description,
+    int btwRate = 21,
+    String unit = 'hour',
   }) async {
     final token = await _getToken();
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/v1/products/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'name': name,
+          'description': description,
+          'unit_price': unitPrice,
+          'btw_rate': btwRate,
+          'unit': unit,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'product': data['product']};
+      }
+      return {'success': false, 'message': data['detail']};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateProduct({
+    required String productId,
+    String? name,
+    double? unitPrice,
+    String? description,
+    int? btwRate,
+    String? unit,
+  }) async {
+    final token = await _getToken();
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/v1/products/$productId'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

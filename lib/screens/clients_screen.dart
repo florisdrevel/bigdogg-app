@@ -30,19 +30,21 @@ class _ClientsScreenState extends State<ClientsScreen> {
     });
   }
 
-  void _showAddClient(bool isNl) {
-    final contactController = TextEditingController();
-    final emailController = TextEditingController();
-    final companyController = TextEditingController();
-    final phoneController = TextEditingController();
-    final addressController = TextEditingController();
-    final postcodeController = TextEditingController();
-    final cityController = TextEditingController();
+  void _showClientDialog(bool isNl, {Map<String, dynamic>? existing}) {
+    final contactController = TextEditingController(text: existing?['contact_name'] ?? '');
+    final emailController = TextEditingController(text: existing?['email'] ?? '');
+    final companyController = TextEditingController(text: existing?['company_name'] ?? '');
+    final phoneController = TextEditingController(text: existing?['phone'] ?? '');
+    final addressController = TextEditingController(text: existing?['address'] ?? '');
+    final postcodeController = TextEditingController(text: existing?['postcode'] ?? '');
+    final cityController = TextEditingController(text: existing?['city'] ?? '');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isNl ? 'Klant toevoegen' : 'Add Client'),
+        title: Text(existing != null
+            ? (isNl ? 'Klant bewerken' : 'Edit Client')
+            : (isNl ? 'Klant toevoegen' : 'Add Client')),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -73,25 +75,40 @@ class _ClientsScreenState extends State<ClientsScreen> {
             onPressed: () async {
               if (contactController.text.isEmpty || emailController.text.isEmpty) return;
               Navigator.pop(context);
-              await ClientsService.createClient(
-                contactName: contactController.text.trim(),
-                email: emailController.text.trim(),
-                companyName: companyController.text.trim(),
-                phone: phoneController.text.trim(),
-                address: addressController.text.trim(),
-                postcode: postcodeController.text.trim(),
-                city: cityController.text.trim(),
-              );
+              if (existing != null) {
+                await ClientsService.updateClient(
+                  clientId: existing['id'],
+                  contactName: contactController.text.trim(),
+                  email: emailController.text.trim(),
+                  companyName: companyController.text.trim(),
+                  phone: phoneController.text.trim(),
+                  address: addressController.text.trim(),
+                  postcode: postcodeController.text.trim(),
+                  city: cityController.text.trim(),
+                );
+              } else {
+                await ClientsService.createClient(
+                  contactName: contactController.text.trim(),
+                  email: emailController.text.trim(),
+                  companyName: companyController.text.trim(),
+                  phone: phoneController.text.trim(),
+                  address: addressController.text.trim(),
+                  postcode: postcodeController.text.trim(),
+                  city: cityController.text.trim(),
+                );
+              }
               _loadClients();
             },
-            child: Text(isNl ? 'Toevoegen' : 'Add'),
+            child: Text(existing != null
+                ? (isNl ? 'Opslaan' : 'Save')
+                : (isNl ? 'Toevoegen' : 'Add')),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _copyInviteLink(bool isNl) async {
+  Future<void> _showInviteLink(bool isNl) async {
     final result = await ClientsService.createInvite();
     if (result['success'] && mounted) {
       final inviteUrl = result['invite_url'];
@@ -104,9 +121,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isNl
-                    ? 'Stuur deze link naar je klant:'
-                    : 'Send this link to your client:',
+                isNl ? 'Stuur deze link naar je klant:' : 'Send this link to your client:',
                 style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 14),
               ),
               const SizedBox(height: 12),
@@ -119,11 +134,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                 ),
                 child: SelectableText(
                   inviteUrl,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: BigDoggTheme.teal800,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: const TextStyle(fontSize: 12, color: BigDoggTheme.teal800, fontWeight: FontWeight.w500),
                 ),
               ),
             ],
@@ -178,6 +189,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                         ),
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          onTap: () => _showClientDialog(isNl, existing: client),
                           leading: CircleAvatar(
                             backgroundColor: BigDoggTheme.teal800,
                             child: Text(initial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -191,12 +203,21 @@ class _ClientsScreenState extends State<ClientsScreen> {
                               Text(client['email'] ?? '', style: const TextStyle(color: BigDoggTheme.lightTextHint, fontSize: 12)),
                             ],
                           ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, color: BigDoggTheme.error),
-                            onPressed: () async {
-                              await ClientsService.deleteClient(client['id']);
-                              _loadClients();
-                            },
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, color: BigDoggTheme.teal800),
+                                onPressed: () => _showClientDialog(isNl, existing: client),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: BigDoggTheme.error),
+                                onPressed: () async {
+                                  await ClientsService.deleteClient(client['id']);
+                                  _loadClients();
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       );
@@ -206,7 +227,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
           top: 8,
           right: 8,
           child: TextButton.icon(
-            onPressed: () => _copyInviteLink(isNl),
+            onPressed: () => _showInviteLink(isNl),
             icon: const Icon(Icons.link, color: BigDoggTheme.teal800, size: 18),
             label: Text(isNl ? 'Uitnodigen' : 'Invite link',
                 style: const TextStyle(color: BigDoggTheme.teal800, fontWeight: FontWeight.w600)),
@@ -216,7 +237,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
           bottom: 16,
           right: 16,
           child: FloatingActionButton(
-            onPressed: () => _showAddClient(isNl),
+            onPressed: () => _showClientDialog(isNl),
             child: const Icon(Icons.add),
           ),
         ),

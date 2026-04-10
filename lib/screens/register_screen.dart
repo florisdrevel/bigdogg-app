@@ -16,6 +16,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _loading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
   String? _error;
 
   Future<void> _register() async {
@@ -51,108 +53,139 @@ class _RegisterScreenState extends State<RegisterScreen> {
           SizedBox(
             width: double.infinity,
             height: double.infinity,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset('assets/images/logo.png', width: 180, height: 180),
-                const SizedBox(height: 12),
-                Container(
-                  width: 420,
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  margin: const EdgeInsets.symmetric(horizontal: 24),
-                  decoration: BoxDecoration(
-                    color: isDark ? BigDoggTheme.darkSurface : BigDoggTheme.lightSurface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? BigDoggTheme.darkBorder : BigDoggTheme.lightBorder,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
-                        blurRadius: 32,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Create your account',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? BigDoggTheme.darkTextPrimary : BigDoggTheme.lightTextPrimary,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Start your 14-day free trial',
-                          style: TextStyle(
-                            color: isDark ? BigDoggTheme.darkTextSecondary : BigDoggTheme.lightTextSecondary,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        if (_error != null)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: BigDoggTheme.errorBg,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(_error!, style: const TextStyle(color: BigDoggTheme.error, fontSize: 13)),
-                          ),
-                        TextField(
-                          controller: _nameController,
-                          decoration: const InputDecoration(labelText: 'Full name'),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: _emailController,
-                          decoration: const InputDecoration(labelText: 'Email address'),
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: _passwordController,
-                          decoration: const InputDecoration(labelText: 'Password'),
-                          obscureText: true,
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: _confirmController,
-                          decoration: const InputDecoration(labelText: 'Confirm password'),
-                          obscureText: true,
-                          onSubmitted: (_) => _register(),
-                        ),
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _loading ? null : _register,
-                            child: _loading
-                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                : const Text('Create account'),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Center(
-                          child: TextButton(
-                            onPressed: () => context.go('/login'),
-                            child: const Text('Already have an account? Sign in'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
                 ),
-              ],
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 40),
+                    Image.asset('assets/images/logo.png', width: 180, height: 180),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 420,
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      margin: const EdgeInsets.symmetric(horizontal: 24),
+                      decoration: BoxDecoration(
+                        color: isDark ? BigDoggTheme.darkSurface : BigDoggTheme.lightSurface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? BigDoggTheme.darkBorder : BigDoggTheme.lightBorder,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+                            blurRadius: 32,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Create your account',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? BigDoggTheme.darkTextPrimary : BigDoggTheme.lightTextPrimary,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Start your 14-day free trial',
+                              style: TextStyle(
+                                color: isDark ? BigDoggTheme.darkTextSecondary : BigDoggTheme.lightTextSecondary,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            if (_error != null)
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: BigDoggTheme.errorBg,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(_error!, style: const TextStyle(color: BigDoggTheme.error, fontSize: 13)),
+                              ),
+                            TextField(
+                              controller: _nameController,
+                              decoration: const InputDecoration(labelText: 'Full name'),
+                              textInputAction: TextInputAction.next,
+                            ),
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: _emailController,
+                              decoration: const InputDecoration(labelText: 'Email address'),
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                            ),
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: _passwordController,
+                              decoration: InputDecoration(
+                                labelText: 'Password',
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                    color: BigDoggTheme.lightTextSecondary,
+                                  ),
+                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                ),
+                              ),
+                              obscureText: _obscurePassword,
+                              textInputAction: TextInputAction.next,
+                            ),
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: _confirmController,
+                              decoration: InputDecoration(
+                                labelText: 'Confirm password',
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                    color: BigDoggTheme.lightTextSecondary,
+                                  ),
+                                  onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                                ),
+                              ),
+                              obscureText: _obscureConfirm,
+                              onSubmitted: (_) => _register(),
+                            ),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _loading ? null : _register,
+                                child: _loading
+                                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                    : const Text('Create account'),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Center(
+                              child: TextButton(
+                                onPressed: () => context.go('/login'),
+                                child: const Text('Already have an account? Sign in'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
