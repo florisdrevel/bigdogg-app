@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/invoices_service.dart';
+import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 
@@ -53,6 +55,24 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     }
   }
 
+  Future<void> _downloadPdf(bool isNl) async {
+    final token = await InvoicesService.getToken();
+    final url = '${ApiConfig.baseUrl}/api/v1/pdf/${widget.invoiceId}';
+    final uri = Uri.parse('$url?token=$token');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isNl ? 'Kan PDF niet openen' : 'Could not open PDF'),
+            backgroundColor: BigDoggTheme.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
@@ -71,7 +91,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           Container(
-            margin: const EdgeInsets.only(right: 16),
+            margin: const EdgeInsets.only(right: 8),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
               color: _statusColor(status).withOpacity(0.2),
@@ -81,6 +101,11 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
               _statusLabel(status, isNl),
               style: TextStyle(color: _statusColor(status), fontWeight: FontWeight.w600),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined, color: Colors.white),
+            onPressed: () => _downloadPdf(isNl),
+            tooltip: isNl ? 'Download PDF' : 'Download PDF',
           ),
         ],
       ),
@@ -184,6 +209,13 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   bold: true, large: true),
             ]),
             const SizedBox(height: 12),
+            _actionButton(
+              isNl ? 'Download PDF' : 'Download PDF',
+              BigDoggTheme.teal700,
+              Icons.picture_as_pdf_outlined,
+              () => _downloadPdf(isNl),
+            ),
+            const SizedBox(height: 8),
             if (status != 'paid') ...[
               if (status == 'draft')
                 _actionButton(

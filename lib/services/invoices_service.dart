@@ -100,6 +100,14 @@ class InvoicesService {
       return {'success': false, 'message': 'Connection error'};
     }
   }
+  static Future<String?> getToken() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString('access_token');
+}
+  static Future<String?> getToken() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString('access_token');
+}
   static Future<Map<String, dynamic>> deleteInvoice(String invoiceId) async {
   final token = await _getToken();
   try {
