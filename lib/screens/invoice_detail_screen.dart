@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/invoices_service.dart';
+import '../services/email_service.dart';
 import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
@@ -73,6 +74,44 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     }
   }
 
+  Future<void> _sendEmail(bool isNl) async {
+    final client = _invoice!['clients'];
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isNl ? 'Factuur versturen' : 'Send Invoice'),
+        content: Text(isNl
+            ? 'Verstuur factuur ${_invoice!['invoice_number']} naar ${client['email']}?'
+            : 'Send invoice ${_invoice!['invoice_number']} to ${client['email']}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(isNl ? 'Annuleren' : 'Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(isNl ? 'Versturen' : 'Send'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true && mounted) {
+      final result = await EmailService.sendInvoice(widget.invoiceId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['success']
+                ? (isNl ? 'Factuur verstuurd!' : 'Invoice sent!')
+                : result['message'] ?? 'Error'),
+            backgroundColor: result['success'] ? BigDoggTheme.success : BigDoggTheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        if (result['success']) _loadInvoice();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
@@ -105,7 +144,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_outlined, color: Colors.white),
             onPressed: () => _downloadPdf(isNl),
-            tooltip: isNl ? 'Download PDF' : 'Download PDF',
+            tooltip: 'PDF',
           ),
         ],
       ),
@@ -214,6 +253,13 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
               BigDoggTheme.teal700,
               Icons.picture_as_pdf_outlined,
               () => _downloadPdf(isNl),
+            ),
+            const SizedBox(height: 8),
+            _actionButton(
+              isNl ? 'Verstuur per e-mail' : 'Send by email',
+              BigDoggTheme.teal600,
+              Icons.email_outlined,
+              () => _sendEmail(isNl),
             ),
             const SizedBox(height: 8),
             if (status != 'paid') ...[
