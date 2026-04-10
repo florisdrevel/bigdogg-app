@@ -1,29 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/client_onboarding_screen.dart';
+import 'theme.dart';
+import 'providers/app_provider.dart';
 
 void main() {
-  runApp(const BigdoggApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AppProvider(),
+      child: const BigdoggApp(),
+    ),
+  );
 }
 
 final _router = GoRouter(
   initialLocation: '/login',
   routes: [
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: '/register',
-      builder: (context, state) => const RegisterScreen(),
-    ),
-    GoRoute(
-      path: '/dashboard',
-      builder: (context, state) => const DashboardScreen(),
-    ),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+    GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
+    GoRoute(path: '/dashboard', builder: (context, state) => const DashboardScreen()),
     GoRoute(
       path: '/onboard/:token',
       builder: (context, state) {
@@ -39,18 +38,14 @@ class BigdoggApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appProvider = context.watch<AppProvider>();
     return MaterialApp.router(
-      title: 'Bigdogg',
+      title: 'BigDogg',
       debugShowCheckedModeBanner: false,
       routerConfig: _router,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1A1A2E),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        fontFamily: 'Inter',
-      ),
+      theme: BigDoggTheme.light(),
+      darkTheme: BigDoggTheme.dark(),
+      themeMode: appProvider.themeMode,
     );
   }
 }
