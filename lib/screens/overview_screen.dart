@@ -122,14 +122,14 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
             _overviewRow(isNl ? 'Nog openstaand' : 'Outstanding', '€${q['outstanding']}', color: BigDoggTheme.warning),
           ]),
           const SizedBox(height: 16),
-          _sectionTitle(isNl ? '📥 Kosten' : '📥 Expenses'),
+          _sectionTitle(isNl ? 'Kosten' : 'Expenses'),
           _overviewCard([
             _overviewRow(isNl ? 'Kosten ex BTW' : 'Expenses ex BTW', '€${q['expenses_ex_btw']}'),
             _overviewRow(isNl ? 'BTW betaald' : 'BTW paid', '€${q['expenses_btw']}'),
             _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl BTW', '€${q['expenses_total']}', bold: true),
           ]),
           const SizedBox(height: 16),
-          _sectionTitle('🏦 BTW'),
+          _sectionTitle('BTW'),
           _overviewCard([
             _overviewRow(isNl ? 'BTW ontvangen' : 'BTW received', '€${q['revenue_btw']}'),
             _overviewRow(isNl ? 'BTW betaald op kosten' : 'BTW paid on expenses', '€${q['expenses_btw']}'),
