@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/expenses_service.dart';
+import '../providers/app_provider.dart';
+import '../theme.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -32,7 +35,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     _loadExpenses();
   }
 
-  void _showAddExpense() {
+  void _showAddExpense(bool isNl) {
     final descController = TextEditingController();
     final amountController = TextEditingController();
     int btwRate = 21;
@@ -42,25 +45,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Add Expense'),
+          title: Text(isNl ? 'Uitgave toevoegen' : 'Add Expense'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: descController,
-                  decoration: const InputDecoration(labelText: 'Description'),
+                  decoration: InputDecoration(labelText: isNl ? 'Omschrijving' : 'Description'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: amountController,
-                  decoration: const InputDecoration(labelText: 'Amount ex BTW (€)'),
+                  decoration: InputDecoration(labelText: isNl ? 'Bedrag ex BTW (€)' : 'Amount ex BTW (€)'),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   value: btwRate,
-                  decoration: const InputDecoration(labelText: 'BTW rate'),
+                  decoration: const InputDecoration(labelText: 'BTW'),
                   items: const [
                     DropdownMenuItem(value: 21, child: Text('21%')),
                     DropdownMenuItem(value: 9, child: Text('9%')),
@@ -71,15 +74,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: category,
-                  decoration: const InputDecoration(labelText: 'Category'),
-                  items: const [
-                    DropdownMenuItem(value: 'general', child: Text('General')),
-                    DropdownMenuItem(value: 'travel', child: Text('Travel')),
-                    DropdownMenuItem(value: 'materials', child: Text('Materials')),
+                  decoration: InputDecoration(labelText: isNl ? 'Categorie' : 'Category'),
+                  items: [
+                    DropdownMenuItem(value: 'general', child: Text(isNl ? 'Algemeen' : 'General')),
+                    DropdownMenuItem(value: 'travel', child: Text(isNl ? 'Reizen' : 'Travel')),
+                    DropdownMenuItem(value: 'materials', child: Text(isNl ? 'Materialen' : 'Materials')),
                     DropdownMenuItem(value: 'software', child: Text('Software')),
-                    DropdownMenuItem(value: 'food', child: Text('Food & Drinks')),
-                    DropdownMenuItem(value: 'office', child: Text('Office')),
-                    DropdownMenuItem(value: 'other', child: Text('Other')),
+                    DropdownMenuItem(value: 'food', child: Text(isNl ? 'Eten & Drinken' : 'Food & Drinks')),
+                    DropdownMenuItem(value: 'office', child: Text(isNl ? 'Kantoor' : 'Office')),
+                    DropdownMenuItem(value: 'other', child: Text(isNl ? 'Overig' : 'Other')),
                   ],
                   onChanged: (val) => setDialogState(() => category = val!),
                 ),
@@ -87,7 +90,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(isNl ? 'Annuleren' : 'Cancel'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 if (descController.text.isEmpty || amountController.text.isEmpty) return;
@@ -100,11 +106,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 );
                 _loadExpenses();
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A1A2E),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Add'),
+              child: Text(isNl ? 'Toevoegen' : 'Add'),
             ),
           ],
         ),
@@ -123,22 +125,39 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     }
   }
 
+  String _categoryLabel(String category, bool isNl) {
+    switch (category) {
+      case 'travel': return isNl ? 'Reizen' : 'Travel';
+      case 'materials': return isNl ? 'Materialen' : 'Materials';
+      case 'software': return 'Software';
+      case 'food': return isNl ? 'Eten & Drinken' : 'Food & Drinks';
+      case 'office': return isNl ? 'Kantoor' : 'Office';
+      case 'other': return isNl ? 'Overig' : 'Other';
+      default: return isNl ? 'Algemeen' : 'General';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isNl = context.watch<AppProvider>().language == 'nl';
     double totalExBtw = _expenses.fold(0, (sum, e) => sum + (e['amount_ex_btw'] as num).toDouble());
     double totalBtw = _expenses.fold(0, (sum, e) => sum + (e['btw_amount'] as num).toDouble());
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: BigDoggTheme.lightBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Expenses', style: TextStyle(color: Colors.white)),
+        backgroundColor: BigDoggTheme.lightSurface,
+        elevation: 0,
         automaticallyImplyLeading: false,
+        title: Text(isNl ? 'Kosten' : 'Expenses',
+            style: const TextStyle(color: BigDoggTheme.lightTextPrimary, fontWeight: FontWeight.w600)),
+        bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(color: BigDoggTheme.lightBorder, height: 1)),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddExpense,
-        backgroundColor: const Color(0xFF1A1A2E),
-        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () => _showAddExpense(isNl),
+        child: const Icon(Icons.add),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -149,7 +168,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     margin: const EdgeInsets.all(16),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1A1A2E),
+                      color: BigDoggTheme.teal800,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -158,8 +177,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Total ex BTW', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                              Text('€${totalExBtw.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                              Text(isNl ? 'Totaal ex BTW' : 'Total ex BTW',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                              Text('€${totalExBtw.toStringAsFixed(2)}',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                             ],
                           ),
                         ),
@@ -168,7 +189,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text('BTW', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                              Text('€${totalBtw.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                              Text('€${totalBtw.toStringAsFixed(2)}',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                             ],
                           ),
                         ),
@@ -176,8 +198,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Total incl BTW', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                              Text('€${(totalExBtw + totalBtw).toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                              Text(isNl ? 'Totaal incl BTW' : 'Total incl BTW',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                              Text('€${(totalExBtw + totalBtw).toStringAsFixed(2)}',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                             ],
                           ),
                         ),
@@ -186,15 +210,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                 Expanded(
                   child: _expenses.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.receipt_outlined, size: 64, color: Color(0xFFD1D5DB)),
-                              SizedBox(height: 16),
-                              Text('No expenses yet', style: TextStyle(fontSize: 18, color: Color(0xFF6B7280))),
-                              SizedBox(height: 8),
-                              Text('Tap + to add an expense', style: TextStyle(color: Color(0xFF9CA3AF))),
+                              const Icon(Icons.receipt_outlined, size: 64, color: BigDoggTheme.lightTextHint),
+                              const SizedBox(height: 16),
+                              Text(isNl ? 'Nog geen kosten' : 'No expenses yet',
+                                  style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
+                              const SizedBox(height: 8),
+                              Text(isNl ? 'Tik + om een uitgave toe te voegen' : 'Tap + to add an expense',
+                                  style: const TextStyle(color: BigDoggTheme.lightTextHint)),
                             ],
                           ),
                         )
@@ -203,19 +229,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           itemCount: _expenses.length,
                           itemBuilder: (context, index) {
                             final exp = _expenses[index];
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: BigDoggTheme.lightSurface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: BigDoggTheme.lightBorder),
+                              ),
                               child: ListTile(
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 leading: CircleAvatar(
-                                  backgroundColor: const Color(0xFF1A1A2E).withOpacity(0.1),
-                                  child: Icon(_categoryIcon(exp['category'] ?? 'general'), color: const Color(0xFF1A1A2E)),
+                                  backgroundColor: BigDoggTheme.teal100,
+                                  child: Icon(_categoryIcon(exp['category'] ?? 'general'),
+                                      color: BigDoggTheme.teal800, size: 20),
                                 ),
-                                title: Text(exp['description'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                                title: Text(exp['description'],
+                                    style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.lightTextPrimary)),
                                 subtitle: Text(
-                                  '${exp['expense_date']} · ${exp['category']} · ${exp['btw_rate']}% BTW',
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                                  '${exp['expense_date']} · ${_categoryLabel(exp['category'] ?? 'general', isNl)} · ${exp['btw_rate']}% BTW',
+                                  style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary),
                                 ),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -224,13 +256,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       crossAxisAlignment: CrossAxisAlignment.end,
                                       children: [
-                                        Text('€${exp['amount_ex_btw']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        Text('+ €${exp['btw_amount']} BTW', style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                                        Text('€${exp['amount_ex_btw']}',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
+                                        Text('+ €${exp['btw_amount']} BTW',
+                                            style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
                                       ],
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: 4),
                                     IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                                      icon: const Icon(Icons.delete_outline, color: BigDoggTheme.error),
                                       onPressed: () => _deleteExpense(exp['id']),
                                     ),
                                   ],

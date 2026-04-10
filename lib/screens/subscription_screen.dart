@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/subscription_service.dart';
+import '../theme.dart';
+import '../providers/app_provider.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -33,7 +36,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     setState(() => _checkingOut = true);
     final result = await SubscriptionService.createCheckout();
     setState(() => _checkingOut = false);
-
     if (result['success']) {
       final url = Uri.parse(result['checkout_url']);
       if (await canLaunchUrl(url)) {
@@ -50,13 +52,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isNl = context.watch<AppProvider>().language == 'nl';
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Subscription', style: TextStyle(color: Colors.white)),
-        automaticallyImplyLeading: false,
-      ),
+      backgroundColor: BigDoggTheme.lightBg,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -64,18 +63,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildStatusCard(),
+                  _buildStatusCard(isNl),
                   const SizedBox(height: 24),
-                  _buildPlanCard(),
+                  _buildPlanCard(isNl),
                 ],
               ),
             ),
     );
   }
 
-  Widget _buildStatusCard() {
+  Widget _buildStatusCard(bool isNl) {
     if (_subscription == null) return const SizedBox();
-
     final status = _subscription!['status'];
     final isActive = _subscription!['is_active'] ?? false;
     final daysLeft = _subscription!['days_left'];
@@ -85,25 +83,25 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     String statusDetail;
 
     if (status == 'trial') {
-      statusColor = daysLeft > 3 ? const Color(0xFF059669) : const Color(0xFFF59E0B);
-      statusText = 'Free Trial';
+      statusColor = daysLeft > 3 ? BigDoggTheme.success : BigDoggTheme.warning;
+      statusText = isNl ? 'Gratis proefperiode' : 'Free Trial';
       statusDetail = daysLeft > 0
-          ? '$daysLeft days remaining'
-          : 'Trial expired';
+          ? isNl ? '$daysLeft dagen resterend' : '$daysLeft days remaining'
+          : isNl ? 'Proefperiode verlopen' : 'Trial expired';
     } else if (status == 'active') {
-      statusColor = const Color(0xFF059669);
-      statusText = 'Active';
-      statusDetail = 'Subscription active';
+      statusColor = BigDoggTheme.success;
+      statusText = isNl ? 'Actief' : 'Active';
+      statusDetail = isNl ? 'Abonnement actief' : 'Subscription active';
     } else {
-      statusColor = const Color(0xFFDC2626);
-      statusText = 'Expired';
-      statusDetail = 'Please subscribe to continue';
+      statusColor = BigDoggTheme.error;
+      statusText = isNl ? 'Verlopen' : 'Expired';
+      statusDetail = isNl ? 'Verleng je abonnement om door te gaan' : 'Please subscribe to continue';
     }
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
+        color: BigDoggTheme.teal800,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -128,21 +126,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               onPressed: _checkingOut ? null : _startCheckout,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF1A1A2E),
+                foregroundColor: BigDoggTheme.teal800,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: _checkingOut
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Subscribe', style: TextStyle(fontWeight: FontWeight.bold)),
+                  : Text(isNl ? 'Abonneren' : 'Subscribe', style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildPlanCard() {
+  Widget _buildPlanCard(bool isNl) {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -150,12 +147,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Bigdogg Pro', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-                      Text('Everything you need as a ZZP\'er', style: TextStyle(color: Color(0xFF6B7280))),
+                      const Text('BigDogg Pro', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                      Text(
+                        isNl ? 'Alles wat je nodig hebt als ZZP\'er' : 'Everything you need as a ZZP\'er',
+                        style: const TextStyle(color: BigDoggTheme.lightTextSecondary),
+                      ),
                     ],
                   ),
                 ),
@@ -163,7 +163,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     const Text('€12', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 28)),
-                    const Text('per month', style: TextStyle(color: Color(0xFF6B7280), fontSize: 12)),
+                    Text(isNl ? 'per maand' : 'per month', style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 12)),
                   ],
                 ),
               ],
@@ -171,35 +171,33 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             const SizedBox(height: 20),
             const Divider(),
             const SizedBox(height: 12),
-            _feature('✓ Unlimited invoices'),
-            _feature('✓ AI prompt to invoice'),
-            _feature('✓ Client management'),
-            _feature('✓ Expense tracking'),
-            _feature('✓ Quarterly BTW overview'),
-            _feature('✓ Annual financial overview'),
-            _feature('✓ Receipt scanning'),
-            _feature('✓ iDEAL, credit card via Mollie'),
+            _feature(isNl ? '✓ Onbeperkt facturen' : '✓ Unlimited invoices'),
+            _feature(isNl ? '✓ AI factuur assistent' : '✓ AI invoice assistant'),
+            _feature(isNl ? '✓ Klantenbeheer' : '✓ Client management'),
+            _feature(isNl ? '✓ Uitgaven bijhouden' : '✓ Expense tracking'),
+            _feature(isNl ? '✓ Kwartaal BTW overzicht' : '✓ Quarterly BTW overview'),
+            _feature(isNl ? '✓ Jaaroverzicht financiën' : '✓ Annual financial overview'),
+            _feature(isNl ? '✓ Bonnen scannen' : '✓ Receipt scanning'),
+            _feature(isNl ? '✓ Betalen via Stripe (iDEAL, creditcard)' : '✓ Pay via Stripe (iDEAL, credit card)'),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
                 onPressed: _checkingOut ? null : _startCheckout,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1A1A2E),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
                 child: _checkingOut
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('Start subscription — €12/month', style: TextStyle(fontSize: 16)),
+                    : Text(
+                        isNl ? 'Start abonnement — €12/maand' : 'Start subscription — €12/month',
+                        style: const TextStyle(fontSize: 16),
+                      ),
               ),
             ),
             const SizedBox(height: 8),
-            const Center(
+            Center(
               child: Text(
-                'Cancel anytime · iDEAL, credit card, PayPal',
-                style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
+                isNl ? 'Altijd opzegbaar · iDEAL en creditcard via Stripe' : 'Cancel anytime · iDEAL and credit card via Stripe',
+                style: const TextStyle(color: BigDoggTheme.lightTextHint, fontSize: 12),
               ),
             ),
           ],

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/invoices_service.dart';
+import '../providers/app_provider.dart';
+import '../theme.dart';
 
 class InvoiceDetailScreen extends StatefulWidget {
   final String invoiceId;
-
   const InvoiceDetailScreen({super.key, required this.invoiceId});
 
   @override
@@ -35,34 +37,36 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'paid': return const Color(0xFF059669);
-      case 'sent': return const Color(0xFF2563EB);
-      case 'overdue': return const Color(0xFFDC2626);
-      default: return const Color(0xFF6B7280);
+      case 'paid': return BigDoggTheme.success;
+      case 'sent': return BigDoggTheme.info;
+      case 'overdue': return BigDoggTheme.error;
+      default: return BigDoggTheme.lightTextSecondary;
     }
   }
 
-  String _statusLabel(String status) {
+  String _statusLabel(String status, bool isNl) {
     switch (status) {
-      case 'paid': return 'Paid';
-      case 'sent': return 'Sent';
-      case 'overdue': return 'Overdue';
-      default: return 'Draft';
+      case 'paid': return isNl ? 'Betaald' : 'Paid';
+      case 'sent': return isNl ? 'Verstuurd' : 'Sent';
+      case 'overdue': return isNl ? 'Verlopen' : 'Overdue';
+      default: return isNl ? 'Concept' : 'Draft';
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isNl = context.watch<AppProvider>().language == 'nl';
+
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (_invoice == null) return const Scaffold(body: Center(child: Text('Invoice not found')));
+    if (_invoice == null) return Scaffold(body: Center(child: Text(isNl ? 'Factuur niet gevonden' : 'Invoice not found')));
 
     final status = _invoice!['status'] ?? 'draft';
     final client = _invoice!['clients'];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: BigDoggTheme.lightBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: BigDoggTheme.teal800,
         title: Text(_invoice!['invoice_number'], style: const TextStyle(color: Colors.white)),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
@@ -71,10 +75,10 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
               color: _statusColor(status).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              _statusLabel(status),
+              _statusLabel(status, isNl),
               style: TextStyle(color: _statusColor(status), fontWeight: FontWeight.w600),
             ),
           ),
@@ -85,156 +89,206 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Client', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                    const SizedBox(height: 4),
-                    Text(client['contact_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    if (client['company_name'] != null && client['company_name'].toString().isNotEmpty)
-                      Text(client['company_name'], style: const TextStyle(color: Color(0xFF6B7280))),
-                    Text(client['email'] ?? '', style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12)),
-                  ],
-                ),
-              ),
-            ),
+            _card([
+              Text(isNl ? 'Klant' : 'Client',
+                  style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
+              const SizedBox(height: 4),
+              Text(client['contact_name'] ?? '',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+              if (client['company_name'] != null && client['company_name'].toString().isNotEmpty)
+                Text(client['company_name'],
+                    style: const TextStyle(color: BigDoggTheme.lightTextSecondary)),
+              Text(client['email'] ?? '',
+                  style: const TextStyle(color: BigDoggTheme.lightTextHint, fontSize: 12)),
+            ]),
             const SizedBox(height: 12),
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Invoice date', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                          Text(_invoice!['invoice_date'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Due date', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                          Text(_invoice!['due_date'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Lines', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 12),
-                    const Row(
+            _card([
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(flex: 3, child: Text('Description', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-                        Expanded(child: Text('Qty', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)), textAlign: TextAlign.right)),
-                        Expanded(child: Text('Price', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)), textAlign: TextAlign.right)),
-                        Expanded(child: Text('Total', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)), textAlign: TextAlign.right)),
+                        Text(isNl ? 'Factuurdatum' : 'Invoice date',
+                            style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
+                        Text(_invoice!['invoice_date'] ?? '',
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
-                    const Divider(),
-                    ..._lines.map((line) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Row(
-                        children: [
-                          Expanded(flex: 3, child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(line['description'], style: const TextStyle(fontWeight: FontWeight.w500)),
-                              Text('${line['btw_rate']}% BTW', style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
-                            ],
-                          )),
-                          Expanded(child: Text('${line['quantity']}x', textAlign: TextAlign.right, style: const TextStyle(color: Color(0xFF6B7280)))),
-                          Expanded(child: Text('€${line['unit_price_ex_btw']}', textAlign: TextAlign.right, style: const TextStyle(color: Color(0xFF6B7280)))),
-                          Expanded(child: Text('€${line['line_total_ex_btw']}', textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w600))),
-                        ],
-                      ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(isNl ? 'Vervaldatum' : 'Due date',
+                            style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
+                        Text(_invoice!['due_date'] ?? '',
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ]),
+            const SizedBox(height: 12),
+            _card([
+              Text(isNl ? 'Regels' : 'Lines',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(flex: 3, child: Text(isNl ? 'Omschrijving' : 'Description',
+                      style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary))),
+                  Expanded(child: Text(isNl ? 'Aantal' : 'Qty',
+                      style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary),
+                      textAlign: TextAlign.right)),
+                  Expanded(child: Text(isNl ? 'Prijs' : 'Price',
+                      style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary),
+                      textAlign: TextAlign.right)),
+                  Expanded(child: Text(isNl ? 'Totaal' : 'Total',
+                      style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary),
+                      textAlign: TextAlign.right)),
+                ],
+              ),
+              const Divider(),
+              ..._lines.map((line) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Expanded(flex: 3, child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(line['description'],
+                            style: const TextStyle(fontWeight: FontWeight.w500)),
+                        Text('${line['btw_rate']}% BTW',
+                            style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextHint)),
+                      ],
                     )),
-                    const Divider(),
-                    _totalRow('Subtotal ex BTW', '€${_invoice!['subtotal_ex_btw']}'),
-                    _totalRow('BTW', '€${_invoice!['btw_amount']}'),
-                    const SizedBox(height: 4),
-                    _totalRow('Total incl BTW', '€${_invoice!['total_incl_btw']}', bold: true, large: true),
+                    Expanded(child: Text('${line['quantity']}x',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(color: BigDoggTheme.lightTextSecondary))),
+                    Expanded(child: Text('€${line['unit_price_ex_btw']}',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(color: BigDoggTheme.lightTextSecondary))),
+                    Expanded(child: Text('€${line['line_total_ex_btw']}',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontWeight: FontWeight.w600))),
                   ],
                 ),
-              ),
-            ),
+              )),
+              const Divider(),
+              _totalRow(isNl ? 'Subtotaal ex BTW' : 'Subtotal ex BTW', '€${_invoice!['subtotal_ex_btw']}'),
+              _totalRow('BTW', '€${_invoice!['btw_amount']}'),
+              const SizedBox(height: 4),
+              _totalRow(isNl ? 'Totaal incl BTW' : 'Total incl BTW', '€${_invoice!['total_incl_btw']}',
+                  bold: true, large: true),
+            ]),
             const SizedBox(height: 12),
             if (status != 'paid') ...[
               if (status == 'draft')
-                _actionButton('Mark as Sent', const Color(0xFF2563EB), Icons.send, () async {
-                  await InvoicesService.updateStatus(widget.invoiceId, 'sent');
-                  _loadInvoice();
-                }),
+                _actionButton(
+                  isNl ? 'Markeer als verstuurd' : 'Mark as Sent',
+                  BigDoggTheme.info,
+                  Icons.send,
+                  () async {
+                    await InvoicesService.updateStatus(widget.invoiceId, 'sent');
+                    _loadInvoice();
+                  },
+                ),
               if (status == 'sent' || status == 'overdue') ...[
-                _actionButton('Mark as Paid', const Color(0xFF059669), Icons.check_circle_outline, () async {
-                  await InvoicesService.updateStatus(widget.invoiceId, 'paid');
-                  _loadInvoice();
-                }),
+                _actionButton(
+                  isNl ? 'Markeer als betaald' : 'Mark as Paid',
+                  BigDoggTheme.success,
+                  Icons.check_circle_outline,
+                  () async {
+                    await InvoicesService.updateStatus(widget.invoiceId, 'paid');
+                    _loadInvoice();
+                  },
+                ),
                 const SizedBox(height: 8),
-                _actionButton('Send Reminder', const Color(0xFFF59E0B), Icons.notifications_outlined, () async {
-                  await InvoicesService.sendReminder(widget.invoiceId);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Reminder sent'),
-                        backgroundColor: Color(0xFF059669),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                }),
+                _actionButton(
+                  isNl ? 'Stuur herinnering' : 'Send Reminder',
+                  BigDoggTheme.warning,
+                  Icons.notifications_outlined,
+                  () async {
+                    await InvoicesService.sendReminder(widget.invoiceId);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(isNl ? 'Herinnering verstuurd' : 'Reminder sent'),
+                          backgroundColor: BigDoggTheme.success,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                ),
               ],
               if (status == 'sent')
-                _actionButton('Mark as Overdue', const Color(0xFFDC2626), Icons.warning_amber_outlined, () async {
-                  await InvoicesService.updateStatus(widget.invoiceId, 'overdue');
-                  _loadInvoice();
-                }),
-              if (status == 'draft') ...[
-                const SizedBox(height: 8),
-                _actionButton('Delete Draft', const Color(0xFF6B7280), Icons.delete_outline, () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Delete Invoice'),
-                      content: const Text('Are you sure you want to delete this draft invoice?'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
-                          child: const Text('Delete'),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _actionButton(
+                    isNl ? 'Markeer als verlopen' : 'Mark as Overdue',
+                    BigDoggTheme.error,
+                    Icons.warning_amber_outlined,
+                    () async {
+                      await InvoicesService.updateStatus(widget.invoiceId, 'overdue');
+                      _loadInvoice();
+                    },
+                  ),
+                ),
+              if (status == 'draft')
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _actionButton(
+                    isNl ? 'Concept verwijderen' : 'Delete Draft',
+                    BigDoggTheme.lightTextSecondary,
+                    Icons.delete_outline,
+                    () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text(isNl ? 'Factuur verwijderen' : 'Delete Invoice'),
+                          content: Text(isNl
+                              ? 'Weet je zeker dat je dit concept wilt verwijderen?'
+                              : 'Are you sure you want to delete this draft?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: Text(isNl ? 'Annuleren' : 'Cancel'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              style: ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.error),
+                              child: Text(isNl ? 'Verwijderen' : 'Delete'),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  );
-                  if (confirm == true) {
-                    await InvoicesService.deleteInvoice(widget.invoiceId);
-                    if (mounted) Navigator.pop(context, true);
-                  }
-                }),
-              ],
+                      );
+                      if (confirm == true) {
+                        await InvoicesService.deleteInvoice(widget.invoiceId);
+                        if (mounted) Navigator.pop(context, true);
+                      }
+                    },
+                  ),
+                ),
             ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _card(List<Widget> children) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: BigDoggTheme.lightSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: BigDoggTheme.lightBorder),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
     );
   }
 
@@ -245,13 +299,14 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(
-            color: bold ? Colors.black : const Color(0xFF6B7280),
+            color: bold ? BigDoggTheme.lightTextPrimary : BigDoggTheme.lightTextSecondary,
             fontWeight: bold ? FontWeight.bold : FontWeight.normal,
             fontSize: large ? 16 : 14,
           )),
           Text(value, style: TextStyle(
             fontWeight: bold ? FontWeight.bold : FontWeight.normal,
             fontSize: large ? 16 : 14,
+            color: bold ? BigDoggTheme.teal800 : BigDoggTheme.lightTextPrimary,
           )),
         ],
       ),
@@ -265,10 +320,10 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       child: ElevatedButton.icon(
         onPressed: onTap,
         icon: Icon(icon, color: Colors.white),
-        label: Text(label, style: const TextStyle(color: Colors.white, fontSize: 16)),
+        label: Text(label, style: const TextStyle(color: Colors.white, fontSize: 15)),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       ),
     );

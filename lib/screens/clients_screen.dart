@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../services/clients_service.dart';
+import '../providers/app_provider.dart';
+import '../theme.dart';
 
 class ClientsScreen extends StatefulWidget {
   const ClientsScreen({super.key});
@@ -28,29 +30,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
     });
   }
 
-  Future<void> _deleteClient(String id) async {
-    await ClientsService.deleteClient(id);
-    _loadClients();
-  }
-
-  Future<void> _generateInviteLink() async {
-    final result = await ClientsService.createInvite();
-    if (result['success']) {
-      final url = result['invite_url'];
-      await Clipboard.setData(ClipboardData(text: url));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Invite link copied to clipboard!'),
-            backgroundColor: const Color(0xFF059669),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  void _showAddClient() {
+  void _showAddClient(bool isNl) {
     final contactController = TextEditingController();
     final emailController = TextEditingController();
     final companyController = TextEditingController();
@@ -58,43 +38,37 @@ class _ClientsScreenState extends State<ClientsScreen> {
     final addressController = TextEditingController();
     final postcodeController = TextEditingController();
     final cityController = TextEditingController();
-    final btwController = TextEditingController();
-    final kvkController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Client'),
+        title: Text(isNl ? 'Klant toevoegen' : 'Add Client'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: contactController, decoration: const InputDecoration(labelText: 'Contact name *')),
+              TextField(controller: contactController, decoration: InputDecoration(labelText: isNl ? 'Naam *' : 'Full name *')),
               const SizedBox(height: 12),
               TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email *'), keyboardType: TextInputType.emailAddress),
               const SizedBox(height: 12),
-              TextField(controller: companyController, decoration: const InputDecoration(labelText: 'Company name')),
+              TextField(controller: companyController, decoration: InputDecoration(labelText: isNl ? 'Bedrijfsnaam' : 'Company name')),
               const SizedBox(height: 12),
-              TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone')),
+              TextField(controller: phoneController, decoration: InputDecoration(labelText: isNl ? 'Telefoonnummer' : 'Phone'), keyboardType: TextInputType.phone),
               const SizedBox(height: 12),
-              TextField(controller: addressController, decoration: const InputDecoration(labelText: 'Address')),
+              TextField(controller: addressController, decoration: InputDecoration(labelText: isNl ? 'Adres' : 'Address')),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: TextField(controller: postcodeController, decoration: const InputDecoration(labelText: 'Postcode'))),
+                  Expanded(child: TextField(controller: postcodeController, decoration: InputDecoration(labelText: isNl ? 'Postcode' : 'Postcode'))),
                   const SizedBox(width: 12),
-                  Expanded(child: TextField(controller: cityController, decoration: const InputDecoration(labelText: 'City'))),
+                  Expanded(flex: 2, child: TextField(controller: cityController, decoration: InputDecoration(labelText: isNl ? 'Stad' : 'City'))),
                 ],
               ),
-              const SizedBox(height: 12),
-              TextField(controller: btwController, decoration: const InputDecoration(labelText: 'BTW number')),
-              const SizedBox(height: 12),
-              TextField(controller: kvkController, decoration: const InputDecoration(labelText: 'KVK number')),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(isNl ? 'Annuleren' : 'Cancel')),
           ElevatedButton(
             onPressed: () async {
               if (contactController.text.isEmpty || emailController.text.isEmpty) return;
@@ -107,55 +81,67 @@ class _ClientsScreenState extends State<ClientsScreen> {
                 address: addressController.text.trim(),
                 postcode: postcodeController.text.trim(),
                 city: cityController.text.trim(),
-                btwNumber: btwController.text.trim(),
-                kvkNumber: kvkController.text.trim(),
               );
               _loadClients();
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1A1A2E),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Add'),
+            child: Text(isNl ? 'Toevoegen' : 'Add'),
           ),
         ],
       ),
     );
   }
 
+  Future<void> _copyInviteLink(bool isNl) async {
+    final result = await ClientsService.createInvite();
+    if (result['success'] && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isNl ? 'Link gekopieerd!' : 'Link copied!'),
+          backgroundColor: BigDoggTheme.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isNl = context.watch<AppProvider>().language == 'nl';
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: BigDoggTheme.lightBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Clients', style: TextStyle(color: Colors.white)),
+        backgroundColor: BigDoggTheme.lightSurface,
+        elevation: 0,
         automaticallyImplyLeading: false,
+        title: Text(isNl ? 'Klanten' : 'Clients', style: const TextStyle(color: BigDoggTheme.lightTextPrimary, fontWeight: FontWeight.w600)),
+        bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(color: BigDoggTheme.lightBorder, height: 1)),
         actions: [
           TextButton.icon(
-            onPressed: _generateInviteLink,
-            icon: const Icon(Icons.link, color: Colors.white),
-            label: const Text('Invite link', style: TextStyle(color: Colors.white)),
+            onPressed: () => _copyInviteLink(isNl),
+            icon: const Icon(Icons.link, color: BigDoggTheme.teal800, size: 18),
+            label: Text(isNl ? 'Uitnodigen' : 'Invite link', style: const TextStyle(color: BigDoggTheme.teal800, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddClient,
-        backgroundColor: const Color(0xFF1A1A2E),
-        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () => _showAddClient(isNl),
+        child: const Icon(Icons.add),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _clients.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.people_outline, size: 64, color: Color(0xFFD1D5DB)),
-                      SizedBox(height: 16),
-                      Text('No clients yet', style: TextStyle(fontSize: 18, color: Color(0xFF6B7280))),
-                      SizedBox(height: 8),
-                      Text('Tap + to add or use invite link', style: TextStyle(color: Color(0xFF9CA3AF))),
+                      const Icon(Icons.people_outline, size: 64, color: BigDoggTheme.lightTextHint),
+                      const SizedBox(height: 16),
+                      Text(isNl ? 'Nog geen klanten' : 'No clients yet',
+                          style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
+                      const SizedBox(height: 8),
+                      Text(isNl ? 'Tik + om een klant toe te voegen' : 'Tap + to add a client',
+                          style: const TextStyle(color: BigDoggTheme.lightTextHint)),
                     ],
                   ),
                 )
@@ -163,31 +149,37 @@ class _ClientsScreenState extends State<ClientsScreen> {
                   padding: const EdgeInsets.all(16),
                   itemCount: _clients.length,
                   itemBuilder: (context, index) {
-                    final c = _clients[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    final client = _clients[index];
+                    final name = client['contact_name'] ?? '';
+                    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: BigDoggTheme.lightSurface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: BigDoggTheme.lightBorder),
+                      ),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         leading: CircleAvatar(
-                          backgroundColor: const Color(0xFF1A1A2E),
-                          child: Text(
-                            (c['contact_name'] as String).substring(0, 1).toUpperCase(),
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
+                          backgroundColor: BigDoggTheme.teal800,
+                          child: Text(initial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
-                        title: Text(c['contact_name'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.lightTextPrimary)),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (c['company_name'] != null && c['company_name'].toString().isNotEmpty)
-                              Text(c['company_name'], style: const TextStyle(color: Color(0xFF6B7280))),
-                            Text(c['email'], style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12)),
+                            if (client['company_name'] != null && client['company_name'].toString().isNotEmpty)
+                              Text(client['company_name'], style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13)),
+                            Text(client['email'] ?? '', style: const TextStyle(color: BigDoggTheme.lightTextHint, fontSize: 12)),
                           ],
                         ),
                         trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-                          onPressed: () => _deleteClient(c['id']),
+                          icon: const Icon(Icons.delete_outline, color: BigDoggTheme.error),
+                          onPressed: () async {
+                            await ClientsService.deleteClient(client['id']);
+                            _loadClients();
+                          },
                         ),
                       ),
                     );

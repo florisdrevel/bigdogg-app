@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/overview_service.dart';
+import '../providers/app_provider.dart';
+import '../theme.dart';
 
 class OverviewScreen extends StatefulWidget {
   const OverviewScreen({super.key});
@@ -49,36 +52,42 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final isNl = context.watch<AppProvider>().language == 'nl';
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: BigDoggTheme.lightBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Overview', style: TextStyle(color: Colors.white)),
+        backgroundColor: BigDoggTheme.teal800,
+        elevation: 0,
         automaticallyImplyLeading: false,
+        title: Text(isNl ? 'Overzicht' : 'Overview',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
+          indicatorColor: BigDoggTheme.gold500,
+          indicatorWeight: 3,
           labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          tabs: const [
-            Tab(text: 'This Quarter'),
-            Tab(text: 'This Year'),
+          unselectedLabelColor: BigDoggTheme.teal400,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'PlusJakartaSans'),
+          tabs: [
+            Tab(text: isNl ? 'Dit kwartaal' : 'This Quarter'),
+            Tab(text: isNl ? 'Dit jaar' : 'This Year'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildQuarterlyView(),
-          _buildAnnualView(),
+          _buildQuarterlyView(isNl),
+          _buildAnnualView(isNl),
         ],
       ),
     );
   }
 
-  Widget _buildQuarterlyView() {
+  Widget _buildQuarterlyView(bool isNl) {
     if (_loadingQuarterly) return const Center(child: CircularProgressIndicator());
-    if (_quarterly == null) return const Center(child: Text('Failed to load overview'));
+    if (_quarterly == null) return Center(child: Text(isNl ? 'Laden mislukt' : 'Failed to load'));
 
     final q = _quarterly!;
 
@@ -90,7 +99,7 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A2E),
+              color: BigDoggTheme.teal800,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -104,47 +113,53 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
             ),
           ),
           const SizedBox(height: 16),
-          _sectionTitle('📤 Revenue'),
+          _sectionTitle(isNl ? '📤 Omzet' : '📤 Revenue'),
           _overviewCard([
-            _overviewRow('Omzet ex BTW', '€${q['revenue_ex_btw']}'),
-            _overviewRow('BTW ontvangen', '€${q['revenue_btw']}'),
-            _overviewRow('Totaal incl BTW', '€${q['revenue_total']}', bold: true),
+            _overviewRow(isNl ? 'Omzet ex BTW' : 'Revenue ex BTW', '€${q['revenue_ex_btw']}'),
+            _overviewRow(isNl ? 'BTW ontvangen' : 'BTW received', '€${q['revenue_btw']}'),
+            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl BTW', '€${q['revenue_total']}', bold: true),
             const Divider(),
-            _overviewRow('Betaald ontvangen', '€${q['paid_revenue']}', color: const Color(0xFF059669)),
-            _overviewRow('Nog openstaand', '€${q['outstanding']}', color: const Color(0xFFF59E0B)),
+            _overviewRow(isNl ? 'Betaald ontvangen' : 'Received', '€${q['paid_revenue']}', color: BigDoggTheme.success),
+            _overviewRow(isNl ? 'Nog openstaand' : 'Outstanding', '€${q['outstanding']}', color: BigDoggTheme.warning),
           ]),
           const SizedBox(height: 16),
-          _sectionTitle('📥 Expenses'),
+          _sectionTitle(isNl ? '📥 Kosten' : '📥 Expenses'),
           _overviewCard([
-            _overviewRow('Kosten ex BTW', '€${q['expenses_ex_btw']}'),
-            _overviewRow('BTW betaald', '€${q['expenses_btw']}'),
-            _overviewRow('Totaal incl BTW', '€${q['expenses_total']}', bold: true),
+            _overviewRow(isNl ? 'Kosten ex BTW' : 'Expenses ex BTW', '€${q['expenses_ex_btw']}'),
+            _overviewRow(isNl ? 'BTW betaald' : 'BTW paid', '€${q['expenses_btw']}'),
+            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl BTW', '€${q['expenses_total']}', bold: true),
           ]),
           const SizedBox(height: 16),
           _sectionTitle('🏦 BTW'),
           _overviewCard([
-            _overviewRow('BTW ontvangen', '€${q['revenue_btw']}'),
-            _overviewRow('BTW betaald op kosten', '€${q['expenses_btw']}'),
+            _overviewRow(isNl ? 'BTW ontvangen' : 'BTW received', '€${q['revenue_btw']}'),
+            _overviewRow(isNl ? 'BTW betaald op kosten' : 'BTW paid on expenses', '€${q['expenses_btw']}'),
             const Divider(),
-            _overviewRow('Te betalen BTW', '€${q['btw_to_pay']}',
-                bold: true, large: true,
-                color: (q['btw_to_pay'] as num) > 0 ? const Color(0xFFDC2626) : const Color(0xFF059669)),
+            _overviewRow(
+              isNl ? 'Te betalen BTW' : 'BTW to pay',
+              '€${q['btw_to_pay']}',
+              bold: true,
+              large: true,
+              color: (q['btw_to_pay'] as num) > 0 ? BigDoggTheme.error : BigDoggTheme.success,
+            ),
           ]),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
+              color: BigDoggTheme.warningBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+              border: Border.all(color: BigDoggTheme.warning.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, color: Color(0xFFF59E0B)),
+                const Icon(Icons.info_outline, color: BigDoggTheme.warning),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Vergeet niet je BTW-aangifte in te dienen bij de Belastingdienst.',
+                    isNl
+                        ? 'Vergeet niet je BTW-aangifte in te dienen bij de Belastingdienst.'
+                        : 'Don\'t forget to submit your VAT return to the Tax Authority.',
                     style: const TextStyle(color: Color(0xFF92400E), fontSize: 13),
                   ),
                 ),
@@ -156,9 +171,9 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildAnnualView() {
+  Widget _buildAnnualView(bool isNl) {
     if (_loadingAnnual) return const Center(child: CircularProgressIndicator());
-    if (_annual == null) return const Center(child: Text('Failed to load overview'));
+    if (_annual == null) return Center(child: Text(isNl ? 'Laden mislukt' : 'Failed to load'));
 
     final a = _annual!;
     final quarters = a['quarters'] as List;
@@ -171,7 +186,7 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A2E),
+              color: BigDoggTheme.teal800,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -180,15 +195,18 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${a['year']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
-                      const Text('Jaaroverzicht', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      Text('${a['year']}',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+                      Text(isNl ? 'Jaaroverzicht' : 'Annual overview',
+                          style: const TextStyle(color: Colors.white70, fontSize: 13)),
                     ],
                   ),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text('Netto winst (indicatief)', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text(isNl ? 'Netto winst (indicatief)' : 'Net profit (indicative)',
+                        style: const TextStyle(color: Colors.white70, fontSize: 12)),
                     Text('€${a['net_profit_indicative']}',
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                   ],
@@ -197,33 +215,37 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
             ),
           ),
           const SizedBox(height: 16),
-          _sectionTitle('Per kwartaal'),
-          ...quarters.map((q) => _quarterCard(q)),
+          _sectionTitle(isNl ? 'Per kwartaal' : 'Per quarter'),
+          ...quarters.map((q) => _quarterCard(q, isNl)),
           const SizedBox(height: 16),
-          _sectionTitle('Totaal ${a['year']}'),
+          _sectionTitle(isNl ? 'Totaal ${a['year']}' : 'Total ${a['year']}'),
           _overviewCard([
-            _overviewRow('Totale omzet ex BTW', '€${a['total_revenue_ex_btw']}', bold: true),
-            _overviewRow('Totale kosten ex BTW', '€${a['total_expenses_ex_btw']}'),
+            _overviewRow(isNl ? 'Totale omzet ex BTW' : 'Total revenue ex BTW', '€${a['total_revenue_ex_btw']}', bold: true),
+            _overviewRow(isNl ? 'Totale kosten ex BTW' : 'Total expenses ex BTW', '€${a['total_expenses_ex_btw']}'),
             const Divider(),
-            _overviewRow('Netto winst (indicatief)', '€${a['net_profit_indicative']}', bold: true, large: true),
-            _overviewRow('Totale BTW te betalen', '€${a['total_btw_to_pay']}', color: const Color(0xFFDC2626)),
+            _overviewRow(isNl ? 'Netto winst (indicatief)' : 'Net profit (indicative)',
+                '€${a['net_profit_indicative']}', bold: true, large: true),
+            _overviewRow(isNl ? 'Totale BTW te betalen' : 'Total BTW to pay',
+                '€${a['total_btw_to_pay']}', color: BigDoggTheme.error),
           ]),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
+              color: BigDoggTheme.warningBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+              border: Border.all(color: BigDoggTheme.warning.withOpacity(0.3)),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.info_outline, color: Color(0xFFF59E0B)),
-                SizedBox(width: 12),
+                const Icon(Icons.info_outline, color: BigDoggTheme.warning),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Dit is een indicatief overzicht. Raadpleeg een belastingadviseur voor je definitieve aangifte.',
-                    style: TextStyle(color: Color(0xFF92400E), fontSize: 13),
+                    isNl
+                        ? 'Dit is een indicatief overzicht. Raadpleeg een belastingadviseur voor je definitieve aangifte.'
+                        : 'This is an indicative overview. Consult a tax advisor for your final return.',
+                    style: const TextStyle(color: Color(0xFF92400E), fontSize: 13),
                   ),
                 ),
               ],
@@ -234,26 +256,29 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
     );
   }
 
-  Widget _quarterCard(Map q) {
-    return Card(
+  Widget _quarterCard(Map q, bool isNl) {
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Q${q['quarter']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(child: _miniStat('Omzet', '€${q['revenue_ex_btw']}')),
-                Expanded(child: _miniStat('Kosten', '€${q['expenses_ex_btw']}')),
-                Expanded(child: _miniStat('BTW', '€${q['btw_to_pay']}')),
-              ],
-            ),
-          ],
-        ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: BigDoggTheme.lightSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: BigDoggTheme.lightBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Q${q['quarter']}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _miniStat(isNl ? 'Omzet' : 'Revenue', '€${q['revenue_ex_btw']}')),
+              Expanded(child: _miniStat(isNl ? 'Kosten' : 'Expenses', '€${q['expenses_ex_btw']}')),
+              Expanded(child: _miniStat('BTW', '€${q['btw_to_pay']}')),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -262,8 +287,8 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(label, style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.teal800)),
       ],
     );
   }
@@ -271,35 +296,39 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
   Widget _sectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+      child: Text(title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.lightTextPrimary)),
     );
   }
 
   Widget _overviewCard(List<Widget> children) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(children: children),
+    return Container(
+      decoration: BoxDecoration(
+        color: BigDoggTheme.lightSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: BigDoggTheme.lightBorder),
       ),
+      padding: const EdgeInsets.all(16),
+      child: Column(children: children),
     );
   }
 
-  Widget _overviewRow(String label, String value, {bool bold = false, bool large = false, Color? color}) {
+  Widget _overviewRow(String label, String value,
+      {bool bold = false, bool large = false, Color? color}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(
-            color: const Color(0xFF6B7280),
-            fontSize: large ? 15 : 14,
-          )),
-          Text(value, style: TextStyle(
-            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-            fontSize: large ? 15 : 14,
-            color: color,
-          )),
+          Text(label,
+              style: TextStyle(
+                  color: BigDoggTheme.lightTextSecondary, fontSize: large ? 15 : 14)),
+          Text(value,
+              style: TextStyle(
+                fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+                fontSize: large ? 15 : 14,
+                color: color ?? BigDoggTheme.lightTextPrimary,
+              )),
         ],
       ),
     );

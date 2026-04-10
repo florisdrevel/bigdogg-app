@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/invoices_service.dart';
 import '../services/clients_service.dart';
 import '../services/products_service.dart';
+import '../providers/app_provider.dart';
+import '../theme.dart';
 import 'invoice_detail_screen.dart';
 import 'prompt_invoice_screen.dart';
 
@@ -33,41 +36,28 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'paid': return const Color(0xFF059669);
-      case 'sent': return const Color(0xFF2563EB);
-      case 'overdue': return const Color(0xFFDC2626);
-      default: return const Color(0xFF6B7280);
+      case 'paid': return BigDoggTheme.success;
+      case 'sent': return BigDoggTheme.info;
+      case 'overdue': return BigDoggTheme.error;
+      default: return BigDoggTheme.lightTextSecondary;
     }
   }
 
-  String _statusLabel(String status) {
+  String _statusLabel(String status, bool isNl) {
     switch (status) {
-      case 'paid': return 'Paid';
-      case 'sent': return 'Sent';
-      case 'overdue': return 'Overdue';
-      default: return 'Draft';
+      case 'paid': return isNl ? 'Betaald' : 'Paid';
+      case 'sent': return isNl ? 'Verstuurd' : 'Sent';
+      case 'overdue': return isNl ? 'Verlopen' : 'Overdue';
+      default: return isNl ? 'Concept' : 'Draft';
     }
   }
 
-  void _showCreateInvoice() async {
+  void _showCreateInvoice(bool isNl) async {
     final clientsResult = await ClientsService.getClients();
     final productsResult = await ProductsService.getProducts();
-
-    if (!clientsResult['success'] || !productsResult['success']) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load data: ${clientsResult['message']} / ${productsResult['message']}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-
+    if (!clientsResult['success'] || !productsResult['success']) return;
     final clients = clientsResult['clients'] as List;
     final products = productsResult['products'] as List;
-
     if (!mounted) return;
 
     String? selectedClientId;
@@ -77,7 +67,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('New Invoice'),
+          title: Text(isNl ? 'Nieuwe factuur' : 'New Invoice'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -85,7 +75,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
               children: [
                 DropdownButtonFormField<String>(
                   value: selectedClientId,
-                  decoration: const InputDecoration(labelText: 'Client'),
+                  decoration: InputDecoration(labelText: isNl ? 'Klant' : 'Client'),
                   items: clients.map((c) => DropdownMenuItem<String>(
                     value: c['id'] as String,
                     child: Text(c['company_name'] ?? c['contact_name']),
@@ -93,7 +83,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   onChanged: (val) => setDialogState(() => selectedClientId = val),
                 ),
                 const SizedBox(height: 16),
-                const Text('Lines', style: TextStyle(fontWeight: FontWeight.w600)),
+                Text(isNl ? 'Regels' : 'Lines', style: const TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 ...lines.asMap().entries.map((entry) {
                   final i = entry.key;
@@ -110,12 +100,12 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                               children: [
                                 Text(line['description'], style: const TextStyle(fontWeight: FontWeight.w500)),
                                 Text('${line['quantity']}x €${line['unit_price_ex_btw']} (${line['btw_rate']}% BTW)',
-                                    style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                                    style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
                               ],
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.remove_circle_outline, color: Color(0xFFEF4444)),
+                            icon: const Icon(Icons.remove_circle_outline, color: BigDoggTheme.error),
                             onPressed: () => setDialogState(() => lines.removeAt(i)),
                           ),
                         ],
@@ -124,33 +114,24 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   );
                 }),
                 TextButton.icon(
-                  onPressed: () {
-                    _showAddLine(context, products, (line) {
-                      setDialogState(() => lines.add(line));
-                    });
-                  },
+                  onPressed: () => _showAddLine(context, products, isNl, (line) {
+                    setDialogState(() => lines.add(line));
+                  }),
                   icon: const Icon(Icons.add),
-                  label: const Text('Add line'),
+                  label: Text(isNl ? 'Regel toevoegen' : 'Add line'),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(isNl ? 'Annuleren' : 'Cancel')),
             ElevatedButton(
               onPressed: selectedClientId == null || lines.isEmpty ? null : () async {
                 Navigator.pop(context);
-                final result = await InvoicesService.createInvoice(
-                  clientId: selectedClientId!,
-                  lines: lines,
-                );
+                final result = await InvoicesService.createInvoice(clientId: selectedClientId!, lines: lines);
                 if (result['success']) _loadInvoices();
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A1A2E),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Create'),
+              child: Text(isNl ? 'Aanmaken' : 'Create'),
             ),
           ],
         ),
@@ -158,7 +139,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     );
   }
 
-  void _showAddLine(BuildContext context, List products, Function(Map<String, dynamic>) onAdd) {
+  void _showAddLine(BuildContext context, List products, bool isNl, Function(Map<String, dynamic>) onAdd) {
     String? selectedProductId;
     final qtyController = TextEditingController(text: '1');
     final priceController = TextEditingController();
@@ -169,16 +150,16 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Add Line'),
+          title: Text(isNl ? 'Regel toevoegen' : 'Add Line'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
                   value: selectedProductId,
-                  decoration: const InputDecoration(labelText: 'Product (optional)'),
+                  decoration: InputDecoration(labelText: isNl ? 'Product (optioneel)' : 'Product (optional)'),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('Custom line')),
+                    DropdownMenuItem(value: null, child: Text(isNl ? 'Aangepaste regel' : 'Custom line')),
                     ...products.map((p) => DropdownMenuItem<String>(
                       value: p['id'] as String,
                       child: Text(p['name']),
@@ -197,13 +178,13 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description')),
+                TextField(controller: descController, decoration: InputDecoration(labelText: isNl ? 'Omschrijving' : 'Description')),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: TextField(controller: qtyController, decoration: const InputDecoration(labelText: 'Qty'), keyboardType: TextInputType.number)),
+                    Expanded(child: TextField(controller: qtyController, decoration: InputDecoration(labelText: isNl ? 'Aantal' : 'Qty'), keyboardType: TextInputType.number)),
                     const SizedBox(width: 12),
-                    Expanded(child: TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price ex BTW'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                    Expanded(child: TextField(controller: priceController, decoration: InputDecoration(labelText: isNl ? 'Prijs ex BTW' : 'Price ex BTW'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -221,7 +202,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(isNl ? 'Annuleren' : 'Cancel')),
             ElevatedButton(
               onPressed: () {
                 if (descController.text.isEmpty || priceController.text.isEmpty) return;
@@ -233,11 +214,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   'btw_rate': btwRate,
                 });
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A1A2E),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Add'),
+              child: Text(isNl ? 'Toevoegen' : 'Add'),
             ),
           ],
         ),
@@ -247,41 +224,43 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isNl = context.watch<AppProvider>().language == 'nl';
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: BigDoggTheme.lightBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Invoices', style: TextStyle(color: Colors.white)),
+        backgroundColor: BigDoggTheme.lightSurface,
+        elevation: 0,
         automaticallyImplyLeading: false,
+        title: Text(isNl ? 'Facturen' : 'Invoices', style: const TextStyle(color: BigDoggTheme.lightTextPrimary, fontWeight: FontWeight.w600)),
+        bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(color: BigDoggTheme.lightBorder, height: 1)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.auto_awesome, color: Colors.white),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const PromptInvoiceScreen()),
-            ).then((created) {
-              if (created == true) _loadInvoices();
-            }),
+            icon: const Icon(Icons.auto_awesome, color: BigDoggTheme.teal800),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PromptInvoiceScreen()))
+                .then((created) { if (created == true) _loadInvoices(); }),
+            tooltip: 'AI',
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateInvoice,
-        backgroundColor: const Color(0xFF1A1A2E),
-        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () => _showCreateInvoice(isNl),
+        child: const Icon(Icons.add),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _invoices.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.receipt_long_outlined, size: 64, color: Color(0xFFD1D5DB)),
-                      SizedBox(height: 16),
-                      Text('No invoices yet', style: TextStyle(fontSize: 18, color: Color(0xFF6B7280))),
-                      SizedBox(height: 8),
-                      Text('Tap + to create your first invoice', style: TextStyle(color: Color(0xFF9CA3AF))),
+                      const Icon(Icons.receipt_long_outlined, size: 64, color: BigDoggTheme.lightTextHint),
+                      const SizedBox(height: 16),
+                      Text(isNl ? 'Nog geen facturen' : 'No invoices yet',
+                          style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
+                      const SizedBox(height: 8),
+                      Text(isNl ? 'Tik + om je eerste factuur aan te maken' : 'Tap + to create your first invoice',
+                          style: const TextStyle(color: BigDoggTheme.lightTextHint)),
                     ],
                   ),
                 )
@@ -291,30 +270,31 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   itemBuilder: (context, index) {
                     final inv = _invoices[index];
                     final status = inv['status'] ?? 'draft';
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: BigDoggTheme.lightSurface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: BigDoggTheme.lightBorder),
+                      ),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => InvoiceDetailScreen(invoiceId: inv['id']),
-                          ),
-                        ).then((_) => _loadInvoices()),
+                        onTap: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (context) => InvoiceDetailScreen(invoiceId: inv['id'])))
+                            .then((_) => _loadInvoices()),
                         title: Row(
                           children: [
-                            Text(inv['invoice_number'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text(inv['invoice_number'], style: const TextStyle(fontWeight: FontWeight.w600)),
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
                                 color: _statusColor(status).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                _statusLabel(status),
-                                style: TextStyle(fontSize: 12, color: _statusColor(status), fontWeight: FontWeight.w600),
+                                _statusLabel(status, isNl),
+                                style: TextStyle(fontSize: 11, color: _statusColor(status), fontWeight: FontWeight.w600),
                               ),
                             ),
                           ],
@@ -322,14 +302,12 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(inv['clients']?['contact_name'] ?? '', style: const TextStyle(color: Color(0xFF6B7280))),
-                            Text(inv['invoice_date'] ?? '', style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+                            Text(inv['clients']?['contact_name'] ?? '', style: const TextStyle(color: BigDoggTheme.lightTextSecondary)),
+                            Text(inv['invoice_date'] ?? '', style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint)),
                           ],
                         ),
-                        trailing: Text(
-                          '€${inv['total_incl_btw']}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
+                        trailing: Text('€${inv['total_incl_btw']}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
                       ),
                     );
                   },

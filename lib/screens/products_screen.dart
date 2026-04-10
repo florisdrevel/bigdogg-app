@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/products_service.dart';
+import '../providers/app_provider.dart';
+import '../theme.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -27,12 +30,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     });
   }
 
-  Future<void> _deleteProduct(String id) async {
-    await ProductsService.deleteProduct(id);
-    _loadProducts();
-  }
-
-  void _showAddProduct() {
+  void _showAddProduct(bool isNl) {
     final nameController = TextEditingController();
     final descController = TextEditingController();
     final priceController = TextEditingController();
@@ -43,30 +41,30 @@ class _ProductsScreenState extends State<ProductsScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Add Product'),
+          title: Text(isNl ? 'Product toevoegen' : 'Add Product'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Product name'),
+                  decoration: InputDecoration(labelText: isNl ? 'Naam *' : 'Name *'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: descController,
-                  decoration: const InputDecoration(labelText: 'Description (optional)'),
+                  decoration: InputDecoration(labelText: isNl ? 'Omschrijving' : 'Description'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: priceController,
-                  decoration: const InputDecoration(labelText: 'Price ex. BTW (€)'),
+                  decoration: InputDecoration(labelText: isNl ? 'Prijs ex BTW *' : 'Price ex BTW *'),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   value: btwRate,
-                  decoration: const InputDecoration(labelText: 'BTW rate'),
+                  decoration: const InputDecoration(labelText: 'BTW'),
                   items: const [
                     DropdownMenuItem(value: 21, child: Text('21%')),
                     DropdownMenuItem(value: 9, child: Text('9%')),
@@ -77,12 +75,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: unit,
-                  decoration: const InputDecoration(labelText: 'Unit'),
-                  items: const [
-                    DropdownMenuItem(value: 'hour', child: Text('Per hour')),
-                    DropdownMenuItem(value: 'day', child: Text('Per day')),
-                    DropdownMenuItem(value: 'piece', child: Text('Per piece')),
-                    DropdownMenuItem(value: 'project', child: Text('Per project')),
+                  decoration: InputDecoration(labelText: isNl ? 'Eenheid' : 'Unit'),
+                  items: [
+                    DropdownMenuItem(value: 'hour', child: Text(isNl ? 'Uur' : 'Hour')),
+                    DropdownMenuItem(value: 'day', child: Text(isNl ? 'Dag' : 'Day')),
+                    DropdownMenuItem(value: 'piece', child: Text(isNl ? 'Stuk' : 'Piece')),
+                    DropdownMenuItem(value: 'km', child: Text('km')),
+                    DropdownMenuItem(value: 'fixed', child: Text(isNl ? 'Vast bedrag' : 'Fixed')),
                   ],
                   onChanged: (val) => setDialogState(() => unit = val!),
                 ),
@@ -92,7 +91,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(isNl ? 'Annuleren' : 'Cancel'),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -107,11 +106,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 );
                 _loadProducts();
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A1A2E),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Add'),
+              child: Text(isNl ? 'Toevoegen' : 'Add'),
             ),
           ],
         ),
@@ -119,32 +114,50 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
+  String _unitLabel(String unit, bool isNl) {
+    switch (unit) {
+      case 'hour': return isNl ? 'uur' : 'hour';
+      case 'day': return isNl ? 'dag' : 'day';
+      case 'piece': return isNl ? 'stuk' : 'piece';
+      case 'fixed': return isNl ? 'vast' : 'fixed';
+      default: return unit;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isNl = context.watch<AppProvider>().language == 'nl';
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: BigDoggTheme.lightBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Products', style: TextStyle(color: Colors.white)),
+        backgroundColor: BigDoggTheme.lightSurface,
+        elevation: 0,
         automaticallyImplyLeading: false,
+        title: Text(isNl ? 'Producten' : 'Products',
+            style: const TextStyle(color: BigDoggTheme.lightTextPrimary, fontWeight: FontWeight.w600)),
+        bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(color: BigDoggTheme.lightBorder, height: 1)),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddProduct,
-        backgroundColor: const Color(0xFF1A1A2E),
-        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () => _showAddProduct(isNl),
+        child: const Icon(Icons.add),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _products.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.inventory_2_outlined, size: 64, color: Color(0xFFD1D5DB)),
-                      SizedBox(height: 16),
-                      Text('No products yet', style: TextStyle(fontSize: 18, color: Color(0xFF6B7280))),
-                      SizedBox(height: 8),
-                      Text('Tap + to add your first product', style: TextStyle(color: Color(0xFF9CA3AF))),
+                      const Icon(Icons.inventory_2_outlined, size: 64, color: BigDoggTheme.lightTextHint),
+                      const SizedBox(height: 16),
+                      Text(isNl ? 'Nog geen producten' : 'No products yet',
+                          style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
+                      const SizedBox(height: 8),
+                      Text(isNl ? 'Tik + om een product toe te voegen' : 'Tap + to add a product',
+                          style: const TextStyle(color: BigDoggTheme.lightTextHint)),
                     ],
                   ),
                 )
@@ -152,31 +165,48 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   padding: const EdgeInsets.all(16),
                   itemCount: _products.length,
                   itemBuilder: (context, index) {
-                    final p = _products[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    final product = _products[index];
+                    final isActive = product['is_active'] ?? true;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: BigDoggTheme.lightSurface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: BigDoggTheme.lightBorder),
+                      ),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        title: Text(p['name'], style: const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text(p['description'] ?? '', style: const TextStyle(color: Color(0xFF6B7280))),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        leading: CircleAvatar(
+                          backgroundColor: BigDoggTheme.teal100,
+                          child: const Icon(Icons.inventory_2_outlined, color: BigDoggTheme.teal800, size: 20),
+                        ),
+                        title: Row(
                           children: [
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text('€${p['unit_price']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                Text('${p['btw_rate']}% BTW · per ${p['unit']}', style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                              ],
-                            ),
+                            Text(product['name'],
+                                style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.lightTextPrimary)),
                             const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-                              onPressed: () => _deleteProduct(p['id']),
-                            ),
+                            if (!isActive)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: BigDoggTheme.lightTextHint.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(isNl ? 'Inactief' : 'Inactive',
+                                    style: const TextStyle(fontSize: 10, color: BigDoggTheme.lightTextHint)),
+                              ),
                           ],
+                        ),
+                        subtitle: Text(
+                          '€${product['unit_price']} / ${_unitLabel(product['unit'] ?? 'hour', isNl)} · ${product['btw_rate']}% BTW',
+                          style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline, color: BigDoggTheme.error),
+                          onPressed: () async {
+                            await ProductsService.deleteProduct(product['id']);
+                            _loadProducts();
+                          },
                         ),
                       ),
                     );

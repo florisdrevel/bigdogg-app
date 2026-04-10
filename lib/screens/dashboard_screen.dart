@@ -42,50 +42,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final appProvider = context.watch<AppProvider>();
-    final isDark = appProvider.isDark;
     final isNl = appProvider.language == 'nl';
     final titles = isNl ? _titlesNl : _titlesEn;
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: BigDoggTheme.lightSurface,
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: BigDoggTheme.lightBorder, height: 1),
+        ),
         title: Row(
           children: [
-            Image.asset('assets/images/logo.png', width: 28, height: 28),
+            Image.asset('assets/images/logo.png', width: 56, height: 56),
             const SizedBox(width: 10),
-            Text(titles[_currentIndex]),
+            Text(
+              titles[_currentIndex],
+              style: const TextStyle(
+                color: BigDoggTheme.lightTextPrimary,
+                fontWeight: FontWeight.w600,
+                fontSize: 17,
+              ),
+            ),
           ],
         ),
         actions: [
-          // Language toggle
           GestureDetector(
             onTap: () => appProvider.setLanguage(isNl ? 'en' : 'nl'),
             child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: BigDoggTheme.gold500.withOpacity(0.15),
+                color: BigDoggTheme.gold500.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
               ),
               child: Text(
                 isNl ? 'EN' : 'NL',
                 style: const TextStyle(
-                  color: BigDoggTheme.gold500,
+                  color: BigDoggTheme.gold600,
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                 ),
               ),
             ),
           ),
-          // Theme toggle
           IconButton(
-            icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
-            onPressed: () => appProvider.toggleTheme(),
-            tooltip: isDark ? 'Light mode' : 'Dark mode',
-          ),
-          // Logout
-          IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: BigDoggTheme.lightTextSecondary),
             onPressed: () => context.go('/login'),
             tooltip: isNl ? 'Uitloggen' : 'Log out',
           ),
@@ -94,16 +100,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: _screens[_currentIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: isDark ? BigDoggTheme.darkBorder : BigDoggTheme.lightBorder,
-              width: 1,
-            ),
+          color: BigDoggTheme.teal800,
+          border: const Border(
+            top: BorderSide(color: BigDoggTheme.teal900, width: 1),
           ),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (index) => setState(() => _currentIndex = index),
+          backgroundColor: Colors.transparent,
+          selectedItemColor: BigDoggTheme.gold500,
+          unselectedItemColor: BigDoggTheme.teal400,
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 11,
+            fontFamily: 'PlusJakartaSans',
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 11,
+            fontFamily: 'PlusJakartaSans',
+          ),
+          type: BottomNavigationBarType.fixed,
+          elevation: 0,
           items: [
             BottomNavigationBarItem(icon: const Icon(Icons.receipt_long_outlined), label: isNl ? 'Facturen' : 'Invoices'),
             BottomNavigationBarItem(icon: const Icon(Icons.people_outline), label: isNl ? 'Klanten' : 'Clients'),

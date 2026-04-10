@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/profile_service.dart';
+import '../providers/app_provider.dart';
+import '../theme.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -47,7 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  Future<void> _saveProfile() async {
+  Future<void> _saveProfile(bool isNl) async {
     setState(() { _saving = true; _error = null; _success = null; });
     final result = await ProfileService.saveProfile(
       businessName: _businessNameController.text.trim(),
@@ -63,7 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _saving = false;
       if (result['success']) {
-        _success = 'Profile saved successfully';
+        _success = isNl ? 'Profiel opgeslagen' : 'Profile saved successfully';
       } else {
         _error = result['message'];
       }
@@ -72,12 +75,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isNl = context.watch<AppProvider>().language == 'nl';
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: BigDoggTheme.lightBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Business Profile', style: TextStyle(color: Colors.white)),
+        backgroundColor: BigDoggTheme.lightSurface,
+        elevation: 0,
         automaticallyImplyLeading: false,
+        title: Text(isNl ? 'Bedrijfsprofiel' : 'Business Profile',
+            style: const TextStyle(color: BigDoggTheme.lightTextPrimary, fontWeight: FontWeight.w600)),
+        bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(color: BigDoggTheme.lightBorder, height: 1)),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -86,9 +96,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'This information appears on your invoices.',
-                    style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+                  Text(
+                    isNl
+                        ? 'Deze informatie verschijnt op je facturen.'
+                        : 'This information appears on your invoices.',
+                    style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 14),
                   ),
                   const SizedBox(height: 16),
                   if (_error != null)
@@ -96,64 +108,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.all(12),
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFEE2E2),
+                        color: BigDoggTheme.errorBg,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(_error!, style: const TextStyle(color: Color(0xFFDC2626))),
+                      child: Text(_error!, style: const TextStyle(color: BigDoggTheme.error)),
                     ),
                   if (_success != null)
                     Container(
                       padding: const EdgeInsets.all(12),
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFD1FAE5),
+                        color: BigDoggTheme.successBg,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(_success!, style: const TextStyle(color: Color(0xFF065F46))),
+                      child: Text(_success!, style: const TextStyle(color: BigDoggTheme.success)),
                     ),
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Business details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 16),
-                          _inputField(_businessNameController, 'Business name'),
-                          const SizedBox(height: 12),
-                          _inputField(_fullNameController, 'Full name'),
-                          const SizedBox(height: 12),
-                          _inputField(_addressController, 'Address'),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(child: _inputField(_postcodeController, 'Postcode')),
-                              const SizedBox(width: 12),
-                              Expanded(flex: 2, child: _inputField(_cityController, 'City')),
-                            ],
-                          ),
-                        ],
-                      ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: BigDoggTheme.lightSurface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: BigDoggTheme.lightBorder),
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(isNl ? 'Bedrijfsgegevens' : 'Business details',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+                        const SizedBox(height: 16),
+                        _inputField(_businessNameController, isNl ? 'Bedrijfsnaam' : 'Business name'),
+                        const SizedBox(height: 12),
+                        _inputField(_fullNameController, isNl ? 'Volledige naam' : 'Full name'),
+                        const SizedBox(height: 12),
+                        _inputField(_addressController, isNl ? 'Adres' : 'Address'),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(child: _inputField(_postcodeController, isNl ? 'Postcode' : 'Postcode')),
+                            const SizedBox(width: 12),
+                            Expanded(flex: 2, child: _inputField(_cityController, isNl ? 'Stad' : 'City')),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Tax & Payment', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 16),
-                          _inputField(_kvkController, 'KVK number'),
-                          const SizedBox(height: 12),
-                          _inputField(_btwController, 'BTW number'),
-                          const SizedBox(height: 12),
-                          _inputField(_ibanController, 'IBAN'),
-                        ],
-                      ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: BigDoggTheme.lightSurface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: BigDoggTheme.lightBorder),
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(isNl ? 'BTW & Betaling' : 'Tax & Payment',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+                        const SizedBox(height: 16),
+                        _inputField(_kvkController, isNl ? 'KVK-nummer' : 'KVK number'),
+                        const SizedBox(height: 12),
+                        _inputField(_btwController, isNl ? 'BTW-nummer' : 'BTW number'),
+                        const SizedBox(height: 12),
+                        _inputField(_ibanController, 'IBAN'),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -161,15 +179,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     width: double.infinity,
                     height: 48,
                     child: ElevatedButton(
-                      onPressed: _saving ? null : _saveProfile,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1A1A2E),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
+                      onPressed: _saving ? null : () => _saveProfile(isNl),
                       child: _saving
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Save Profile', style: TextStyle(fontSize: 16)),
+                          : Text(isNl ? 'Profiel opslaan' : 'Save Profile', style: const TextStyle(fontSize: 16)),
                     ),
                   ),
                 ],
@@ -181,14 +194,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _inputField(TextEditingController controller, String label) {
     return TextField(
       controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF1A1A2E), width: 2),
-        ),
-      ),
+      decoration: InputDecoration(labelText: label),
     );
   }
 }
