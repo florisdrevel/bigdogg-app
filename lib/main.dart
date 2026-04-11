@@ -29,6 +29,17 @@ void main() async {
 
 final _router = GoRouter(
   initialLocation: '/',
+  errorBuilder: (context, state) {
+    // Handle Supabase auth callbacks that come as URL fragments
+    final location = state.uri.toString();
+    if (location.contains('type=recovery')) {
+      return const ResetPasswordScreen();
+    }
+    if (location.contains('type=signup') || location.contains('type=email')) {
+      return const LoginScreen();
+    }
+    return const LandingScreen();
+  },
   routes: [
     GoRoute(path: '/', builder: (context, state) => const LandingScreen()),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
