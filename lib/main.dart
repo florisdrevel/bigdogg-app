@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/client_onboarding_screen.dart';
+import 'screens/landing_screen.dart';
 import 'theme.dart';
 import 'providers/app_provider.dart';
 
@@ -17,9 +19,26 @@ void main() {
   );
 }
 
+Future<String?> _getToken() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString('access_token');
+}
+
 final _router = GoRouter(
-  initialLocation: '/login',
+  initialLocation: '/',
+  redirect: (context, state) async {
+    final token = await _getToken();
+    final isLoggedIn = token != null && token.isNotEmpty;
+    final isAuthRoute = state.matchedLocation == '/login' ||
+        state.matchedLocation == '/register' ||
+        state.matchedLocation == '/';
+    if (isLoggedIn && isAuthRoute && state.matchedLocation != '/') {
+      return '/dashboard';
+    }
+    return null;
+  },
   routes: [
+    GoRoute(path: '/', builder: (context, state) => const LandingScreen()),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
     GoRoute(path: '/dashboard', builder: (context, state) => const DashboardScreen()),
@@ -40,7 +59,7 @@ class BigdoggApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final appProvider = context.watch<AppProvider>();
     return MaterialApp.router(
-      title: 'BigDogg',
+      title: 'BigDogg.',
       debugShowCheckedModeBanner: false,
       routerConfig: _router,
       theme: BigDoggTheme.light(),
