@@ -141,4 +141,50 @@ class ClientsService {
       return {'success': false, 'message': 'Connection error'};
     }
   }
+
+  static Future<Map<String, dynamic>> validateInvite(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/v1/clients/onboarding/$token'),
+      );
+      final data = jsonDecode(response.body);
+      return {'success': true, 'valid': data['valid']};
+    } catch (e) {
+      return {'success': false, 'valid': false};
+    }
+  }
+
+  static Future<Map<String, dynamic>> completeOnboarding({
+    required String token,
+    required String contactName,
+    required String email,
+    String? companyName,
+    String? phone,
+    String? address,
+    String? postcode,
+    String? city,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/clients/onboarding/$token'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contact_name': contactName,
+          'email': email,
+          'company_name': companyName,
+          'phone': phone,
+          'address': address,
+          'postcode': postcode,
+          'city': city,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true};
+      }
+      return {'success': false, 'message': data['detail']};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error'};
+    }
+  }
 }

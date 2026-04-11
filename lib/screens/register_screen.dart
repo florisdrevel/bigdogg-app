@@ -18,11 +18,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _loading = false;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  bool _isNl = true;
   String? _error;
+
+  String t(String nl, String en) => _isNl ? nl : en;
 
   Future<void> _register() async {
     if (_passwordController.text != _confirmController.text) {
-      setState(() => _error = 'Passwords do not match');
+      setState(() => _error = t('Wachtwoorden komen niet overeen', 'Passwords do not match'));
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -33,7 +36,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
     setState(() => _loading = false);
     if (result['success']) {
-      if (mounted) context.go('/dashboard');
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: Text(t('Bevestig je e-mail', 'Confirm your email')),
+            content: Text(t(
+              'We hebben een bevestigingsmail gestuurd naar ${_emailController.text.trim()}. Klik op de link om je account te activeren.',
+              'We sent a confirmation email to ${_emailController.text.trim()}. Click the link to activate your account.',
+            )),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.go('/login');
+                },
+                child: Text(t('Naar inloggen', 'Go to login')),
+              ),
+            ],
+          ),
+        );
+      }
     } else {
       setState(() => _error = result['message']);
     }
@@ -63,7 +87,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 40),
-                    Image.asset('assets/images/logo.png', width: 180, height: 180),
+                    // Language toggle
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          GestureDetector(
+                            onTap: () => setState(() => _isNl = !_isNl),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: BigDoggTheme.gold500.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
+                              ),
+                              child: Text(
+                                _isNl ? 'EN' : 'NL',
+                                style: const TextStyle(color: BigDoggTheme.gold600, fontWeight: FontWeight.w700, fontSize: 12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Image.asset('assets/images/logo.png', width: 160, height: 160),
                     const SizedBox(height: 12),
                     Container(
                       width: 420,
@@ -90,7 +139,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Create your account',
+                              t('Account aanmaken', 'Create your account'),
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w700,
@@ -100,7 +149,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Start your 14-day free trial',
+                              t('30 dagen gratis proberen', 'Start your 30-day free trial'),
                               style: TextStyle(
                                 color: isDark ? BigDoggTheme.darkTextSecondary : BigDoggTheme.lightTextSecondary,
                                 fontSize: 14,
@@ -119,13 +168,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             TextField(
                               controller: _nameController,
-                              decoration: const InputDecoration(labelText: 'Full name'),
+                              decoration: InputDecoration(labelText: t('Volledige naam', 'Full name')),
                               textInputAction: TextInputAction.next,
                             ),
                             const SizedBox(height: 14),
                             TextField(
                               controller: _emailController,
-                              decoration: const InputDecoration(labelText: 'Email address'),
+                              decoration: const InputDecoration(labelText: 'Email'),
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
                             ),
@@ -133,7 +182,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             TextField(
                               controller: _passwordController,
                               decoration: InputDecoration(
-                                labelText: 'Password',
+                                labelText: t('Wachtwoord', 'Password'),
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -149,7 +198,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             TextField(
                               controller: _confirmController,
                               decoration: InputDecoration(
-                                labelText: 'Confirm password',
+                                labelText: t('Wachtwoord bevestigen', 'Confirm password'),
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     _obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -168,14 +217,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 onPressed: _loading ? null : _register,
                                 child: _loading
                                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                    : const Text('Create account'),
+                                    : Text(t('Account aanmaken', 'Create account')),
                               ),
                             ),
                             const SizedBox(height: 12),
                             Center(
                               child: TextButton(
                                 onPressed: () => context.go('/login'),
-                                child: const Text('Already have an account? Sign in'),
+                                child: Text(t('Al een account? Inloggen', 'Already have an account? Sign in')),
                               ),
                             ),
                           ],

@@ -16,8 +16,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _loading = false;
   bool _obscurePassword = true;
+  bool _isNl = true;
   String? _error;
   String? _resetMessage;
+
+  String t(String nl, String en) => _isNl ? nl : en;
 
   Future<void> _login() async {
     setState(() { _loading = true; _error = null; _resetMessage = null; });
@@ -35,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _forgotPassword() async {
     if (_emailController.text.trim().isEmpty) {
-      setState(() => _error = 'Vul eerst je e-mailadres in');
+      setState(() => _error = t('Vul eerst je e-mailadres in', 'Please enter your email address first'));
       return;
     }
     setState(() { _loading = true; _error = null; _resetMessage = null; });
@@ -43,7 +46,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _loading = false;
       if (result['success']) {
-        _resetMessage = 'Reset link verstuurd naar ${_emailController.text.trim()}';
+        _resetMessage = t(
+          'Reset link verstuurd naar ${_emailController.text.trim()}',
+          'Reset link sent to ${_emailController.text.trim()}',
+        );
       } else {
         _error = result['message'];
       }
@@ -74,6 +80,31 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Spacer(),
+                      // Language toggle
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            GestureDetector(
+                              onTap: () => setState(() => _isNl = !_isNl),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: BigDoggTheme.gold500.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
+                                ),
+                                child: Text(
+                                  _isNl ? 'EN' : 'NL',
+                                  style: const TextStyle(color: BigDoggTheme.gold600, fontWeight: FontWeight.w700, fontSize: 12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Image.asset('assets/images/logo.png', width: 280, height: 280),
                       const SizedBox(height: 12),
                       Container(
@@ -102,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'Welcome back',
+                                  t('Welkom', 'Welcome'),
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.w700,
@@ -112,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Sign in to your account',
+                                  t('Inloggen op je account', 'Sign in to your account'),
                                   style: TextStyle(
                                     color: isDark ? BigDoggTheme.darkTextSecondary : BigDoggTheme.lightTextSecondary,
                                     fontSize: 14,
@@ -142,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 TextField(
                                   controller: _emailController,
                                   autofillHints: const [AutofillHints.email],
-                                  decoration: const InputDecoration(labelText: 'Email address'),
+                                  decoration: InputDecoration(labelText: t('E-mailadres', 'Email address')),
                                   keyboardType: TextInputType.emailAddress,
                                   textInputAction: TextInputAction.next,
                                 ),
@@ -151,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   controller: _passwordController,
                                   autofillHints: const [AutofillHints.password],
                                   decoration: InputDecoration(
-                                    labelText: 'Password',
+                                    labelText: t('Wachtwoord', 'Password'),
                                     suffixIcon: IconButton(
                                       icon: Icon(
                                         _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -176,9 +207,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                       padding: EdgeInsets.zero,
                                       minimumSize: const Size(0, 32),
                                     ),
-                                    child: const Text(
-                                      'Wachtwoord vergeten?',
-                                      style: TextStyle(color: BigDoggTheme.teal700, fontSize: 13),
+                                    child: Text(
+                                      t('Wachtwoord vergeten?', 'Forgot password?'),
+                                      style: const TextStyle(color: BigDoggTheme.teal700, fontSize: 13),
                                     ),
                                   ),
                                 ),
@@ -192,14 +223,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                     },
                                     child: _loading
                                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                        : const Text('Sign in'),
+                                        : Text(t('Inloggen', 'Sign in')),
                                   ),
                                 ),
                                 const SizedBox(height: 12),
                                 Center(
                                   child: TextButton(
                                     onPressed: () => context.go('/register'),
-                                    child: const Text("Don't have an account? Sign up"),
+                                    child: Text(t('Nog geen account? Aanmelden', "Don't have an account? Sign up")),
                                   ),
                                 ),
                               ],

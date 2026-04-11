@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 import '../services/ai_service.dart';
 import '../services/invoices_service.dart';
 import '../providers/app_provider.dart';
@@ -14,10 +15,63 @@ class PromptInvoiceScreen extends StatefulWidget {
 
 class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
   final _promptController = TextEditingController();
+  final SpeechToText _speech = SpeechToText();
   Map<String, dynamic>? _parsed;
   bool _loading = false;
   bool _creating = false;
+  bool _listening = false;
+  bool _speechAvailable = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _initSpeech();
+  }
+
+  Future<void> _initSpeech() async {
+    final available = await _speech.initialize(
+      onError: (error) => setState(() => _listening = false),
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') {
+          setState(() => _listening = false);
+        }
+      },
+    );
+    setState(() => _speechAvailable = available);
+  }
+
+  Future<void> _toggleListening(bool isNl) async {
+    if (_listening) {
+      await _speech.stop();
+      setState(() => _listening = false);
+      return;
+    }
+
+    if (!_speechAvailable) {
+      setState(() => _error = isNl
+          ? 'Spraakherkenning niet beschikbaar in deze browser'
+          : 'Speech recognition not available in this browser');
+      return;
+    }
+
+    setState(() {
+      _listening = true;
+      _error = null;
+    });
+
+    await _speech.listen(
+      onResult: (result) {
+        setState(() {
+          _promptController.text = result.recognizedWords;
+          if (result.finalResult) _listening = false;
+        });
+      },
+      localeId: isNl ? 'nl_NL' : 'en_US',
+      listenFor: const Duration(seconds: 30),
+      pauseFor: const Duration(seconds: 3),
+    );
+  }
 
   Future<void> _parse(bool isNl) async {
     if (_promptController.text.isEmpty) return;
@@ -101,13 +155,49 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                         fontSize: 13, color: BigDoggTheme.lightTextSecondary),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: _promptController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: isNl ? 'Typ hier je omschrijving...' : 'Type your description here...',
-                    ),
+                  Stack(
+                    children: [
+                      TextField(
+                        controller: _promptController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          hintText: _listening
+                              ? (isNl ? 'Luisteren...' : 'Listening...')
+                              : (isNl ? 'Typ of spreek je omschrijving...' : 'Type or speak your description...'),
+                          contentPadding: const EdgeInsets.fromLTRB(12, 12, 48, 12),
+                        ),
+                      ),
+                      Positioned(
+                        right: 4,
+                        top: 4,
+                        child: IconButton(
+                          icon: Icon(
+                            _listening ? Icons.mic : Icons.mic_none_outlined,
+                            color: _listening ? BigDoggTheme.error : BigDoggTheme.teal800,
+                          ),
+                          onPressed: () => _toggleListening(isNl),
+                          tooltip: isNl ? 'Spreek je factuur in' : 'Speak your invoice',
+                        ),
+                      ),
+                    ],
                   ),
+                  if (_listening) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: BigDoggTheme.error),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isNl ? 'Aan het luisteren... tik opnieuw om te stoppen' : 'Listening... tap again to stop',
+                          style: const TextStyle(fontSize: 12, color: BigDoggTheme.error),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
