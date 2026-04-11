@@ -49,7 +49,6 @@ class _LandingScreenState extends State<LandingScreen> {
           const Text('BigDogg',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: BigDoggTheme.teal800)),
           const Spacer(),
-          // Language toggle
           GestureDetector(
             onTap: () => setState(() => _isNl = !_isNl),
             child: Container(
@@ -121,7 +120,7 @@ class _LandingScreenState extends State<LandingScreen> {
             border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
           ),
           child: Text(
-            t('14 dagen gratis proberen', '14-day free trial'),
+            t('30 dagen gratis proberen', '30-day free trial'),
             style: const TextStyle(color: BigDoggTheme.gold600, fontWeight: FontWeight.w600, fontSize: 13),
           ),
         ),
@@ -220,26 +219,31 @@ class _LandingScreenState extends State<LandingScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('2026-000001', style: TextStyle(fontWeight: FontWeight.w700, color: BigDoggTheme.teal800, fontSize: 13)),
+              const Text('2026-000001',
+                  style: TextStyle(fontWeight: FontWeight.w700, color: BigDoggTheme.teal800, fontSize: 13)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: BigDoggTheme.success.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text('Betaald', style: TextStyle(color: BigDoggTheme.success, fontSize: 11, fontWeight: FontWeight.w600)),
+                child: Text(t('Betaald', 'Paid'),
+                    style: const TextStyle(color: BigDoggTheme.success, fontSize: 11, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          const Text('ToraTora B.V.', style: TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 12)),
+          const Text('ToraTora B.V.',
+              style: TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 12)),
           const SizedBox(height: 8),
           const Divider(),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Totaal incl BTW', style: TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.teal800, fontSize: 13)),
-              Text('€ 1.125,30', style: TextStyle(fontWeight: FontWeight.w700, color: BigDoggTheme.teal800, fontSize: 13)),
+              Text(t('Totaal incl BTW', 'Total incl VAT'),
+                  style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.teal800, fontSize: 13)),
+              const Text('€ 1.125,30',
+                  style: TextStyle(fontWeight: FontWeight.w700, color: BigDoggTheme.teal800, fontSize: 13)),
             ],
           ),
         ],
@@ -290,7 +294,8 @@ class _LandingScreenState extends State<LandingScreen> {
         children: [
           Text(
             t('Alles wat je nodig hebt als ZZP\'er', 'Everything you need as a freelancer'),
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: BigDoggTheme.teal800, letterSpacing: -0.5),
+            style: const TextStyle(
+                fontSize: 28, fontWeight: FontWeight.w700, color: BigDoggTheme.teal800, letterSpacing: -0.5),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -306,10 +311,12 @@ class _LandingScreenState extends State<LandingScreen> {
                   children: features.map((f) => Expanded(child: _featureCard(f))).toList(),
                 )
               : Column(
-                  children: features.map((f) => Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _featureCard(f),
-                  )).toList(),
+                  children: features
+                      .map((f) => Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _featureCard(f),
+                          ))
+                      .toList(),
                 ),
         ],
       ),
@@ -354,7 +361,8 @@ class _LandingScreenState extends State<LandingScreen> {
         children: [
           Text(
             t('Eén plan. Alles inbegrepen.', 'One plan. Everything included.'),
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: BigDoggTheme.teal800, letterSpacing: -0.5),
+            style: const TextStyle(
+                fontSize: 28, fontWeight: FontWeight.w700, color: BigDoggTheme.teal800, letterSpacing: -0.5),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -384,10 +392,11 @@ class _LandingScreenState extends State<LandingScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text('€12', style: TextStyle(fontSize: 48, fontWeight: FontWeight.w800, color: Colors.white)),
+                    const Text('€7,99',
+                        style: TextStyle(fontSize: 42, fontWeight: FontWeight.w800, color: Colors.white)),
                     const SizedBox(width: 8),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.only(bottom: 8),
                       child: Text(t('/ maand', '/ month'),
                           style: const TextStyle(color: Colors.white60, fontSize: 16)),
                     ),
@@ -395,13 +404,14 @@ class _LandingScreenState extends State<LandingScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  t('14 dagen gratis proberen', '14 days free trial'),
-                  style: TextStyle(color: BigDoggTheme.gold400, fontWeight: FontWeight.w600),
+                  t('30 dagen gratis proberen · Geen creditcard vereist',
+                      '30-day free trial · No credit card required'),
+                  style: TextStyle(color: BigDoggTheme.gold400, fontWeight: FontWeight.w600, fontSize: 13),
                 ),
                 const SizedBox(height: 24),
                 const Divider(color: Colors.white24),
                 const SizedBox(height: 16),
-                ...[ 
+                ...[
                   t('Onbeperkt facturen', 'Unlimited invoices'),
                   t('AI factuur assistent', 'AI invoice assistant'),
                   t('PDF generatie & e-mail', 'PDF generation & email'),
@@ -410,15 +420,15 @@ class _LandingScreenState extends State<LandingScreen> {
                   t('Kwartaal BTW overzicht', 'Quarterly VAT overview'),
                   t('Betalen via Stripe (iDEAL)', 'Pay via Stripe (iDEAL)'),
                 ].map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.check, color: BigDoggTheme.gold400, size: 18),
-                      const SizedBox(width: 10),
-                      Text(item, style: const TextStyle(color: Colors.white, fontSize: 14)),
-                    ],
-                  ),
-                )),
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check, color: BigDoggTheme.gold400, size: 18),
+                          const SizedBox(width: 10),
+                          Text(item, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                        ],
+                      ),
+                    )),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -437,7 +447,8 @@ class _LandingScreenState extends State<LandingScreen> {
                 const SizedBox(height: 12),
                 Center(
                   child: Text(
-                    t('Geen creditcard vereist · Altijd opzegbaar', 'No credit card required · Cancel anytime'),
+                    t('Geen creditcard vereist · Altijd opzegbaar',
+                        'No credit card required · Cancel anytime'),
                     style: const TextStyle(color: Colors.white38, fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
@@ -461,16 +472,19 @@ class _LandingScreenState extends State<LandingScreen> {
             children: [
               Image.asset('assets/images/logo.png', width: 32, height: 32),
               const SizedBox(width: 8),
-              const Text('BigDogg', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+              const Text('BigDogg',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
             ],
           ),
           Text(
-            t('© 2026 BigDogg · Voor Nederlandse ZZP\'ers', '© 2026 BigDogg · For Dutch freelancers'),
+            t('© 2026 BigDogg · Voor Nederlandse ZZP\'ers',
+                '© 2026 BigDogg · For Dutch freelancers'),
             style: const TextStyle(color: Colors.white38, fontSize: 12),
           ),
           TextButton(
             onPressed: () => context.go('/login'),
-            child: Text(t('Inloggen', 'Sign in'), style: const TextStyle(color: Colors.white60)),
+            child: Text(t('Inloggen', 'Sign in'),
+                style: const TextStyle(color: Colors.white60)),
           ),
         ],
       ),

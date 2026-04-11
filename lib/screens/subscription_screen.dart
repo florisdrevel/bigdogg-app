@@ -83,7 +83,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     String statusDetail;
 
     if (status == 'trial') {
-      statusColor = daysLeft > 3 ? BigDoggTheme.success : BigDoggTheme.warning;
+      statusColor = daysLeft > 5 ? BigDoggTheme.success : BigDoggTheme.warning;
       statusText = isNl ? 'Gratis proefperiode' : 'Free Trial';
       statusDetail = daysLeft > 0
           ? isNl ? '$daysLeft dagen resterend' : '$daysLeft days remaining'
@@ -169,13 +169,25 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('€12',
+                  const Text('€7,99',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 28, color: BigDoggTheme.teal800)),
                   Text(isNl ? 'per maand' : 'per month',
                       style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 12)),
                 ],
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: BigDoggTheme.gold500.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              isNl ? '30 dagen gratis proberen' : '30-day free trial',
+              style: const TextStyle(color: BigDoggTheme.gold600, fontWeight: FontWeight.w600, fontSize: 12),
+            ),
           ),
           const SizedBox(height: 20),
           const Divider(),
@@ -197,7 +209,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               child: _checkingOut
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : Text(
-                      isNl ? 'Start abonnement — €12/maand' : 'Start subscription — €12/month',
+                      isNl ? 'Start abonnement — €7,99/maand' : 'Start subscription — €7.99/month',
                       style: const TextStyle(fontSize: 16),
                     ),
             ),
