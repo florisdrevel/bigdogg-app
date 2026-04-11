@@ -17,6 +17,9 @@ void main() async {
   await Supabase.initialize(
     url: 'https://gjmjdzzhvniufcryuott.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqbWpkenpodm5pdWZjcnl1b3R0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjE1NDYsImV4cCI6MjA5MTIzNzU0Nn0.0i9o_-IpaFTQtAyU12ObPYSCa071MRbZ0rpJLvBUThA',
+    authOptions: const FlutterAuthClientOptions(
+      authFlowType: AuthFlowType.implicit,
+    ),
   );
 
   runApp(
@@ -30,7 +33,6 @@ void main() async {
 final _router = GoRouter(
   initialLocation: '/',
   errorBuilder: (context, state) {
-    // Handle Supabase auth callbacks that come as URL fragments
     final location = state.uri.toString();
     if (location.contains('type=recovery')) {
       return const ResetPasswordScreen();

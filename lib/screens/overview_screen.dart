@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/overview_service.dart';
+import '../services/invoices_service.dart';
+import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 
@@ -48,6 +51,24 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
       _loadingAnnual = false;
       if (result['success']) _annual = result['overview'];
     });
+  }
+
+  Future<void> _downloadBtwReport(bool isNl) async {
+    final token = await InvoicesService.getToken();
+    final url = '${ApiConfig.baseUrl}/api/v1/reports/btw/pdf?token=$token';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isNl ? 'Kan rapport niet openen' : 'Could not open report'),
+            backgroundColor: BigDoggTheme.error,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -143,6 +164,24 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
             ),
           ]),
           const SizedBox(height: 16),
+          // BTW Report download button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _downloadBtwReport(isNl),
+              icon: const Icon(Icons.download_outlined, color: Colors.white),
+              label: Text(
+                isNl ? 'Download BTW Aangifte PDF' : 'Download VAT Report PDF',
+                style: const TextStyle(color: Colors.white, fontSize: 15),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: BigDoggTheme.teal800,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
