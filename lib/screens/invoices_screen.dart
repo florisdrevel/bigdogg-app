@@ -1,245 +1,321 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/ai_service.dart';
 import '../services/invoices_service.dart';
+import '../services/clients_service.dart';
+import '../services/products_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
+import 'invoice_detail_screen.dart';
+import 'prompt_invoice_screen.dart';
 
-class PromptInvoiceScreen extends StatefulWidget {
-  const PromptInvoiceScreen({super.key});
+class InvoicesScreen extends StatefulWidget {
+  const InvoicesScreen({super.key});
 
   @override
-  State<PromptInvoiceScreen> createState() => _PromptInvoiceScreenState();
+  State<InvoicesScreen> createState() => _InvoicesScreenState();
 }
 
-class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
-  final _promptController = TextEditingController();
-  Map<String, dynamic>? _parsed;
-  bool _loading = false;
-  bool _creating = false;
-  String? _error;
+class _InvoicesScreenState extends State<InvoicesScreen> {
+  List<dynamic> _invoices = [];
+  bool _loading = true;
 
-  Future<void> _parse(bool isNl) async {
-    if (_promptController.text.isEmpty) return;
-    setState(() { _loading = true; _error = null; _parsed = null; });
-    final result = await AiService.parseInvoicePrompt(_promptController.text);
+  @override
+  void initState() {
+    super.initState();
+    _loadInvoices();
+  }
+
+  Future<void> _loadInvoices() async {
+    setState(() => _loading = true);
+    final result = await InvoicesService.getInvoices();
     setState(() {
       _loading = false;
-      if (result['success']) {
-        _parsed = result['parsed'];
-      } else {
-        _error = result['message'];
-      }
+      if (result['success']) _invoices = result['invoices'];
     });
   }
 
-  Future<void> _createInvoice(bool isNl) async {
-    if (_parsed == null) return;
-    setState(() => _creating = true);
-
-    final lines = (_parsed!['lines'] as List).map((l) => {
-      'description': l['description'],
-      'quantity': l['quantity'],
-      'unit_price_ex_btw': l['unit_price_ex_btw'],
-      'btw_rate': l['btw_rate'],
-    }).toList();
-
-    final result = await InvoicesService.createInvoice(
-      clientId: _parsed!['client_id'],
-      lines: lines,
-    );
-
-    setState(() => _creating = false);
-
-    if (result['success'] && mounted) {
-      Navigator.pop(context, true);
-    } else {
-      setState(() => _error = result['message'] ?? (isNl ? 'Aanmaken mislukt' : 'Failed to create'));
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'paid': return BigDoggTheme.success;
+      case 'sent': return BigDoggTheme.info;
+      case 'overdue': return BigDoggTheme.error;
+      default: return BigDoggTheme.lightTextSecondary;
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isNl = context.watch<AppProvider>().language == 'nl';
+  String _statusLabel(String status, bool isNl) {
+    switch (status) {
+      case 'paid': return isNl ? 'Betaald' : 'Paid';
+      case 'sent': return isNl ? 'Verstuurd' : 'Sent';
+      case 'overdue': return isNl ? 'Verlopen' : 'Overdue';
+      default: return isNl ? 'Concept' : 'Draft';
+    }
+  }
 
-    return Scaffold(
-      backgroundColor: BigDoggTheme.lightBg,
-      appBar: AppBar(
-        backgroundColor: BigDoggTheme.teal800,
-        title: Text(isNl ? 'AI Factuur' : 'AI Invoice',
-            style: const TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: BigDoggTheme.lightSurface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: BigDoggTheme.lightBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isNl ? 'Omschrijf je factuur' : 'Describe your invoice',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: BigDoggTheme.teal800),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isNl
-                        ? 'bijv. "5 dagen gewerkt voor ToraTora en een reiskostenvergoeding"'
-                        : 'e.g. "5 days work for ToraTora plus travel expenses"',
-                    style: const TextStyle(
-                        fontSize: 13, color: BigDoggTheme.lightTextSecondary),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _promptController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: isNl ? 'Typ hier je omschrijving...' : 'Type your description here...',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _loading ? null : () => _parse(isNl),
-                      icon: const Icon(Icons.smart_toy_outlined),
-                      label: Text(isNl ? 'Genereer' : 'Generate'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (_error != null)
-              Container(
-                margin: const EdgeInsets.only(top: 16),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: BigDoggTheme.errorBg,
-                  borderRadius: BorderRadius.circular(8),
+  void _showCreateInvoice(bool isNl) async {
+    final clientsResult = await ClientsService.getClients();
+    final productsResult = await ProductsService.getProducts();
+    if (!clientsResult['success'] || !productsResult['success']) return;
+    final clients = clientsResult['clients'] as List;
+    final products = productsResult['products'] as List;
+    if (!mounted) return;
+
+    String? selectedClientId;
+    List<Map<String, dynamic>> lines = [];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isNl ? 'Nieuwe factuur' : 'New Invoice'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedClientId,
+                  decoration: InputDecoration(labelText: isNl ? 'Klant' : 'Client'),
+                  items: clients.map((c) => DropdownMenuItem<String>(
+                    value: c['id'] as String,
+                    child: Text(c['company_name'] ?? c['contact_name']),
+                  )).toList(),
+                  onChanged: (val) => setDialogState(() => selectedClientId = val),
                 ),
-                child: Text(_error!, style: const TextStyle(color: BigDoggTheme.error)),
-              ),
-            if (_loading)
-              const Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            if (_parsed != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: BigDoggTheme.lightSurface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: BigDoggTheme.lightBorder),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.check_circle, color: BigDoggTheme.success),
-                        const SizedBox(width: 8),
-                        Text(
-                          isNl ? 'AI heeft je factuur verwerkt' : 'AI parsed your invoice',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: BigDoggTheme.teal800),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: BigDoggTheme.teal100,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            _parsed!['confidence'] ?? 'medium',
-                            style: const TextStyle(
-                                fontSize: 11,
-                                color: BigDoggTheme.teal800,
-                                fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '${isNl ? 'Klant' : 'Client'}: ${_parsed!['client_name'] ?? '-'}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(isNl ? 'Regels:' : 'Lines:',
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
-                    ...(_parsed!['lines'] as List).map((line) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
+                const SizedBox(height: 16),
+                Text(isNl ? 'Regels' : 'Lines', style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                ...lines.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final line = entry.value;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
                       child: Row(
                         children: [
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(line['description'],
-                                    style: const TextStyle(fontWeight: FontWeight.w500)),
-                                Text(
-                                  '${line['quantity']}x €${line['unit_price_ex_btw']} (${line['btw_rate']}% BTW)',
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      color: BigDoggTheme.lightTextSecondary),
-                                ),
+                                Text(line['description'], style: const TextStyle(fontWeight: FontWeight.w500)),
+                                Text('${line['quantity']}x €${line['unit_price_ex_btw']} (${line['btw_rate']}% BTW)',
+                                    style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
                               ],
                             ),
                           ),
-                          Text(
-                            '€${((line['quantity'] as num) * (line['unit_price_ex_btw'] as num)).toStringAsFixed(2)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline, color: BigDoggTheme.error),
+                            onPressed: () => setDialogState(() => lines.removeAt(i)),
                           ),
                         ],
                       ),
-                    )),
-                    if (_parsed!['notes'] != null && _parsed!['notes'].toString().isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        '${isNl ? 'Opmerking' : 'Note'}: ${_parsed!['notes']}',
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: BigDoggTheme.lightTextSecondary,
-                            fontStyle: FontStyle.italic),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: _creating ? null : () => _createInvoice(isNl),
-                        style: ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.success),
-                        child: _creating
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : Text(isNl ? 'Factuur aanmaken' : 'Create Invoice',
-                                style: const TextStyle(fontSize: 16, color: Colors.white)),
-                      ),
                     ),
-                  ],
+                  );
+                }),
+                TextButton.icon(
+                  onPressed: () => _showAddLine(context, products, isNl, (line) {
+                    setDialogState(() => lines.add(line));
+                  }),
+                  icon: const Icon(Icons.add),
+                  label: Text(isNl ? 'Regel toevoegen' : 'Add line'),
                 ),
-              ),
-            ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(isNl ? 'Annuleren' : 'Cancel')),
+            ElevatedButton(
+              onPressed: selectedClientId == null || lines.isEmpty ? null : () async {
+                Navigator.pop(context);
+                final result = await InvoicesService.createInvoice(clientId: selectedClientId!, lines: lines);
+                if (result['success']) _loadInvoices();
+              },
+              child: Text(isNl ? 'Aanmaken' : 'Create'),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showAddLine(BuildContext context, List products, bool isNl, Function(Map<String, dynamic>) onAdd) {
+    String? selectedProductId;
+    final qtyController = TextEditingController(text: '1');
+    final priceController = TextEditingController();
+    final descController = TextEditingController();
+    int btwRate = 21;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isNl ? 'Regel toevoegen' : 'Add Line'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedProductId,
+                  decoration: InputDecoration(labelText: isNl ? 'Product (optioneel)' : 'Product (optional)'),
+                  items: [
+                    DropdownMenuItem(value: null, child: Text(isNl ? 'Aangepaste regel' : 'Custom line')),
+                    ...products.map((p) => DropdownMenuItem<String>(
+                      value: p['id'] as String,
+                      child: Text(p['name']),
+                    )),
+                  ],
+                  onChanged: (val) {
+                    setDialogState(() {
+                      selectedProductId = val;
+                      if (val != null) {
+                        final p = products.firstWhere((p) => p['id'] == val);
+                        descController.text = p['name'];
+                        priceController.text = p['unit_price'].toString();
+                        btwRate = p['btw_rate'];
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: descController, decoration: InputDecoration(labelText: isNl ? 'Omschrijving' : 'Description')),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: TextField(controller: qtyController, decoration: InputDecoration(labelText: isNl ? 'Aantal' : 'Qty'), keyboardType: TextInputType.number)),
+                    const SizedBox(width: 12),
+                    Expanded(child: TextField(controller: priceController, decoration: InputDecoration(labelText: isNl ? 'Prijs ex BTW' : 'Price ex BTW'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  value: btwRate,
+                  decoration: const InputDecoration(labelText: 'BTW'),
+                  items: const [
+                    DropdownMenuItem(value: 21, child: Text('21%')),
+                    DropdownMenuItem(value: 9, child: Text('9%')),
+                    DropdownMenuItem(value: 0, child: Text('0%')),
+                  ],
+                  onChanged: (val) => setDialogState(() => btwRate = val!),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(isNl ? 'Annuleren' : 'Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                if (descController.text.isEmpty || priceController.text.isEmpty) return;
+                Navigator.pop(context);
+                onAdd({
+                  'description': descController.text,
+                  'quantity': double.parse(qtyController.text),
+                  'unit_price_ex_btw': double.parse(priceController.text),
+                  'btw_rate': btwRate,
+                });
+              },
+              child: Text(isNl ? 'Toevoegen' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isNl = context.watch<AppProvider>().language == 'nl';
+
+    return Stack(
+      children: [
+        _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _invoices.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.receipt_long_outlined, size: 64, color: BigDoggTheme.lightTextHint),
+                        const SizedBox(height: 16),
+                        Text(isNl ? 'Nog geen facturen' : 'No invoices yet',
+                            style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
+                        const SizedBox(height: 8),
+                        Text(isNl ? 'Tik + om je eerste factuur aan te maken' : 'Tap + to create your first invoice',
+                            style: const TextStyle(color: BigDoggTheme.lightTextHint)),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _invoices.length,
+                    itemBuilder: (context, index) {
+                      final inv = _invoices[index];
+                      final status = inv['status'] ?? 'draft';
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: BigDoggTheme.lightSurface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: BigDoggTheme.lightBorder),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          onTap: () => Navigator.push(context,
+                            MaterialPageRoute(builder: (context) => InvoiceDetailScreen(invoiceId: inv['id'])))
+                              .then((_) => _loadInvoices()),
+                          title: Row(
+                            children: [
+                              Text(inv['invoice_number'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: _statusColor(status).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  _statusLabel(status, isNl),
+                                  style: TextStyle(fontSize: 11, color: _statusColor(status), fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(inv['clients']?['contact_name'] ?? '', style: const TextStyle(color: BigDoggTheme.lightTextSecondary)),
+                              Text(inv['invoice_date'] ?? '', style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint)),
+                            ],
+                          ),
+                          trailing: Text('€${inv['total_incl_btw']}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+                        ),
+                      );
+                    },
+                  ),
+        Positioned(
+          bottom: 88,
+          right: 16,
+          child: FloatingActionButton(
+            heroTag: 'ai_fab',
+            onPressed: () => Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const PromptInvoiceScreen()))
+                .then((created) { if (created == true) _loadInvoices(); }),
+            backgroundColor: BigDoggTheme.teal800,
+            elevation: 2,
+            child: const Icon(Icons.smart_toy_outlined, color: Colors.white),
+          ),
+        ),
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: FloatingActionButton(
+            heroTag: 'create_fab',
+            onPressed: () => _showCreateInvoice(isNl),
+            child: const Icon(Icons.add),
+          ),
+        ),
+      ],
     );
   }
 }

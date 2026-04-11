@@ -113,8 +113,8 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: _loading ? null : () => _parse(isNl),
-                      icon: const Icon(Icons.auto_awesome),
-                      label: Text(isNl ? 'Verwerken met AI' : 'Parse with AI'),
+                      icon: const Icon(Icons.smart_toy_outlined),
+                      label: Text(isNl ? 'Genereer' : 'Generate'),
                     ),
                   ),
                 ],
