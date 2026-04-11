@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -19,24 +18,8 @@ void main() {
   );
 }
 
-Future<String?> _getToken() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('access_token');
-}
-
 final _router = GoRouter(
   initialLocation: '/',
-  redirect: (context, state) async {
-    final token = await _getToken();
-    final isLoggedIn = token != null && token.isNotEmpty;
-    final isAuthRoute = state.matchedLocation == '/login' ||
-        state.matchedLocation == '/register' ||
-        state.matchedLocation == '/';
-    if (isLoggedIn && isAuthRoute && state.matchedLocation != '/') {
-      return '/dashboard';
-    }
-    return null;
-  },
   routes: [
     GoRoute(path: '/', builder: (context, state) => const LandingScreen()),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
