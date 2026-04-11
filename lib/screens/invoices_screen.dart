@@ -293,23 +293,29 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                       );
                     },
                   ),
+        // AI button — above the + button
+        Positioned(
+          bottom: 88,
+          right: 16,
+          child: FloatingActionButton(
+            heroTag: 'ai_fab',
+            onPressed: () => Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const PromptInvoiceScreen()))
+                .then((created) { if (created == true) _loadInvoices(); }),
+            backgroundColor: Colors.grey.shade200,
+            elevation: 2,
+            mini: false,
+            child: const Icon(Icons.smart_toy_outlined, color: Colors.grey),
+          ),
+        ),
+        // + button
         Positioned(
           bottom: 16,
           right: 16,
           child: FloatingActionButton(
+            heroTag: 'create_fab',
             onPressed: () => _showCreateInvoice(isNl),
             child: const Icon(Icons.add),
-          ),
-        ),
-        Positioned(
-          top: 8,
-          right: 68,
-          child: IconButton(
-            icon: const Icon(Icons.auto_awesome, color: BigDoggTheme.teal800),
-            onPressed: () => Navigator.push(context,
-              MaterialPageRoute(builder: (context) => const PromptInvoiceScreen()))
-                .then((created) { if (created == true) _loadInvoices(); }),
-            tooltip: 'AI',
           ),
         ),
       ],

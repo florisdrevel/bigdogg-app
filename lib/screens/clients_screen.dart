@@ -174,7 +174,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 60, 16, 16),
+                    padding: const EdgeInsets.all(16),
                     itemCount: _clients.length,
                     itemBuilder: (context, index) {
                       final client = _clients[index];
@@ -223,20 +223,24 @@ class _ClientsScreenState extends State<ClientsScreen> {
                       );
                     },
                   ),
+        // Invite button — above the + button
         Positioned(
-          top: 8,
-          right: 8,
-          child: TextButton.icon(
+          bottom: 88,
+          right: 16,
+          child: FloatingActionButton(
+            heroTag: 'invite_fab',
             onPressed: () => _showInviteLink(isNl),
-            icon: const Icon(Icons.link, color: BigDoggTheme.teal800, size: 18),
-            label: Text(isNl ? 'Uitnodigen' : 'Invite link',
-                style: const TextStyle(color: BigDoggTheme.teal800, fontWeight: FontWeight.w600)),
+            backgroundColor: Colors.grey.shade200,
+            elevation: 2,
+            child: const Icon(Icons.share_outlined, color: Colors.grey),
           ),
         ),
+        // + button
         Positioned(
           bottom: 16,
           right: 16,
           child: FloatingActionButton(
+            heroTag: 'add_fab',
             onPressed: () => _showClientDialog(isNl),
             child: const Icon(Icons.add),
           ),
