@@ -30,16 +30,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   void _listenForRecovery() {
-    // Try to recover session from URL fragment
     try {
       final uri = Uri.base;
       final fragment = uri.fragment;
       if (fragment.isNotEmpty) {
         final params = Uri.splitQueryString(fragment);
-        final accessToken = params['access_token'];
         final refreshToken = params['refresh_token'];
-        if (accessToken != null && refreshToken != null) {
-          Supabase.instance.client.auth.setSession(accessToken).then((_) {
+        if (refreshToken != null) {
+          Supabase.instance.client.auth.setSession(refreshToken).then((_) {
             if (mounted) setState(() => _ready = true);
           }).catchError((e) {
             if (mounted) setState(() => _ready = true);
@@ -51,7 +49,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       // Continue
     }
 
-    // Listen for auth state changes
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;
       if (event == AuthChangeEvent.passwordRecovery ||
@@ -61,18 +58,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       }
     });
 
-    // Check current session
     final session = Supabase.instance.client.auth.currentSession;
     if (session != null) {
       setState(() => _ready = true);
       return;
     }
 
-    // Fallback after 4 seconds
     Future.delayed(const Duration(seconds: 4), () {
-      if (mounted && !_ready) {
-        setState(() => _ready = true);
-      }
+      if (mounted && !_ready) setState(() => _ready = true);
     });
   }
 
@@ -156,10 +149,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Image.asset('assets/images/logo.png', width: 100, height: 100),
-                const SizedBox(height: 8),
-                const Text('BigDogg',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: BigDoggTheme.teal800)),
+                Image.asset('assets/images/logo.png', width: 120, height: 120),
                 const SizedBox(height: 24),
                 Container(
                   constraints: const BoxConstraints(maxWidth: 420),
