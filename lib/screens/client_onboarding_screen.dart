@@ -86,7 +86,7 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('assets/images/logo.png', width: 80, height: 80),
+            Image.asset('assets/images/logo.png', width: 120, height: 120),
             const SizedBox(height: 24),
             Text(
               t('Ongeldige uitnodigingslink', 'Invalid invite link'),
@@ -111,7 +111,7 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('assets/images/logo.png', width: 80, height: 80),
+            Image.asset('assets/images/logo.png', width: 120, height: 120),
             const SizedBox(height: 24),
             const Icon(Icons.check_circle, color: BigDoggTheme.success, size: 64),
             const SizedBox(height: 16),
@@ -136,173 +136,156 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> {
 
   Widget _buildForm() {
     return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            color: BigDoggTheme.teal800,
-            child: Row(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        child: Column(
+          children: [
+            // Language toggle
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Image.asset('assets/images/logo.png', width: 40, height: 40),
-                const SizedBox(width: 12),
-                const Text('BigDogg',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
-                const Spacer(),
                 GestureDetector(
                   onTap: () => setState(() => _isNl = !_isNl),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: BigDoggTheme.gold500.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.white.withOpacity(0.3)),
+                      border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
                     ),
                     child: Text(
                       _isNl ? 'EN' : 'NL',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                      style: const TextStyle(color: BigDoggTheme.gold600, fontWeight: FontWeight.w700, fontSize: 12),
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  t('Jouw gegevens', 'Your details'),
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: BigDoggTheme.teal800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  t(
-                    'Vul je gegevens in zodat je aan de slag kunt.',
-                    'Fill in your details to get started.',
+            const SizedBox(height: 16),
+            // Big logo
+            Image.asset('assets/images/logo.png', width: 200, height: 200),
+            const SizedBox(height: 8),
+            const Text('BigDogg',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: BigDoggTheme.teal800)),
+            const SizedBox(height: 24),
+            // Form card
+            Container(
+              width: 420,
+              constraints: const BoxConstraints(maxWidth: 420),
+              decoration: BoxDecoration(
+                color: BigDoggTheme.lightSurface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: BigDoggTheme.lightBorder),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 24,
+                    offset: const Offset(0, 6),
                   ),
-                  style: const TextStyle(color: BigDoggTheme.lightTextSecondary),
-                ),
-                const SizedBox(height: 24),
-                if (_error != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: BigDoggTheme.errorBg,
-                      borderRadius: BorderRadius.circular(8),
+                ],
+              ),
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    t('Jouw gegevens', 'Your details'),
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: BigDoggTheme.teal800),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    t('Vul je gegevens in zodat je aan de slag kunt.', 'Fill in your details to get started.'),
+                    style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 14),
+                  ),
+                  const SizedBox(height: 24),
+                  if (_error != null)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: BigDoggTheme.errorBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(_error!, style: const TextStyle(color: BigDoggTheme.error)),
                     ),
-                    child: Text(_error!, style: const TextStyle(color: BigDoggTheme.error)),
+                  TextField(
+                    controller: _contactNameController,
+                    decoration: InputDecoration(labelText: t('Volledige naam *', 'Full name *')),
+                    textInputAction: TextInputAction.next,
                   ),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: BigDoggTheme.lightSurface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: BigDoggTheme.lightBorder),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(labelText: 'Email *'),
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _companyController,
+                    decoration: InputDecoration(labelText: t('Bedrijfsnaam', 'Company name')),
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _phoneController,
+                    decoration: InputDecoration(labelText: t('Telefoonnummer', 'Phone number')),
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _addressController,
+                    decoration: InputDecoration(labelText: t('Adres', 'Address')),
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
                     children: [
-                      Text(t('Contactgegevens', 'Contact details'),
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _contactNameController,
-                        decoration: InputDecoration(labelText: t('Volledige naam *', 'Full name *')),
-                        textInputAction: TextInputAction.next,
+                      Expanded(
+                        child: TextField(
+                          controller: _postcodeController,
+                          decoration: InputDecoration(labelText: t('Postcode', 'Postcode')),
+                          textInputAction: TextInputAction.next,
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(labelText: 'Email *'),
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _companyController,
-                        decoration: InputDecoration(labelText: t('Bedrijfsnaam', 'Company name')),
-                        textInputAction: TextInputAction.next,
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _phoneController,
-                        decoration: InputDecoration(labelText: t('Telefoonnummer', 'Phone number')),
-                        keyboardType: TextInputType.phone,
-                        textInputAction: TextInputAction.next,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: _cityController,
+                          decoration: InputDecoration(labelText: t('Stad', 'City')),
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _submit(),
+                        ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: BigDoggTheme.lightSurface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: BigDoggTheme.lightBorder),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _loading ? null : _submit,
+                      child: _loading
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : Text(t('Gegevens versturen', 'Submit details'),
+                              style: const TextStyle(fontSize: 16)),
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(t('Adresgegevens', 'Address details'),
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _addressController,
-                        decoration: InputDecoration(labelText: t('Adres', 'Address')),
-                        textInputAction: TextInputAction.next,
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _postcodeController,
-                              decoration: InputDecoration(labelText: t('Postcode', 'Postcode')),
-                              textInputAction: TextInputAction.next,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 2,
-                            child: TextField(
-                              controller: _cityController,
-                              decoration: InputDecoration(labelText: t('Stad', 'City')),
-                              textInputAction: TextInputAction.done,
-                              onSubmitted: (_) => _submit(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Text(
+                      'Powered by BigDogg · bigdogg.nl',
+                      style: const TextStyle(color: BigDoggTheme.lightTextHint, fontSize: 12),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _loading ? null : _submit,
-                    child: _loading
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(t('Gegevens versturen', 'Submit details'),
-                            style: const TextStyle(fontSize: 16)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Center(
-                  child: Text(
-                    t('Powered by BigDogg · bigdogg.nl', 'Powered by BigDogg · bigdogg.nl'),
-                    style: const TextStyle(color: BigDoggTheme.lightTextHint, fontSize: 12),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
     );
   }
