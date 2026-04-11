@@ -30,6 +30,27 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   void _listenForRecovery() {
+    // Try to recover session from URL fragment
+    try {
+      final uri = Uri.base;
+      final fragment = uri.fragment;
+      if (fragment.isNotEmpty) {
+        final params = Uri.splitQueryString(fragment);
+        final accessToken = params['access_token'];
+        final refreshToken = params['refresh_token'];
+        if (accessToken != null && refreshToken != null) {
+          Supabase.instance.client.auth.setSession(accessToken).then((_) {
+            if (mounted) setState(() => _ready = true);
+          }).catchError((e) {
+            if (mounted) setState(() => _ready = true);
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      // Continue
+    }
+
     // Listen for auth state changes
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;
@@ -40,15 +61,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       }
     });
 
-    // Check if already in a session
+    // Check current session
     final session = Supabase.instance.client.auth.currentSession;
     if (session != null) {
       setState(() => _ready = true);
       return;
     }
 
-    // Fallback — show the form after 3 seconds regardless
-    Future.delayed(const Duration(seconds: 3), () {
+    // Fallback after 4 seconds
+    Future.delayed(const Duration(seconds: 4), () {
       if (mounted && !_ready) {
         setState(() => _ready = true);
       }
@@ -68,25 +89,34 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       return;
     }
 
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    setState(() { _loading = true; _error = null; });
 
     try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        setState(() {
+          _loading = false;
+          _error = t(
+            'Sessie verlopen. Vraag een nieuwe reset link aan via "Wachtwoord vergeten?".',
+            'Session expired. Please request a new reset link via "Forgot password?".',
+          );
+        });
+        return;
+      }
+
       await Supabase.instance.client.auth.updateUser(
         UserAttributes(password: _passwordController.text),
       );
-      setState(() {
-        _loading = false;
-        _success = true;
-      });
+      setState(() { _loading = false; _success = true; });
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) context.go('/login');
     } catch (e) {
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = t(
+          'Sessie verlopen. Vraag een nieuwe reset link aan.',
+          'Session expired. Please request a new reset link.',
+        );
       });
     }
   }
@@ -108,13 +138,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     GestureDetector(
                       onTap: () => setState(() => _isNl = !_isNl),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: BigDoggTheme.gold500.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                              color: BigDoggTheme.gold500.withOpacity(0.4)),
+                          border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
                         ),
                         child: Text(
                           _isNl ? 'EN' : 'NL',
@@ -129,6 +157,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
                 const SizedBox(height: 16),
                 Image.asset('assets/images/logo.png', width: 100, height: 100),
+                const SizedBox(height: 8),
+                const Text('BigDogg',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: BigDoggTheme.teal800)),
                 const SizedBox(height: 24),
                 Container(
                   constraints: const BoxConstraints(maxWidth: 420),
@@ -152,10 +183,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                             const CircularProgressIndicator(),
                             const SizedBox(height: 16),
                             Text(
-                              t('Link wordt verwerkt...',
-                                  'Processing link...'),
-                              style: const TextStyle(
-                                  color: BigDoggTheme.lightTextSecondary),
+                              t('Link wordt verwerkt...', 'Processing link...'),
+                              style: const TextStyle(color: BigDoggTheme.lightTextSecondary),
                             ),
                           ],
                         )
@@ -167,8 +196,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                     color: BigDoggTheme.success, size: 48),
                                 const SizedBox(height: 16),
                                 Text(
-                                  t('Wachtwoord gewijzigd!',
-                                      'Password updated!'),
+                                  t('Wachtwoord gewijzigd!', 'Password updated!'),
                                   style: const TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
@@ -176,8 +204,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  t(
-                                      'Je wordt doorgestuurd naar inloggen...',
+                                  t('Je wordt doorgestuurd naar inloggen...',
                                       'Redirecting to login...'),
                                   style: const TextStyle(
                                       color: BigDoggTheme.lightTextSecondary),
@@ -197,8 +224,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  t(
-                                      'Kies een nieuw wachtwoord voor je account',
+                                  t('Kies een nieuw wachtwoord voor je account',
                                       'Choose a new password for your account'),
                                   style: const TextStyle(
                                       color: BigDoggTheme.lightTextSecondary,
@@ -208,8 +234,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 if (_error != null)
                                   Container(
                                     padding: const EdgeInsets.all(12),
-                                    margin:
-                                        const EdgeInsets.only(bottom: 16),
+                                    margin: const EdgeInsets.only(bottom: 16),
                                     decoration: BoxDecoration(
                                       color: BigDoggTheme.errorBg,
                                       borderRadius: BorderRadius.circular(8),
@@ -222,19 +247,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 TextField(
                                   controller: _passwordController,
                                   decoration: InputDecoration(
-                                    labelText: t(
-                                        'Nieuw wachtwoord', 'New password'),
+                                    labelText: t('Nieuw wachtwoord', 'New password'),
                                     suffixIcon: IconButton(
                                       icon: Icon(
                                         _obscurePassword
                                             ? Icons.visibility_outlined
                                             : Icons.visibility_off_outlined,
-                                        color:
-                                            BigDoggTheme.lightTextSecondary,
+                                        color: BigDoggTheme.lightTextSecondary,
                                       ),
-                                      onPressed: () => setState(() =>
-                                          _obscurePassword =
-                                              !_obscurePassword),
+                                      onPressed: () => setState(
+                                          () => _obscurePassword = !_obscurePassword),
                                     ),
                                   ),
                                   obscureText: _obscurePassword,
@@ -244,19 +266,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 TextField(
                                   controller: _confirmController,
                                   decoration: InputDecoration(
-                                    labelText: t('Bevestig wachtwoord',
-                                        'Confirm password'),
+                                    labelText: t('Bevestig wachtwoord', 'Confirm password'),
                                     suffixIcon: IconButton(
                                       icon: Icon(
                                         _obscureConfirm
                                             ? Icons.visibility_outlined
                                             : Icons.visibility_off_outlined,
-                                        color:
-                                            BigDoggTheme.lightTextSecondary,
+                                        color: BigDoggTheme.lightTextSecondary,
                                       ),
-                                      onPressed: () => setState(() =>
-                                          _obscureConfirm =
-                                              !_obscureConfirm),
+                                      onPressed: () => setState(
+                                          () => _obscureConfirm = !_obscureConfirm),
                                     ),
                                   ),
                                   obscureText: _obscureConfirm,
@@ -267,8 +286,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                   width: double.infinity,
                                   height: 48,
                                   child: ElevatedButton(
-                                    onPressed:
-                                        _loading ? null : _updatePassword,
+                                    onPressed: _loading ? null : _updatePassword,
                                     child: _loading
                                         ? const SizedBox(
                                             width: 20,
@@ -276,8 +294,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                             child: CircularProgressIndicator(
                                                 strokeWidth: 2,
                                                 color: Colors.white))
-                                        : Text(t('Wachtwoord opslaan',
-                                            'Save password')),
+                                        : Text(t('Wachtwoord opslaan', 'Save password')),
                                   ),
                                 ),
                               ],
