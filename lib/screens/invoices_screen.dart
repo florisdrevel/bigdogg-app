@@ -302,10 +302,10 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
             onPressed: () => Navigator.push(context,
               MaterialPageRoute(builder: (context) => const PromptInvoiceScreen()))
                 .then((created) { if (created == true) _loadInvoices(); }),
-            backgroundColor: Colors.grey.shade200,
+            backgroundColor: BigDoggTheme.teal800,
             elevation: 2,
             mini: false,
-            child: const Icon(Icons.smart_toy_outlined, color: Colors.grey),
+            child: const Icon(Icons.smart_toy_outlined, color: Colors.white),
           ),
         ),
         // + button

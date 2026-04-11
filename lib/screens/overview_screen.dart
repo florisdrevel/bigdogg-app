@@ -112,7 +112,7 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
             ),
           ),
           const SizedBox(height: 16),
-          _sectionTitle(isNl ? '📤 Omzet' : '📤 Revenue'),
+          _sectionTitle(isNl ? 'Omzet' : 'Revenue'),
           _overviewCard([
             _overviewRow(isNl ? 'Omzet ex BTW' : 'Revenue ex BTW', '€${q['revenue_ex_btw']}'),
             _overviewRow(isNl ? 'BTW ontvangen' : 'BTW received', '€${q['revenue_btw']}'),

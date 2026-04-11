@@ -230,9 +230,9 @@ class _ClientsScreenState extends State<ClientsScreen> {
           child: FloatingActionButton(
             heroTag: 'invite_fab',
             onPressed: () => _showInviteLink(isNl),
-            backgroundColor: Colors.grey.shade200,
+            backgroundColor: BigDoggTheme.teal800,
             elevation: 2,
-            child: const Icon(Icons.share_outlined, color: Colors.grey),
+            child: const Icon(Icons.share_outlined, color: Colors.white),
           ),
         ),
         // + button
