@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
+import 'auth_service.dart';
 
 class SubscriptionService {
   static const String baseUrl = ApiConfig.baseUrl;
@@ -11,16 +12,33 @@ class SubscriptionService {
     return prefs.getString('access_token');
   }
 
-  static Future<Map<String, dynamic>> getStatus() async {
+  static Future<Map<String, String>> _authHeaders() async {
     final token = await _getToken();
+    return {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+  }
+
+  static Future<Map<String, dynamic>> getStatus() async {
     try {
-      final response = await http.get(
+      var headers = await _authHeaders();
+      var response = await http.get(
         Uri.parse('$baseUrl/api/v1/subscription/status'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
       );
+
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService.refreshToken();
+        if (refreshed) {
+          headers = await _authHeaders();
+          response = await http.get(
+            Uri.parse('$baseUrl/api/v1/subscription/status'),
+            headers: headers,
+          );
+        }
+      }
+
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
         return {'success': true, 'subscription': data};
@@ -32,18 +50,24 @@ class SubscriptionService {
   }
 
   static Future<Map<String, dynamic>> createCheckout() async {
-    final token = await _getToken();
-    final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString('user_email') ?? '';
     try {
-      final response = await http.post(
+      var headers = await _authHeaders();
+      var response = await http.post(
         Uri.parse('$baseUrl/api/v1/subscription/checkout'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'email': email}),
+        headers: headers,
       );
+
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService.refreshToken();
+        if (refreshed) {
+          headers = await _authHeaders();
+          response = await http.post(
+            Uri.parse('$baseUrl/api/v1/subscription/checkout'),
+            headers: headers,
+          );
+        }
+      }
+
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
         return {'success': true, 'checkout_url': data['checkout_url']};

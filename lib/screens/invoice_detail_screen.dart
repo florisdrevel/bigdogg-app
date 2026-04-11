@@ -76,13 +76,25 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
 
   Future<void> _sendEmail(bool isNl) async {
     final client = _invoice!['clients'];
+    final clientEmail = client?['email'] ?? _invoice!['client_email'] ?? '';
+    if (clientEmail.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isNl ? 'Geen e-mailadres beschikbaar' : 'No email address available'),
+            backgroundColor: BigDoggTheme.error,
+          ),
+        );
+      }
+      return;
+    }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(isNl ? 'Factuur versturen' : 'Send Invoice'),
         content: Text(isNl
-            ? 'Verstuur factuur ${_invoice!['invoice_number']} naar ${client['email']}?'
-            : 'Send invoice ${_invoice!['invoice_number']} to ${client['email']}?'),
+            ? 'Verstuur factuur ${_invoice!['invoice_number']} naar $clientEmail?'
+            : 'Send invoice ${_invoice!['invoice_number']} to $clientEmail?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -121,6 +133,9 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
 
     final status = _invoice!['status'] ?? 'draft';
     final client = _invoice!['clients'];
+    final clientName = client?['contact_name'] ?? _invoice!['client_name'] ?? (isNl ? 'Verwijderde klant' : 'Deleted client');
+    final clientCompany = client?['company_name'] ?? _invoice!['client_company'] ?? '';
+    final clientEmail = client?['email'] ?? _invoice!['client_email'] ?? '';
 
     return Scaffold(
       backgroundColor: BigDoggTheme.lightBg,
@@ -157,13 +172,14 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
               Text(isNl ? 'Klant' : 'Client',
                   style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
               const SizedBox(height: 4),
-              Text(client['contact_name'] ?? '',
+              Text(clientName,
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
-              if (client['company_name'] != null && client['company_name'].toString().isNotEmpty)
-                Text(client['company_name'],
+              if (clientCompany.isNotEmpty)
+                Text(clientCompany,
                     style: const TextStyle(color: BigDoggTheme.lightTextSecondary)),
-              Text(client['email'] ?? '',
-                  style: const TextStyle(color: BigDoggTheme.lightTextHint, fontSize: 12)),
+              if (clientEmail.isNotEmpty)
+                Text(clientEmail,
+                    style: const TextStyle(color: BigDoggTheme.lightTextHint, fontSize: 12)),
             ]),
             const SizedBox(height: 12),
             _card([

@@ -108,6 +108,47 @@ class _ClientsScreenState extends State<ClientsScreen> {
     );
   }
 
+  Future<void> _deleteClient(bool isNl, Map<String, dynamic> client) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isNl ? 'Klant verwijderen' : 'Delete Client'),
+        content: Text(isNl
+            ? 'Weet je zeker dat je ${client['contact_name']} wilt verwijderen? Dit kan niet ongedaan worden gemaakt.'
+            : 'Are you sure you want to delete ${client['contact_name']}? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(isNl ? 'Annuleren' : 'Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.error),
+            child: Text(isNl ? 'Verwijderen' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      final result = await ClientsService.deleteClient(client['id']);
+      if (result['success']) {
+        _loadClients();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? (isNl ? 'Verwijderen mislukt' : 'Delete failed')),
+              backgroundColor: BigDoggTheme.error,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _showInviteLink(bool isNl) async {
     final result = await ClientsService.createInvite();
     if (result['success'] && mounted) {
@@ -212,10 +253,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline, color: BigDoggTheme.error),
-                                onPressed: () async {
-                                  await ClientsService.deleteClient(client['id']);
-                                  _loadClients();
-                                },
+                                onPressed: () => _deleteClient(isNl, client),
                               ),
                             ],
                           ),
@@ -223,7 +261,6 @@ class _ClientsScreenState extends State<ClientsScreen> {
                       );
                     },
                   ),
-        // Invite button — above the + button
         Positioned(
           bottom: 88,
           right: 16,
@@ -235,7 +272,6 @@ class _ClientsScreenState extends State<ClientsScreen> {
             child: const Icon(Icons.share_outlined, color: Colors.white),
           ),
         ),
-        // + button
         Positioned(
           bottom: 16,
           right: 16,

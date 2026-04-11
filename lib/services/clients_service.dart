@@ -117,7 +117,8 @@ class ClientsService {
       if (response.statusCode == 200) {
         return {'success': true};
       }
-      return {'success': false};
+      final data = jsonDecode(response.body);
+      return {'success': false, 'message': data['detail'] ?? 'Delete failed'};
     } catch (e) {
       return {'success': false, 'message': 'Connection error'};
     }

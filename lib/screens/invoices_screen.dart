@@ -251,6 +251,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                     itemBuilder: (context, index) {
                       final inv = _invoices[index];
                       final status = inv['status'] ?? 'draft';
+                      final clientName = inv['clients']?['contact_name'] ?? inv['client_name'] ?? (isNl ? 'Verwijderde klant' : 'Deleted client');
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         decoration: BoxDecoration(
@@ -283,7 +284,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(inv['clients']?['contact_name'] ?? '', style: const TextStyle(color: BigDoggTheme.lightTextSecondary)),
+                              Text(clientName, style: const TextStyle(color: BigDoggTheme.lightTextSecondary)),
                               Text(inv['invoice_date'] ?? '', style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint)),
                             ],
                           ),

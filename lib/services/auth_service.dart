@@ -45,14 +45,37 @@ class AuthService {
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('access_token', data['access_token']);
+        await prefs.setString('refresh_token', data['refresh_token']);
         await prefs.setString('user_id', data['user']['id']);
         await prefs.setString('full_name', data['user']['full_name']);
         await prefs.setString('user_email', data['user']['email']);
         return {'success': true, 'data': data};
       }
-      return {'success': false, 'message': 'Invalid email or password'};
+      return {'success': false, 'message': data['detail'] ?? 'Invalid email or password'};
     } catch (e) {
       return {'success': false, 'message': 'Connection error. Please try again.'};
+    }
+  }
+
+  static Future<bool> refreshToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final refreshToken = prefs.getString('refresh_token');
+      if (refreshToken == null) return false;
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/auth/refresh'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'refresh_token': refreshToken}),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        await prefs.setString('access_token', data['access_token']);
+        await prefs.setString('refresh_token', data['refresh_token']);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
     }
   }
 
