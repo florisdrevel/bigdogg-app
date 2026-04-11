@@ -56,6 +56,23 @@ class AuthService {
     }
   }
 
+  static Future<Map<String, dynamic>> resetPassword(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/auth/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true};
+      }
+      return {'success': false, 'message': data['detail'] ?? 'Error sending reset email'};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error. Please try again.'};
+    }
+  }
+
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
