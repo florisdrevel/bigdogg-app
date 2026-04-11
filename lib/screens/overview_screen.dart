@@ -75,6 +75,24 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
     }
   }
 
+  Future<void> _downloadAnnualReport(bool isNl, int year) async {
+    final token = await InvoicesService.getToken();
+    final url = '${ApiConfig.baseUrl}/api/v1/reports/annual/pdf?token=$token&year=$year';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isNl ? 'Kan rapport niet openen' : 'Could not open report'),
+            backgroundColor: BigDoggTheme.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
@@ -225,7 +243,6 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Year selector
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -245,7 +262,6 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
                     ],
                   ),
                 ),
-                // Year navigation
                 Row(
                   children: [
                     IconButton(
@@ -287,8 +303,10 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
           const SizedBox(height: 16),
           _sectionTitle(isNl ? 'Totaal $_selectedYear' : 'Total $_selectedYear'),
           _overviewCard([
-            _overviewRow(isNl ? 'Totale omzet ex BTW' : 'Total revenue ex BTW', '€${a['total_revenue_ex_btw']}', bold: true),
-            _overviewRow(isNl ? 'Totale kosten ex BTW' : 'Total expenses ex BTW', '€${a['total_expenses_ex_btw']}'),
+            _overviewRow(isNl ? 'Totale omzet ex BTW' : 'Total revenue ex BTW',
+                '€${a['total_revenue_ex_btw']}', bold: true),
+            _overviewRow(isNl ? 'Totale kosten ex BTW' : 'Total expenses ex BTW',
+                '€${a['total_expenses_ex_btw']}'),
             const Divider(),
             _overviewRow(isNl ? 'Netto winst (indicatief)' : 'Net profit (indicative)',
                 '€${a['net_profit_indicative']}', bold: true, large: true),
@@ -296,6 +314,26 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
                 '€${a['total_btw_to_pay']}', color: BigDoggTheme.error),
           ]),
           const SizedBox(height: 16),
+          // Annual report download button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _downloadAnnualReport(isNl, _selectedYear),
+              icon: const Icon(Icons.analytics_outlined, color: Colors.white),
+              label: Text(
+                isNl
+                    ? 'Download Jaarrapport $_selectedYear'
+                    : 'Download Annual Report $_selectedYear',
+                style: const TextStyle(color: Colors.white, fontSize: 15),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: BigDoggTheme.gold500,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -339,7 +377,10 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
           Row(
             children: [
               Text('Q$quarterNum $year',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: BigDoggTheme.teal800)),
               const Spacer(),
               TextButton.icon(
                 onPressed: () => _downloadBtwReport(isNl, quarter: quarterNum, year: year),
@@ -371,8 +412,11 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.teal800)),
+        Text(label,
+            style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+        Text(value,
+            style: const TextStyle(
+                fontWeight: FontWeight.w600, color: BigDoggTheme.teal800)),
       ],
     );
   }
@@ -381,7 +425,10 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.lightTextPrimary)),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: BigDoggTheme.lightTextPrimary)),
     );
   }
 
@@ -405,7 +452,9 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
-              style: TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: large ? 15 : 14)),
+              style: TextStyle(
+                  color: BigDoggTheme.lightTextSecondary,
+                  fontSize: large ? 15 : 14)),
           Text(value,
               style: TextStyle(
                 fontWeight: bold ? FontWeight.bold : FontWeight.normal,
