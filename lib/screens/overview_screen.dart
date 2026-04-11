@@ -20,6 +20,7 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
   Map<String, dynamic>? _annual;
   bool _loadingQuarterly = true;
   bool _loadingAnnual = true;
+  int _selectedYear = DateTime.now().year;
 
   @override
   void initState() {
@@ -46,16 +47,19 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
 
   Future<void> _loadAnnual() async {
     setState(() => _loadingAnnual = true);
-    final result = await OverviewService.getAnnualOverview();
+    final result = await OverviewService.getAnnualOverview(year: _selectedYear);
     setState(() {
       _loadingAnnual = false;
       if (result['success']) _annual = result['overview'];
     });
   }
 
-  Future<void> _downloadBtwReport(bool isNl) async {
+  Future<void> _downloadBtwReport(bool isNl, {int? quarter, int? year}) async {
     final token = await InvoicesService.getToken();
-    final url = '${ApiConfig.baseUrl}/api/v1/reports/btw/pdf?token=$token';
+    String url = '${ApiConfig.baseUrl}/api/v1/reports/btw/pdf?token=$token';
+    if (quarter != null && year != null) {
+      url += '&quarter=$quarter&year=$year';
+    }
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -164,7 +168,6 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
             ),
           ]),
           const SizedBox(height: 16),
-          // BTW Report download button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -215,12 +218,14 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
 
     final a = _annual!;
     final quarters = a['quarters'] as List;
+    final currentYear = DateTime.now().year;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Year selector
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -240,10 +245,34 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
                     ],
                   ),
                 ),
+                // Year navigation
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left, color: Colors.white),
+                      onPressed: () {
+                        setState(() => _selectedYear--);
+                        _loadAnnual();
+                      },
+                    ),
+                    Text('$_selectedYear',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    IconButton(
+                      icon: Icon(Icons.chevron_right,
+                          color: _selectedYear < currentYear ? Colors.white : Colors.white30),
+                      onPressed: _selectedYear < currentYear
+                          ? () {
+                              setState(() => _selectedYear++);
+                              _loadAnnual();
+                            }
+                          : null,
+                    ),
+                  ],
+                ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(isNl ? 'Netto winst (indicatief)' : 'Net profit (indicative)',
+                    Text(isNl ? 'Netto winst' : 'Net profit',
                         style: const TextStyle(color: Colors.white70, fontSize: 12)),
                     Text('€${a['net_profit_indicative']}',
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
@@ -254,9 +283,9 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
           ),
           const SizedBox(height: 16),
           _sectionTitle(isNl ? 'Per kwartaal' : 'Per quarter'),
-          ...quarters.map((q) => _quarterCard(q, isNl)),
+          ...quarters.map((q) => _quarterCard(q, isNl, _selectedYear)),
           const SizedBox(height: 16),
-          _sectionTitle(isNl ? 'Totaal ${a['year']}' : 'Total ${a['year']}'),
+          _sectionTitle(isNl ? 'Totaal $_selectedYear' : 'Total $_selectedYear'),
           _overviewCard([
             _overviewRow(isNl ? 'Totale omzet ex BTW' : 'Total revenue ex BTW', '€${a['total_revenue_ex_btw']}', bold: true),
             _overviewRow(isNl ? 'Totale kosten ex BTW' : 'Total expenses ex BTW', '€${a['total_expenses_ex_btw']}'),
@@ -294,7 +323,8 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
     );
   }
 
-  Widget _quarterCard(Map q, bool isNl) {
+  Widget _quarterCard(Map q, bool isNl, int year) {
+    final quarterNum = q['quarter'] as int;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(16),
@@ -306,8 +336,24 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Q${q['quarter']}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+          Row(
+            children: [
+              Text('Q$quarterNum $year',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => _downloadBtwReport(isNl, quarter: quarterNum, year: year),
+                icon: const Icon(Icons.download_outlined, size: 16, color: BigDoggTheme.teal700),
+                label: Text(
+                  isNl ? 'BTW PDF' : 'VAT PDF',
+                  style: const TextStyle(fontSize: 12, color: BigDoggTheme.teal700),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
