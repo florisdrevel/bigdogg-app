@@ -453,47 +453,40 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ),
             ),
           ),
-
-        // FABs
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              FloatingActionButton(
-                heroTag: 'camera_fab',
-                mini: true,
-                onPressed: _parsing ? null : () => _pickAndParseReceipt(
-                  context.read<AppProvider>().language == 'nl',
-                  ImageSource.camera,
-                ),
-                backgroundColor: BigDoggTheme.teal800,
-                child: const Icon(Icons.camera_alt_outlined, color: Colors.white, size: 20),
-              ),
-              const SizedBox(height: 8),
-              FloatingActionButton(
-                heroTag: 'upload_fab',
-                mini: true,
-                onPressed: _parsing ? null : () => _pickAndParseReceipt(
-                  context.read<AppProvider>().language == 'nl',
-                  ImageSource.gallery,
-                ),
-                backgroundColor: BigDoggTheme.teal800,
-                child: const Icon(Icons.upload_outlined, color: Colors.white, size: 20),
-              ),
-              const SizedBox(height: 8),
-              FloatingActionButton(
-                heroTag: 'add_fab',
-                onPressed: () => _showAddExpense(
-                  context.read<AppProvider>().language == 'nl',
-                ),
-                child: const Icon(Icons.add),
-              ),
-            ],
-          ),
+// FABs
+Positioned(
+  bottom: 16,
+  right: 16,
+  child: Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      FloatingActionButton(
+        heroTag: 'camera_fab',
+        onPressed: _parsing ? null : () => _pickAndParseReceipt(
+          context.read<AppProvider>().language == 'nl',
+          ImageSource.camera,
         ),
-      ],
-    );
-  }
-}
+        backgroundColor: BigDoggTheme.teal800,
+        child: const Icon(Icons.camera_alt_outlined, color: Colors.white, size: 24),
+      ),
+      const SizedBox(height: 12),
+      FloatingActionButton(
+        heroTag: 'upload_fab',
+        onPressed: _parsing ? null : () => _pickAndParseReceipt(
+          context.read<AppProvider>().language == 'nl',
+          ImageSource.gallery,
+        ),
+        backgroundColor: BigDoggTheme.teal800,
+        child: const Icon(Icons.upload_outlined, color: Colors.white, size: 24),
+      ),
+      const SizedBox(height: 12),
+      FloatingActionButton(
+        heroTag: 'add_fab',
+        onPressed: () => _showAddExpense(
+          context.read<AppProvider>().language == 'nl',
+        ),
+        child: const Icon(Icons.add, size: 24),
+      ),
+    ],
+  ),
+),}
