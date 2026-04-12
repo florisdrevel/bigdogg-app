@@ -17,6 +17,7 @@ dependencies:
   speech_to_text: ^7.3.0
   supabase_flutter: ^2.12.2
   image_picker: ^1.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -37,3 +38,6 @@ flutter:
           weight: 600
         - asset: assets/fonts/PlusJakartaSans-Bold.ttf
           weight: 700
+    - family: MaterialIcons
+      fonts:
+        - asset: assets/fonts/MaterialIcons-Regular.otf
