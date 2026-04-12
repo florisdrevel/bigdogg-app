@@ -50,6 +50,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       final completer = Completer<void>();
       final input = html.FileUploadInputElement();
       input.accept = 'image/*';
+      if (camera) {
+        input.setAttribute('capture', 'environment');
+      }
       input.click();
       input.onChange.listen((event) async {
         final file = input.files?.first;
@@ -155,7 +158,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                 TextField(
                   controller: descController,
-                  decoration: InputDecoration(labelText: isNl ? 'Omschrijving' : 'Description'),
+                  decoration: InputDecoration(
+                      labelText: isNl ? 'Omschrijving' : 'Description'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -178,7 +182,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: category,
-                  decoration: InputDecoration(labelText: isNl ? 'Categorie' : 'Category'),
+                  decoration: InputDecoration(
+                      labelText: isNl ? 'Categorie' : 'Category'),
                   items: [
                     DropdownMenuItem(value: 'general', child: Text(isNl ? 'Algemeen' : 'General')),
                     DropdownMenuItem(value: 'travel', child: Text(isNl ? 'Reizen' : 'Travel')),
@@ -226,16 +231,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             currentReceiptBytes = null;
                             currentReceiptFileName = null;
                           }),
-                          icon: const Icon(Icons.close, size: 14, color: BigDoggTheme.error),
+                          icon: const Icon(Icons.close,
+                              size: 14, color: BigDoggTheme.error),
                           label: Text(
                             isNl ? 'Verwijderen' : 'Remove',
-                            style: const TextStyle(color: BigDoggTheme.error, fontSize: 12),
+                            style: const TextStyle(
+                                color: BigDoggTheme.error, fontSize: 12),
                           ),
                         ),
                       ] else
                         Text(
                           isNl ? 'Geen bon bijgevoegd' : 'No receipt attached',
-                          style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              color: BigDoggTheme.lightTextHint),
                         ),
                     ],
                   ),
@@ -252,7 +261,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               onPressed: uploading
                   ? null
                   : () async {
-                      if (descController.text.isEmpty || amountController.text.isEmpty) return;
+                      if (descController.text.isEmpty ||
+                          amountController.text.isEmpty) return;
                       setDialogState(() => uploading = true);
                       Navigator.pop(context);
 
@@ -278,7 +288,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
                     )
                   : Text(isNl ? 'Toevoegen' : 'Add'),
             ),
@@ -340,8 +351,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
-    double totalExBtw = _expenses.fold(0, (sum, e) => sum + (e['amount_ex_btw'] as num).toDouble());
-    double totalBtw = _expenses.fold(0, (sum, e) => sum + (e['btw_amount'] as num).toDouble());
+    double totalExBtw = _expenses.fold(
+        0, (sum, e) => sum + (e['amount_ex_btw'] as num).toDouble());
+    double totalBtw = _expenses.fold(
+        0, (sum, e) => sum + (e['btw_amount'] as num).toDouble());
 
     return Stack(
       children: [
@@ -363,9 +376,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(isNl ? 'Totaal ex BTW' : 'Total ex VAT',
-                                    style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                                Text('€${totalExBtw.toStringAsFixed(2)}',
+                                Text(
+                                    isNl ? 'Totaal ex BTW' : 'Total ex VAT',
+                                    style: const TextStyle(
+                                        color: Colors.white70, fontSize: 12)),
+                                Text(
+                                    '€${totalExBtw.toStringAsFixed(2)}',
                                     style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -378,8 +394,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text('BTW / VAT',
-                                    style: TextStyle(color: Colors.white70, fontSize: 12)),
-                                Text('€${totalBtw.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                        color: Colors.white70, fontSize: 12)),
+                                Text(
+                                    '€${totalBtw.toStringAsFixed(2)}',
                                     style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -391,9 +409,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(isNl ? 'Totaal incl BTW' : 'Total incl VAT',
-                                    style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                                Text('€${(totalExBtw + totalBtw).toStringAsFixed(2)}',
+                                Text(
+                                    isNl
+                                        ? 'Totaal incl BTW'
+                                        : 'Total incl VAT',
+                                    style: const TextStyle(
+                                        color: Colors.white70, fontSize: 12)),
+                                Text(
+                                    '€${(totalExBtw + totalBtw).toStringAsFixed(2)}',
                                     style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -411,75 +434,96 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 const Icon(Icons.receipt,
-                                    size: 64, color: BigDoggTheme.lightTextHint),
+                                    size: 64,
+                                    color: BigDoggTheme.lightTextHint),
                                 const SizedBox(height: 16),
-                                Text(isNl ? 'Nog geen kosten' : 'No expenses yet',
+                                Text(
+                                    isNl
+                                        ? 'Nog geen kosten'
+                                        : 'No expenses yet',
                                     style: const TextStyle(
                                         fontSize: 18,
-                                        color: BigDoggTheme.lightTextSecondary)),
+                                        color:
+                                            BigDoggTheme.lightTextSecondary)),
                                 const SizedBox(height: 8),
                                 Text(
                                     isNl
                                         ? 'Tik + om een uitgave toe te voegen'
                                         : 'Tap + to add an expense',
-                                    style: const TextStyle(color: BigDoggTheme.lightTextHint)),
+                                    style: const TextStyle(
+                                        color: BigDoggTheme.lightTextHint)),
                               ],
                             ),
                           )
                         : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16),
                             itemCount: _expenses.length,
                             itemBuilder: (context, index) {
                               final exp = _expenses[index];
-                              final hasReceipt = exp['receipt_url'] != null &&
-                                  exp['receipt_url'].toString().isNotEmpty;
+                              final hasReceipt =
+                                  exp['receipt_url'] != null &&
+                                      exp['receipt_url']
+                                          .toString()
+                                          .isNotEmpty;
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 10),
                                 decoration: BoxDecoration(
                                   color: BigDoggTheme.lightSurface,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: BigDoggTheme.lightBorder),
+                                  border: Border.all(
+                                      color: BigDoggTheme.lightBorder),
                                 ),
                                 child: ListTile(
                                   contentPadding:
-                                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 8),
                                   leading: CircleAvatar(
                                     backgroundColor: BigDoggTheme.teal100,
                                     child: Icon(
-                                      _categoryIcon(exp['category'] ?? 'general'),
-                                      color: BigDoggTheme.teal800,
-                                      size: 20,
-                                    ),
+                                        _categoryIcon(
+                                            exp['category'] ?? 'general'),
+                                        color: BigDoggTheme.teal800,
+                                        size: 20),
                                   ),
                                   title: Text(exp['description'],
                                       style: const TextStyle(
                                           fontWeight: FontWeight.w600,
-                                          color: BigDoggTheme.lightTextPrimary)),
+                                          color: BigDoggTheme
+                                              .lightTextPrimary)),
                                   subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '${exp['expense_date']} · ${_categoryLabel(exp['category'] ?? 'general', isNl)} · ${exp['btw_rate']}% BTW',
                                         style: const TextStyle(
                                             fontSize: 12,
-                                            color: BigDoggTheme.lightTextSecondary),
+                                            color: BigDoggTheme
+                                                .lightTextSecondary),
                                       ),
                                       if (hasReceipt)
                                         GestureDetector(
-                                          onTap: () =>
-                                              _showReceiptDialog(exp['receipt_url'], isNl),
+                                          onTap: () => _showReceiptDialog(
+                                              exp['receipt_url'], isNl),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               const Icon(Icons.attach_file,
-                                                  size: 12, color: BigDoggTheme.teal700),
+                                                  size: 12,
+                                                  color:
+                                                      BigDoggTheme.teal700),
                                               const SizedBox(width: 2),
                                               Text(
-                                                isNl ? 'Bon bekijken' : 'View receipt',
+                                                isNl
+                                                    ? 'Bon bekijken'
+                                                    : 'View receipt',
                                                 style: const TextStyle(
                                                     fontSize: 11,
-                                                    color: BigDoggTheme.teal700,
-                                                    fontWeight: FontWeight.w500),
+                                                    color:
+                                                        BigDoggTheme.teal700,
+                                                    fontWeight:
+                                                        FontWeight.w500),
                                               ),
                                             ],
                                           ),
@@ -490,23 +534,30 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
                                         children: [
                                           Text('€${exp['amount_ex_btw']}',
                                               style: const TextStyle(
                                                   fontWeight: FontWeight.bold,
-                                                  color: BigDoggTheme.teal800)),
-                                          Text('+ €${exp['btw_amount']} BTW',
+                                                  color:
+                                                      BigDoggTheme.teal800)),
+                                          Text(
+                                              '+ €${exp['btw_amount']} BTW',
                                               style: const TextStyle(
                                                   fontSize: 11,
-                                                  color: BigDoggTheme.lightTextSecondary)),
+                                                  color: BigDoggTheme
+                                                      .lightTextSecondary)),
                                         ],
                                       ),
                                       const SizedBox(width: 4),
                                       IconButton(
-                                        icon: const Icon(Icons.delete, color: BigDoggTheme.error),
-                                        onPressed: () => _deleteExpense(exp['id']),
+                                        icon: const Icon(Icons.delete,
+                                            color: BigDoggTheme.error),
+                                        onPressed: () =>
+                                            _deleteExpense(exp['id']),
                                       ),
                                     ],
                                   ),
@@ -536,7 +587,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     const SizedBox(height: 16),
                     Text(
                       isNl ? 'Bon analyseren...' : 'Analysing receipt...',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style:
+                          const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -544,7 +596,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ),
           ),
 
-        // FABs
+        // FABs — using Text icons as fallback to bypass tree-shaking
         Positioned(
           bottom: 16,
           right: 16,
@@ -557,7 +609,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ? null
                     : () => _pickAndParseReceipt(isNl, camera: true),
                 backgroundColor: BigDoggTheme.teal800,
-                child: const Icon(Icons.camera_alt, color: Colors.white),
+                child: const Text('📷',
+                    style: TextStyle(fontSize: 22)),
               ),
               const SizedBox(height: 12),
               FloatingActionButton(
@@ -566,13 +619,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ? null
                     : () => _pickAndParseReceipt(isNl, camera: false),
                 backgroundColor: BigDoggTheme.teal800,
-                child: const Icon(Icons.upload, color: Colors.white),
+                child: const Text('📁',
+                    style: TextStyle(fontSize: 22)),
               ),
               const SizedBox(height: 12),
               FloatingActionButton(
                 heroTag: 'add_fab',
                 onPressed: () => _showAddExpense(isNl),
-                child: const Icon(Icons.add),
+                child: const Text('+',
+                    style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w300,
+                        color: Colors.white)),
               ),
             ],
           ),
