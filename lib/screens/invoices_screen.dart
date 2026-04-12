@@ -19,6 +19,12 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   List<dynamic> _invoices = [];
   bool _loading = true;
 
+  // Filters
+  String? _filterStatus;
+  int? _filterQuarter;
+  int? _filterMonth;
+  String _sortBy = 'date_desc';
+
   @override
   void initState() {
     super.initState();
@@ -32,6 +38,53 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       _loading = false;
       if (result['success']) _invoices = result['invoices'];
     });
+  }
+
+  List<dynamic> get _filteredInvoices {
+    List<dynamic> list = List.from(_invoices);
+
+    if (_filterStatus != null) {
+      list = list.where((inv) => inv['status'] == _filterStatus).toList();
+    }
+
+    if (_filterMonth != null) {
+      list = list.where((inv) {
+        final date = inv['invoice_date'] as String?;
+        if (date == null) return false;
+        return int.tryParse(date.split('-')[1]) == _filterMonth;
+      }).toList();
+    } else if (_filterQuarter != null) {
+      final months = {
+        1: [1, 2, 3],
+        2: [4, 5, 6],
+        3: [7, 8, 9],
+        4: [10, 11, 12],
+      }[_filterQuarter]!;
+      list = list.where((inv) {
+        final date = inv['invoice_date'] as String?;
+        if (date == null) return false;
+        final month = int.tryParse(date.split('-')[1]) ?? 0;
+        return months.contains(month);
+      }).toList();
+    }
+
+    list.sort((a, b) {
+      switch (_sortBy) {
+        case 'amount_asc':
+          return (double.tryParse(a['total_incl_btw'].toString()) ?? 0)
+              .compareTo(double.tryParse(b['total_incl_btw'].toString()) ?? 0);
+        case 'amount_desc':
+          return (double.tryParse(b['total_incl_btw'].toString()) ?? 0)
+              .compareTo(double.tryParse(a['total_incl_btw'].toString()) ?? 0);
+        case 'date_asc':
+          return (a['invoice_date'] ?? '').compareTo(b['invoice_date'] ?? '');
+        case 'date_desc':
+        default:
+          return (b['invoice_date'] ?? '').compareTo(a['invoice_date'] ?? '');
+      }
+    });
+
+    return list;
   }
 
   Color _statusColor(String status) {
@@ -51,6 +104,163 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       default: return isNl ? 'Concept' : 'Draft';
     }
   }
+
+  void _showFilterSheet(bool isNl) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(isNl ? 'Filteren & sorteren' : 'Filter & sort',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+              const SizedBox(height: 16),
+
+              // Status filter
+              Text(isNl ? 'Status' : 'Status',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: BigDoggTheme.lightTextSecondary)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  _filterChip(isNl ? 'Alle' : 'All', _filterStatus == null, () {
+                    setSheetState(() => _filterStatus = null);
+                    setState(() => _filterStatus = null);
+                  }),
+                  _filterChip(isNl ? 'Betaald' : 'Paid', _filterStatus == 'paid', () {
+                    setSheetState(() => _filterStatus = 'paid');
+                    setState(() => _filterStatus = 'paid');
+                  }),
+                  _filterChip(isNl ? 'Verstuurd' : 'Sent', _filterStatus == 'sent', () {
+                    setSheetState(() => _filterStatus = 'sent');
+                    setState(() => _filterStatus = 'sent');
+                  }),
+                  _filterChip(isNl ? 'Verlopen' : 'Overdue', _filterStatus == 'overdue', () {
+                    setSheetState(() => _filterStatus = 'overdue');
+                    setState(() => _filterStatus = 'overdue');
+                  }),
+                  _filterChip(isNl ? 'Concept' : 'Draft', _filterStatus == 'draft', () {
+                    setSheetState(() => _filterStatus = 'draft');
+                    setState(() => _filterStatus = 'draft');
+                  }),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Quarter filter
+              Text(isNl ? 'Kwartaal' : 'Quarter',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: BigDoggTheme.lightTextSecondary)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  _filterChip(isNl ? 'Alle' : 'All', _filterQuarter == null && _filterMonth == null, () {
+                    setSheetState(() { _filterQuarter = null; _filterMonth = null; });
+                    setState(() { _filterQuarter = null; _filterMonth = null; });
+                  }),
+                  ...List.generate(4, (i) => _filterChip('Q${i + 1}', _filterQuarter == i + 1, () {
+                    setSheetState(() { _filterQuarter = i + 1; _filterMonth = null; });
+                    setState(() { _filterQuarter = i + 1; _filterMonth = null; });
+                  })),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Month filter
+              Text(isNl ? 'Maand' : 'Month',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: BigDoggTheme.lightTextSecondary)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: List.generate(12, (i) {
+                  final months = isNl
+                      ? ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec']
+                      : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                  return _filterChip(months[i], _filterMonth == i + 1, () {
+                    setSheetState(() { _filterMonth = i + 1; _filterQuarter = null; });
+                    setState(() { _filterMonth = i + 1; _filterQuarter = null; });
+                  });
+                }),
+              ),
+              const SizedBox(height: 16),
+
+              // Sort
+              Text(isNl ? 'Sorteren' : 'Sort by',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: BigDoggTheme.lightTextSecondary)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  _filterChip(isNl ? 'Datum ↓' : 'Date ↓', _sortBy == 'date_desc', () {
+                    setSheetState(() => _sortBy = 'date_desc');
+                    setState(() => _sortBy = 'date_desc');
+                  }),
+                  _filterChip(isNl ? 'Datum ↑' : 'Date ↑', _sortBy == 'date_asc', () {
+                    setSheetState(() => _sortBy = 'date_asc');
+                    setState(() => _sortBy = 'date_asc');
+                  }),
+                  _filterChip(isNl ? 'Bedrag ↓' : 'Amount ↓', _sortBy == 'amount_desc', () {
+                    setSheetState(() => _sortBy = 'amount_desc');
+                    setState(() => _sortBy = 'amount_desc');
+                  }),
+                  _filterChip(isNl ? 'Bedrag ↑' : 'Amount ↑', _sortBy == 'amount_asc', () {
+                    setSheetState(() => _sortBy = 'amount_asc');
+                    setState(() => _sortBy = 'amount_asc');
+                  }),
+                ],
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _filterStatus = null;
+                      _filterQuarter = null;
+                      _filterMonth = null;
+                      _sortBy = 'date_desc';
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: Text(isNl ? 'Filters wissen' : 'Clear filters',
+                      style: const TextStyle(color: BigDoggTheme.error)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? BigDoggTheme.teal800 : BigDoggTheme.lightBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? BigDoggTheme.teal800 : BigDoggTheme.lightBorder),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : BigDoggTheme.lightTextSecondary)),
+      ),
+    );
+  }
+
+  bool get _hasActiveFilters =>
+      _filterStatus != null || _filterQuarter != null || _filterMonth != null || _sortBy != 'date_desc';
 
   void _showCreateInvoice(bool isNl) async {
     final clientsResult = await ClientsService.getClients();
@@ -225,75 +435,144 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
+    final filtered = _filteredInvoices;
 
     return Stack(
       children: [
-        _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _invoices.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.receipt_long_outlined, size: 64, color: BigDoggTheme.lightTextHint),
-                        const SizedBox(height: 16),
-                        Text(isNl ? 'Nog geen facturen' : 'No invoices yet',
-                            style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
-                        const SizedBox(height: 8),
-                        Text(isNl ? 'Tik + om je eerste factuur aan te maken' : 'Tap + to create your first invoice',
-                            style: const TextStyle(color: BigDoggTheme.lightTextHint)),
-                      ],
+        Column(
+          children: [
+            // Filter bar
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: BigDoggTheme.lightSurface,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${filtered.length} ${isNl ? 'facturen' : 'invoices'}',
+                      style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13),
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _invoices.length,
-                    itemBuilder: (context, index) {
-                      final inv = _invoices[index];
-                      final status = inv['status'] ?? 'draft';
-                      final clientName = inv['clients']?['contact_name'] ?? inv['client_name'] ?? (isNl ? 'Verwijderde klant' : 'Deleted client');
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        decoration: BoxDecoration(
-                          color: BigDoggTheme.lightSurface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: BigDoggTheme.lightBorder),
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          onTap: () => Navigator.push(context,
-                            MaterialPageRoute(builder: (context) => InvoiceDetailScreen(invoiceId: inv['id'])))
-                              .then((_) => _loadInvoices()),
-                          title: Row(
-                            children: [
-                              Text(inv['invoice_number'], style: const TextStyle(fontWeight: FontWeight.w600)),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: _statusColor(status).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  _statusLabel(status, isNl),
-                                  style: TextStyle(fontSize: 11, color: _statusColor(status), fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ],
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(clientName, style: const TextStyle(color: BigDoggTheme.lightTextSecondary)),
-                              Text(inv['invoice_date'] ?? '', style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint)),
-                            ],
-                          ),
-                          trailing: Text('€${inv['total_incl_btw']}',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
-                        ),
-                      );
-                    },
                   ),
+                  GestureDetector(
+                    onTap: () => _showFilterSheet(isNl),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _hasActiveFilters ? BigDoggTheme.teal800 : BigDoggTheme.lightBg,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: _hasActiveFilters ? BigDoggTheme.teal800 : BigDoggTheme.lightBorder,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.tune,
+                              size: 14,
+                              color: _hasActiveFilters ? Colors.white : BigDoggTheme.lightTextSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            isNl ? 'Filter' : 'Filter',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _hasActiveFilters ? Colors.white : BigDoggTheme.lightTextSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : filtered.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.receipt_long_outlined, size: 64, color: BigDoggTheme.lightTextHint),
+                              const SizedBox(height: 16),
+                              Text(
+                                _hasActiveFilters
+                                    ? (isNl ? 'Geen resultaten voor deze filter' : 'No results for this filter')
+                                    : (isNl ? 'Nog geen facturen' : 'No invoices yet'),
+                                style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary),
+                              ),
+                              const SizedBox(height: 8),
+                              if (_hasActiveFilters)
+                                TextButton(
+                                  onPressed: () => setState(() {
+                                    _filterStatus = null;
+                                    _filterQuarter = null;
+                                    _filterMonth = null;
+                                    _sortBy = 'date_desc';
+                                  }),
+                                  child: Text(isNl ? 'Filters wissen' : 'Clear filters'),
+                                )
+                              else
+                                Text(
+                                  isNl ? 'Tik + om je eerste factuur aan te maken' : 'Tap + to create your first invoice',
+                                  style: const TextStyle(color: BigDoggTheme.lightTextHint),
+                                ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final inv = filtered[index];
+                            final status = inv['status'] ?? 'draft';
+                            final clientName = inv['clients']?['contact_name'] ?? inv['client_name'] ?? (isNl ? 'Verwijderde klant' : 'Deleted client');
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: BigDoggTheme.lightSurface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: BigDoggTheme.lightBorder),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                onTap: () => Navigator.push(context,
+                                  MaterialPageRoute(builder: (context) => InvoiceDetailScreen(invoiceId: inv['id'])))
+                                    .then((_) => _loadInvoices()),
+                                title: Row(
+                                  children: [
+                                    Text(inv['invoice_number'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: _statusColor(status).withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        _statusLabel(status, isNl),
+                                        style: TextStyle(fontSize: 11, color: _statusColor(status), fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(clientName, style: const TextStyle(color: BigDoggTheme.lightTextSecondary)),
+                                    Text(inv['invoice_date'] ?? '', style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint)),
+                                  ],
+                                ),
+                                trailing: Text('€${inv['total_incl_btw']}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
         Positioned(
           bottom: 88,
           right: 16,

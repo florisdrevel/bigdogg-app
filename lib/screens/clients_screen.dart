@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/clients_service.dart';
+import '../services/invoices_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
+import 'invoice_detail_screen.dart';
 
 class ClientsScreen extends StatefulWidget {
   const ClientsScreen({super.key});
@@ -28,6 +30,15 @@ class _ClientsScreenState extends State<ClientsScreen> {
       _loading = false;
       if (result['success']) _clients = result['clients'];
     });
+  }
+
+  void _openClientDetail(bool isNl, Map<String, dynamic> client) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ClientDetailScreen(client: client, isNl: isNl),
+      ),
+    ).then((_) => _loadClients());
   }
 
   void _showClientDialog(bool isNl, {Map<String, dynamic>? existing}) {
@@ -230,7 +241,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                         ),
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          onTap: () => _showClientDialog(isNl, existing: client),
+                          onTap: () => _openClientDetail(isNl, client),
                           leading: CircleAvatar(
                             backgroundColor: BigDoggTheme.teal800,
                             child: Text(initial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -282,6 +293,307 @@ class _ClientsScreenState extends State<ClientsScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+
+// ─── Client Detail Screen ─────────────────────────────────────────────────────
+
+class ClientDetailScreen extends StatefulWidget {
+  final Map<String, dynamic> client;
+  final bool isNl;
+
+  const ClientDetailScreen({super.key, required this.client, required this.isNl});
+
+  @override
+  State<ClientDetailScreen> createState() => _ClientDetailScreenState();
+}
+
+class _ClientDetailScreenState extends State<ClientDetailScreen> {
+  List<dynamic> _invoices = [];
+  bool _loading = true;
+  String? _filterStatus;
+  DateTimeRange? _dateRange;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInvoices();
+  }
+
+  Future<void> _loadInvoices() async {
+    setState(() => _loading = true);
+    final result = await InvoicesService.getInvoices();
+    setState(() {
+      _loading = false;
+      if (result['success']) {
+        _invoices = (result['invoices'] as List)
+            .where((inv) => inv['client_id'] == widget.client['id'])
+            .toList();
+      }
+    });
+  }
+
+  List<dynamic> get _filtered {
+    List<dynamic> list = List.from(_invoices);
+    if (_filterStatus != null) {
+      list = list.where((inv) => inv['status'] == _filterStatus).toList();
+    }
+    if (_dateRange != null) {
+      list = list.where((inv) {
+        final dateStr = inv['invoice_date'] as String?;
+        if (dateStr == null) return false;
+        final date = DateTime.tryParse(dateStr);
+        if (date == null) return false;
+        return date.isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
+            date.isBefore(_dateRange!.end.add(const Duration(days: 1)));
+      }).toList();
+    }
+    list.sort((a, b) => (b['invoice_date'] ?? '').compareTo(a['invoice_date'] ?? ''));
+    return list;
+  }
+
+  double get _totalRevenue => _filtered
+      .where((inv) => inv['status'] == 'paid')
+      .fold(0.0, (sum, inv) => sum + (double.tryParse(inv['total_incl_btw'].toString()) ?? 0));
+
+  double get _outstanding => _filtered
+      .where((inv) => inv['status'] == 'sent' || inv['status'] == 'overdue')
+      .fold(0.0, (sum, inv) => sum + (double.tryParse(inv['total_incl_btw'].toString()) ?? 0));
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'paid': return BigDoggTheme.success;
+      case 'sent': return BigDoggTheme.info;
+      case 'overdue': return BigDoggTheme.error;
+      default: return BigDoggTheme.lightTextSecondary;
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'paid': return widget.isNl ? 'Betaald' : 'Paid';
+      case 'sent': return widget.isNl ? 'Verstuurd' : 'Sent';
+      case 'overdue': return widget.isNl ? 'Verlopen' : 'Overdue';
+      default: return widget.isNl ? 'Concept' : 'Draft';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isNl = widget.isNl;
+    final client = widget.client;
+    final name = client['contact_name'] ?? '';
+    final filtered = _filtered;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(name),
+        backgroundColor: BigDoggTheme.teal800,
+        foregroundColor: Colors.white,
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                // Client info header
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  color: BigDoggTheme.teal800,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (client['company_name'] != null && client['company_name'].toString().isNotEmpty)
+                        Text(client['company_name'],
+                            style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                      Text(client['email'] ?? '',
+                          style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _statBox(
+                              isNl ? 'Betaald ontvangen' : 'Total received',
+                              '€${_totalRevenue.toStringAsFixed(2)}',
+                              BigDoggTheme.success,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _statBox(
+                              isNl ? 'Openstaand' : 'Outstanding',
+                              '€${_outstanding.toStringAsFixed(2)}',
+                              BigDoggTheme.warning,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _statBox(
+                              isNl ? 'Facturen' : 'Invoices',
+                              '${filtered.length}',
+                              Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Filter bar
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  color: BigDoggTheme.lightSurface,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _chip(isNl ? 'Alle' : 'All', _filterStatus == null,
+                                  () => setState(() => _filterStatus = null)),
+                              const SizedBox(width: 6),
+                              _chip(isNl ? 'Betaald' : 'Paid', _filterStatus == 'paid',
+                                  () => setState(() => _filterStatus = 'paid')),
+                              const SizedBox(width: 6),
+                              _chip(isNl ? 'Verstuurd' : 'Sent', _filterStatus == 'sent',
+                                  () => setState(() => _filterStatus = 'sent')),
+                              const SizedBox(width: 6),
+                              _chip(isNl ? 'Verlopen' : 'Overdue', _filterStatus == 'overdue',
+                                  () => setState(() => _filterStatus = 'overdue')),
+                            ],
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.date_range,
+                            color: _dateRange != null ? BigDoggTheme.teal800 : BigDoggTheme.lightTextSecondary),
+                        onPressed: () async {
+                          final range = await showDateRangePicker(
+                            context: context,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                            initialDateRange: _dateRange,
+                          );
+                          if (range != null) setState(() => _dateRange = range);
+                        },
+                      ),
+                      if (_dateRange != null)
+                        IconButton(
+                          icon: const Icon(Icons.clear, color: BigDoggTheme.error, size: 18),
+                          onPressed: () => setState(() => _dateRange = null),
+                        ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+
+                // Invoice list
+                Expanded(
+                  child: filtered.isEmpty
+                      ? Center(
+                          child: Text(
+                            isNl ? 'Geen facturen gevonden' : 'No invoices found',
+                            style: const TextStyle(color: BigDoggTheme.lightTextSecondary),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final inv = filtered[index];
+                            final status = inv['status'] ?? 'draft';
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: BigDoggTheme.lightSurface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: BigDoggTheme.lightBorder),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => InvoiceDetailScreen(invoiceId: inv['id']),
+                                  ),
+                                ).then((_) => _loadInvoices()),
+                                title: Row(
+                                  children: [
+                                    Text(inv['invoice_number'],
+                                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: _statusColor(status).withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        _statusLabel(status),
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: _statusColor(status),
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Text(inv['invoice_date'] ?? '',
+                                    style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint)),
+                                trailing: Text('€${inv['total_incl_btw']}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: BigDoggTheme.teal800)),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _statBox(String label, String value, Color valueColor) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+          const SizedBox(height: 2),
+          Text(value,
+              style: TextStyle(color: valueColor, fontWeight: FontWeight.bold, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? BigDoggTheme.teal800 : BigDoggTheme.lightBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? BigDoggTheme.teal800 : BigDoggTheme.lightBorder),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : BigDoggTheme.lightTextSecondary)),
+      ),
     );
   }
 }
