@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import '../services/expenses_service.dart';
@@ -325,6 +326,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   void _showReceiptDialog(String receiptUrl, bool isNl) {
+    final isPdf = receiptUrl.toLowerCase().contains('.pdf') ||
+        receiptUrl.toLowerCase().contains('%2Fpdf');
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -343,7 +346,70 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ),
               ],
             ),
-            Image.network(receiptUrl, fit: BoxFit.contain),
+            if (isPdf)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    const Icon(Icons.picture_as_pdf,
+                        size: 64, color: BigDoggTheme.teal800),
+                    const SizedBox(height: 16),
+                    Text(
+                      isNl ? 'PDF bon' : 'PDF receipt',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: BigDoggTheme.teal800),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final uri = Uri.parse(receiptUrl);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri,
+                              mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      icon: const Icon(Icons.open_in_new),
+                      label: Text(isNl ? 'Openen' : 'Open'),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Image.network(
+                receiptUrl,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.broken_image,
+                          size: 64, color: BigDoggTheme.lightTextHint),
+                      const SizedBox(height: 12),
+                      Text(
+                          isNl
+                              ? 'Kan bon niet laden'
+                              : 'Could not load receipt',
+                          style: const TextStyle(
+                              color: BigDoggTheme.lightTextSecondary)),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final uri = Uri.parse(receiptUrl);
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri,
+                                mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        icon: const Icon(Icons.open_in_new),
+                        label: Text(isNl
+                            ? 'Openen in browser'
+                            : 'Open in browser'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -497,11 +563,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             itemCount: _expenses.length,
                             itemBuilder: (context, index) {
                               final exp = _expenses[index];
-                              final hasReceipt =
-                                  exp['receipt_url'] != null &&
-                                      exp['receipt_url']
-                                          .toString()
-                                          .isNotEmpty;
+                              final hasReceipt = exp['receipt_url'] != null &&
+                                  exp['receipt_url'].toString().isNotEmpty;
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 10),
                                 decoration: BoxDecoration(
