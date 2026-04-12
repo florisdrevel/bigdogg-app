@@ -596,46 +596,36 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ),
           ),
 
-        // FABs — using Text icons as fallback to bypass tree-shaking
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              FloatingActionButton(
-                heroTag: 'camera_fab',
-                onPressed: _parsing
-                    ? null
-                    : () => _pickAndParseReceipt(isNl, camera: true),
-                backgroundColor: BigDoggTheme.teal800,
-                child: const Text('📷',
-                    style: TextStyle(fontSize: 22)),
-              ),
-              const SizedBox(height: 12),
-              FloatingActionButton(
-                heroTag: 'upload_fab',
-                onPressed: _parsing
-                    ? null
-                    : () => _pickAndParseReceipt(isNl, camera: false),
-                backgroundColor: BigDoggTheme.teal800,
-                child: const Text('📁',
-                    style: TextStyle(fontSize: 22)),
-              ),
-              const SizedBox(height: 12),
-              FloatingActionButton(
-                heroTag: 'add_fab',
-                onPressed: () => _showAddExpense(isNl),
-                child: const Text('+',
-                    style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w300,
-                        color: Colors.white)),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
+ // FABs
+Positioned(
+  bottom: 16,
+  right: 16,
+  child: Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      FloatingActionButton(
+        heroTag: 'camera_fab',
+        onPressed: _parsing
+            ? null
+            : () => _pickAndParseReceipt(isNl, camera: true),
+        backgroundColor: BigDoggTheme.teal800,
+        child: const Icon(Icons.camera_alt, color: Colors.white, size: 24),
+      ),
+      const SizedBox(height: 12),
+      FloatingActionButton(
+        heroTag: 'upload_fab',
+        onPressed: _parsing
+            ? null
+            : () => _pickAndParseReceipt(isNl, camera: false),
+        backgroundColor: BigDoggTheme.teal800,
+        child: const Icon(Icons.folder_open, color: Colors.white, size: 24),
+      ),
+      const SizedBox(height: 12),
+      FloatingActionButton(
+        heroTag: 'add_fab',
+        onPressed: () => _showAddExpense(isNl),
+        child: const Icon(Icons.add, color: Colors.white, size: 24),
+      ),
+    ],
+  ),
+),
