@@ -56,7 +56,8 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
 
   Future<void> _downloadBtwReport(bool isNl, {int? quarter, int? year}) async {
     final token = await InvoicesService.getToken();
-    String url = '${ApiConfig.baseUrl}/api/v1/reports/btw/pdf?token=$token';
+    final lang = isNl ? 'nl' : 'en';
+    String url = '${ApiConfig.baseUrl}/api/v1/reports/btw/pdf?token=$token&lang=$lang';
     if (quarter != null && year != null) {
       url += '&quarter=$quarter&year=$year';
     }
@@ -77,7 +78,8 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
 
   Future<void> _downloadAnnualReport(bool isNl, int year) async {
     final token = await InvoicesService.getToken();
-    final url = '${ApiConfig.baseUrl}/api/v1/reports/annual/pdf?token=$token&year=$year';
+    final lang = isNl ? 'nl' : 'en';
+    final url = '${ApiConfig.baseUrl}/api/v1/reports/annual/pdf?token=$token&year=$year&lang=$lang';
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -157,9 +159,9 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
           const SizedBox(height: 16),
           _sectionTitle(isNl ? 'Omzet' : 'Revenue'),
           _overviewCard([
-            _overviewRow(isNl ? 'Omzet ex BTW' : 'Revenue ex BTW', '€${q['revenue_ex_btw']}'),
-            _overviewRow(isNl ? 'BTW ontvangen' : 'BTW received', '€${q['revenue_btw']}'),
-            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl BTW', '€${q['revenue_total']}', bold: true),
+            _overviewRow(isNl ? 'Omzet ex BTW' : 'Revenue ex VAT', '€${q['revenue_ex_btw']}'),
+            _overviewRow(isNl ? 'BTW ontvangen' : 'VAT received', '€${q['revenue_btw']}'),
+            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT', '€${q['revenue_total']}', bold: true),
             const Divider(),
             _overviewRow(isNl ? 'Betaald ontvangen' : 'Received', '€${q['paid_revenue']}', color: BigDoggTheme.success),
             _overviewRow(isNl ? 'Nog openstaand' : 'Outstanding', '€${q['outstanding']}', color: BigDoggTheme.warning),
@@ -167,18 +169,18 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
           const SizedBox(height: 16),
           _sectionTitle(isNl ? 'Kosten' : 'Expenses'),
           _overviewCard([
-            _overviewRow(isNl ? 'Kosten ex BTW' : 'Expenses ex BTW', '€${q['expenses_ex_btw']}'),
-            _overviewRow(isNl ? 'BTW betaald' : 'BTW paid', '€${q['expenses_btw']}'),
-            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl BTW', '€${q['expenses_total']}', bold: true),
+            _overviewRow(isNl ? 'Kosten ex BTW' : 'Expenses ex VAT', '€${q['expenses_ex_btw']}'),
+            _overviewRow(isNl ? 'BTW betaald' : 'VAT paid', '€${q['expenses_btw']}'),
+            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT', '€${q['expenses_total']}', bold: true),
           ]),
           const SizedBox(height: 16),
-          _sectionTitle('BTW'),
+          _sectionTitle('BTW / VAT'),
           _overviewCard([
-            _overviewRow(isNl ? 'BTW ontvangen' : 'BTW received', '€${q['revenue_btw']}'),
-            _overviewRow(isNl ? 'BTW betaald op kosten' : 'BTW paid on expenses', '€${q['expenses_btw']}'),
+            _overviewRow(isNl ? 'BTW ontvangen' : 'VAT received', '€${q['revenue_btw']}'),
+            _overviewRow(isNl ? 'BTW betaald op kosten' : 'VAT paid on expenses', '€${q['expenses_btw']}'),
             const Divider(),
             _overviewRow(
-              isNl ? 'Te betalen BTW' : 'BTW to pay',
+              isNl ? 'Te betalen BTW' : 'VAT to pay',
               '€${q['btw_to_pay']}',
               bold: true,
               large: true,
@@ -303,18 +305,17 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
           const SizedBox(height: 16),
           _sectionTitle(isNl ? 'Totaal $_selectedYear' : 'Total $_selectedYear'),
           _overviewCard([
-            _overviewRow(isNl ? 'Totale omzet ex BTW' : 'Total revenue ex BTW',
+            _overviewRow(isNl ? 'Totale omzet ex BTW' : 'Total revenue ex VAT',
                 '€${a['total_revenue_ex_btw']}', bold: true),
-            _overviewRow(isNl ? 'Totale kosten ex BTW' : 'Total expenses ex BTW',
+            _overviewRow(isNl ? 'Totale kosten ex BTW' : 'Total expenses ex VAT',
                 '€${a['total_expenses_ex_btw']}'),
             const Divider(),
             _overviewRow(isNl ? 'Netto winst (indicatief)' : 'Net profit (indicative)',
                 '€${a['net_profit_indicative']}', bold: true, large: true),
-            _overviewRow(isNl ? 'Totale BTW te betalen' : 'Total BTW to pay',
+            _overviewRow(isNl ? 'Totale BTW te betalen' : 'Total VAT to pay',
                 '€${a['total_btw_to_pay']}', color: BigDoggTheme.error),
           ]),
           const SizedBox(height: 16),
-          // Annual report download button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -400,7 +401,7 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
             children: [
               Expanded(child: _miniStat(isNl ? 'Omzet' : 'Revenue', '€${q['revenue_ex_btw']}')),
               Expanded(child: _miniStat(isNl ? 'Kosten' : 'Expenses', '€${q['expenses_ex_btw']}')),
-              Expanded(child: _miniStat('BTW', '€${q['btw_to_pay']}')),
+              Expanded(child: _miniStat('BTW / VAT', '€${q['btw_to_pay']}')),
             ],
           ),
         ],
