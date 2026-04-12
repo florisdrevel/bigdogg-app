@@ -108,7 +108,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     }
   }
 
-  void _showAddExpense(bool isNl, {
+  void _showAddExpense(
+    bool isNl, {
     Map<String, dynamic>? prefill,
     Uint8List? receiptBytes,
     String? receiptFileName,
@@ -144,10 +145,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.auto_awesome, size: 14, color: BigDoggTheme.success),
+                        const Icon(Icons.auto_awesome,
+                            size: 14, color: BigDoggTheme.success),
                         const SizedBox(width: 6),
                         Text(
-                          isNl ? 'Automatisch ingevuld via bon' : 'Auto-filled from receipt',
+                          isNl
+                              ? 'Automatisch ingevuld via bon'
+                              : 'Auto-filled from receipt',
                           style: const TextStyle(
                               fontSize: 12,
                               color: BigDoggTheme.success,
@@ -165,8 +169,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 TextField(
                   controller: amountController,
                   decoration: InputDecoration(
-                      labelText: isNl ? 'Bedrag ex BTW (€)' : 'Amount ex VAT (€)'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      labelText:
+                          isNl ? 'Bedrag ex BTW (€)' : 'Amount ex VAT (€)'),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
@@ -185,13 +191,27 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   decoration: InputDecoration(
                       labelText: isNl ? 'Categorie' : 'Category'),
                   items: [
-                    DropdownMenuItem(value: 'general', child: Text(isNl ? 'Algemeen' : 'General')),
-                    DropdownMenuItem(value: 'travel', child: Text(isNl ? 'Reizen' : 'Travel')),
-                    DropdownMenuItem(value: 'materials', child: Text(isNl ? 'Materialen' : 'Materials')),
-                    DropdownMenuItem(value: 'software', child: const Text('Software')),
-                    DropdownMenuItem(value: 'food', child: Text(isNl ? 'Eten & Drinken' : 'Food & Drinks')),
-                    DropdownMenuItem(value: 'office', child: Text(isNl ? 'Kantoor' : 'Office')),
-                    DropdownMenuItem(value: 'other', child: Text(isNl ? 'Overig' : 'Other')),
+                    DropdownMenuItem(
+                        value: 'general',
+                        child: Text(isNl ? 'Algemeen' : 'General')),
+                    DropdownMenuItem(
+                        value: 'travel',
+                        child: Text(isNl ? 'Reizen' : 'Travel')),
+                    DropdownMenuItem(
+                        value: 'materials',
+                        child: Text(isNl ? 'Materialen' : 'Materials')),
+                    DropdownMenuItem(
+                        value: 'software', child: const Text('Software')),
+                    DropdownMenuItem(
+                        value: 'food',
+                        child:
+                            Text(isNl ? 'Eten & Drinken' : 'Food & Drinks')),
+                    DropdownMenuItem(
+                        value: 'office',
+                        child: Text(isNl ? 'Kantoor' : 'Office')),
+                    DropdownMenuItem(
+                        value: 'other',
+                        child: Text(isNl ? 'Overig' : 'Other')),
                   ],
                   onChanged: (val) => setDialogState(() => category = val!),
                 ),
@@ -241,7 +261,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         ),
                       ] else
                         Text(
-                          isNl ? 'Geen bon bijgevoegd' : 'No receipt attached',
+                          isNl
+                              ? 'Geen bon bijgevoegd'
+                              : 'No receipt attached',
                           style: const TextStyle(
                               fontSize: 12,
                               color: BigDoggTheme.lightTextHint),
@@ -327,24 +349,37 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   IconData _categoryIcon(String category) {
     switch (category) {
-      case 'travel': return Icons.directions_car;
-      case 'materials': return Icons.build;
-      case 'software': return Icons.computer;
-      case 'food': return Icons.restaurant;
-      case 'office': return Icons.business;
-      default: return Icons.receipt;
+      case 'travel':
+        return Icons.directions_car;
+      case 'materials':
+        return Icons.build;
+      case 'software':
+        return Icons.computer;
+      case 'food':
+        return Icons.restaurant;
+      case 'office':
+        return Icons.business;
+      default:
+        return Icons.receipt;
     }
   }
 
   String _categoryLabel(String category, bool isNl) {
     switch (category) {
-      case 'travel': return isNl ? 'Reizen' : 'Travel';
-      case 'materials': return isNl ? 'Materialen' : 'Materials';
-      case 'software': return 'Software';
-      case 'food': return isNl ? 'Eten & Drinken' : 'Food & Drinks';
-      case 'office': return isNl ? 'Kantoor' : 'Office';
-      case 'other': return isNl ? 'Overig' : 'Other';
-      default: return isNl ? 'Algemeen' : 'General';
+      case 'travel':
+        return isNl ? 'Reizen' : 'Travel';
+      case 'materials':
+        return isNl ? 'Materialen' : 'Materials';
+      case 'software':
+        return 'Software';
+      case 'food':
+        return isNl ? 'Eten & Drinken' : 'Food & Drinks';
+      case 'office':
+        return isNl ? 'Kantoor' : 'Office';
+      case 'other':
+        return isNl ? 'Overig' : 'Other';
+      default:
+        return isNl ? 'Algemeen' : 'General';
     }
   }
 
@@ -377,7 +412,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                    isNl ? 'Totaal ex BTW' : 'Total ex VAT',
+                                    isNl
+                                        ? 'Totaal ex BTW'
+                                        : 'Total ex VAT',
                                     style: const TextStyle(
                                         color: Colors.white70, fontSize: 12)),
                                 Text(
@@ -596,36 +633,42 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ),
           ),
 
- // FABs
-Positioned(
-  bottom: 16,
-  right: 16,
-  child: Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      FloatingActionButton(
-        heroTag: 'camera_fab',
-        onPressed: _parsing
-            ? null
-            : () => _pickAndParseReceipt(isNl, camera: true),
-        backgroundColor: BigDoggTheme.teal800,
-        child: const Icon(Icons.camera_alt, color: Colors.white, size: 24),
-      ),
-      const SizedBox(height: 12),
-      FloatingActionButton(
-        heroTag: 'upload_fab',
-        onPressed: _parsing
-            ? null
-            : () => _pickAndParseReceipt(isNl, camera: false),
-        backgroundColor: BigDoggTheme.teal800,
-        child: const Icon(Icons.folder_open, color: Colors.white, size: 24),
-      ),
-      const SizedBox(height: 12),
-      FloatingActionButton(
-        heroTag: 'add_fab',
-        onPressed: () => _showAddExpense(isNl),
-        child: const Icon(Icons.add, color: Colors.white, size: 24),
-      ),
-    ],
-  ),
-),
+        // FABs
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton(
+                heroTag: 'camera_fab',
+                onPressed: _parsing
+                    ? null
+                    : () => _pickAndParseReceipt(isNl, camera: true),
+                backgroundColor: BigDoggTheme.teal800,
+                child: const Icon(Icons.camera_alt,
+                    color: Colors.white, size: 24),
+              ),
+              const SizedBox(height: 12),
+              FloatingActionButton(
+                heroTag: 'upload_fab',
+                onPressed: _parsing
+                    ? null
+                    : () => _pickAndParseReceipt(isNl, camera: false),
+                backgroundColor: BigDoggTheme.teal800,
+                child: const Icon(Icons.folder_open,
+                    color: Colors.white, size: 24),
+              ),
+              const SizedBox(height: 12),
+              FloatingActionButton(
+                heroTag: 'add_fab',
+                onPressed: () => _showAddExpense(isNl),
+                child: const Icon(Icons.add, color: Colors.white, size: 24),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
