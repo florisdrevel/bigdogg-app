@@ -50546,7 +50546,7 @@ k.a=k.b=null
 o=new A.ah($.an,t.W)
 n=A.b3c("file")
 if(b){n.accept="image/*"
-n.setAttribute("capture","environment")}else n.accept="image/*,application/pdf,.pdf,.heic,.heif"
+n.setAttribute("capture","environment")}else n.accept="image/*,application/pdf,.pdf,.heic,.heif,*/*"
 n.click()
 A.aUJ(n,"change",new A.ayl(k,n,new A.b5(o,t.h)),!1,t.rE.c)
 s=3

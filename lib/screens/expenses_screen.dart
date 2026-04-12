@@ -53,7 +53,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         input.accept = 'image/*';
         input.setAttribute('capture', 'environment');
       } else {
-        input.accept = 'image/*,application/pdf,.pdf,.heic,.heif';
+        input.accept = 'image/*,application/pdf,.pdf,.heic,.heif,*/*';
       }
       input.click();
       input.onChange.listen((event) async {
@@ -116,7 +116,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     Uint8List? receiptBytes,
     String? receiptFileName,
   }) {
-    final descController = TextEditingController(text: prefill?['description'] ?? '');
+    final descController =
+        TextEditingController(text: prefill?['description'] ?? '');
     final amountController = TextEditingController(
       text: prefill?['amount_ex_btw'] != null
           ? (prefill!['amount_ex_btw'] as num).toStringAsFixed(2)
@@ -206,8 +207,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         value: 'software', child: const Text('Software')),
                     DropdownMenuItem(
                         value: 'food',
-                        child: Text(
-                            isNl ? 'Eten & Drinken' : 'Food & Drinks')),
+                        child:
+                            Text(isNl ? 'Eten & Drinken' : 'Food & Drinks')),
                     DropdownMenuItem(
                         value: 'office',
                         child: Text(isNl ? 'Kantoor' : 'Office')),
@@ -215,8 +216,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         value: 'other',
                         child: Text(isNl ? 'Overig' : 'Other')),
                   ],
-                  onChanged: (val) =>
-                      setDialogState(() => category = val!),
+                  onChanged: (val) => setDialogState(() => category = val!),
                 ),
                 const SizedBox(height: 16),
                 Container(
@@ -352,24 +352,37 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   IconData _categoryIcon(String category) {
     switch (category) {
-      case 'travel': return Icons.directions_car;
-      case 'materials': return Icons.build;
-      case 'software': return Icons.computer;
-      case 'food': return Icons.restaurant;
-      case 'office': return Icons.business;
-      default: return Icons.receipt;
+      case 'travel':
+        return Icons.directions_car;
+      case 'materials':
+        return Icons.build;
+      case 'software':
+        return Icons.computer;
+      case 'food':
+        return Icons.restaurant;
+      case 'office':
+        return Icons.business;
+      default:
+        return Icons.receipt;
     }
   }
 
   String _categoryLabel(String category, bool isNl) {
     switch (category) {
-      case 'travel': return isNl ? 'Reizen' : 'Travel';
-      case 'materials': return isNl ? 'Materialen' : 'Materials';
-      case 'software': return 'Software';
-      case 'food': return isNl ? 'Eten & Drinken' : 'Food & Drinks';
-      case 'office': return isNl ? 'Kantoor' : 'Office';
-      case 'other': return isNl ? 'Overig' : 'Other';
-      default: return isNl ? 'Algemeen' : 'General';
+      case 'travel':
+        return isNl ? 'Reizen' : 'Travel';
+      case 'materials':
+        return isNl ? 'Materialen' : 'Materials';
+      case 'software':
+        return 'Software';
+      case 'food':
+        return isNl ? 'Eten & Drinken' : 'Food & Drinks';
+      case 'office':
+        return isNl ? 'Kantoor' : 'Office';
+      case 'other':
+        return isNl ? 'Overig' : 'Other';
+      default:
+        return isNl ? 'Algemeen' : 'General';
     }
   }
 
@@ -433,7 +446,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                    isNl ? 'Totaal incl BTW' : 'Total incl VAT',
+                                    isNl
+                                        ? 'Totaal incl BTW'
+                                        : 'Total incl VAT',
                                     style: const TextStyle(
                                         color: Colors.white70, fontSize: 12)),
                                 Text(
@@ -459,10 +474,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     color: BigDoggTheme.lightTextHint),
                                 const SizedBox(height: 16),
                                 Text(
-                                    isNl ? 'Nog geen kosten' : 'No expenses yet',
+                                    isNl
+                                        ? 'Nog geen kosten'
+                                        : 'No expenses yet',
                                     style: const TextStyle(
                                         fontSize: 18,
-                                        color: BigDoggTheme.lightTextSecondary)),
+                                        color:
+                                            BigDoggTheme.lightTextSecondary)),
                                 const SizedBox(height: 8),
                                 Text(
                                     isNl
