@@ -49,9 +49,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     if (kIsWeb) {
       final completer = Completer<void>();
       final input = html.FileUploadInputElement();
-      input.accept = 'image/*';
       if (camera) {
+        input.accept = 'image/*';
         input.setAttribute('capture', 'environment');
+      } else {
+        input.accept = 'image/*,application/pdf,.pdf,.heic,.heif';
       }
       input.click();
       input.onChange.listen((event) async {
@@ -204,8 +206,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         value: 'software', child: const Text('Software')),
                     DropdownMenuItem(
                         value: 'food',
-                        child:
-                            Text(isNl ? 'Eten & Drinken' : 'Food & Drinks')),
+                        child: Text(
+                            isNl ? 'Eten & Drinken' : 'Food & Drinks')),
                     DropdownMenuItem(
                         value: 'office',
                         child: Text(isNl ? 'Kantoor' : 'Office')),
@@ -213,7 +215,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         value: 'other',
                         child: Text(isNl ? 'Overig' : 'Other')),
                   ],
-                  onChanged: (val) => setDialogState(() => category = val!),
+                  onChanged: (val) =>
+                      setDialogState(() => category = val!),
                 ),
                 const SizedBox(height: 16),
                 Container(
@@ -349,37 +352,24 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   IconData _categoryIcon(String category) {
     switch (category) {
-      case 'travel':
-        return Icons.directions_car;
-      case 'materials':
-        return Icons.build;
-      case 'software':
-        return Icons.computer;
-      case 'food':
-        return Icons.restaurant;
-      case 'office':
-        return Icons.business;
-      default:
-        return Icons.receipt;
+      case 'travel': return Icons.directions_car;
+      case 'materials': return Icons.build;
+      case 'software': return Icons.computer;
+      case 'food': return Icons.restaurant;
+      case 'office': return Icons.business;
+      default: return Icons.receipt;
     }
   }
 
   String _categoryLabel(String category, bool isNl) {
     switch (category) {
-      case 'travel':
-        return isNl ? 'Reizen' : 'Travel';
-      case 'materials':
-        return isNl ? 'Materialen' : 'Materials';
-      case 'software':
-        return 'Software';
-      case 'food':
-        return isNl ? 'Eten & Drinken' : 'Food & Drinks';
-      case 'office':
-        return isNl ? 'Kantoor' : 'Office';
-      case 'other':
-        return isNl ? 'Overig' : 'Other';
-      default:
-        return isNl ? 'Algemeen' : 'General';
+      case 'travel': return isNl ? 'Reizen' : 'Travel';
+      case 'materials': return isNl ? 'Materialen' : 'Materials';
+      case 'software': return 'Software';
+      case 'food': return isNl ? 'Eten & Drinken' : 'Food & Drinks';
+      case 'office': return isNl ? 'Kantoor' : 'Office';
+      case 'other': return isNl ? 'Overig' : 'Other';
+      default: return isNl ? 'Algemeen' : 'General';
     }
   }
 
@@ -412,13 +402,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                    isNl
-                                        ? 'Totaal ex BTW'
-                                        : 'Total ex VAT',
+                                    isNl ? 'Totaal ex BTW' : 'Total ex VAT',
                                     style: const TextStyle(
                                         color: Colors.white70, fontSize: 12)),
-                                Text(
-                                    '€${totalExBtw.toStringAsFixed(2)}',
+                                Text('€${totalExBtw.toStringAsFixed(2)}',
                                     style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -433,8 +420,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 const Text('BTW / VAT',
                                     style: TextStyle(
                                         color: Colors.white70, fontSize: 12)),
-                                Text(
-                                    '€${totalBtw.toStringAsFixed(2)}',
+                                Text('€${totalBtw.toStringAsFixed(2)}',
                                     style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -447,9 +433,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                    isNl
-                                        ? 'Totaal incl BTW'
-                                        : 'Total incl VAT',
+                                    isNl ? 'Totaal incl BTW' : 'Total incl VAT',
                                     style: const TextStyle(
                                         color: Colors.white70, fontSize: 12)),
                                 Text(
@@ -475,13 +459,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     color: BigDoggTheme.lightTextHint),
                                 const SizedBox(height: 16),
                                 Text(
-                                    isNl
-                                        ? 'Nog geen kosten'
-                                        : 'No expenses yet',
+                                    isNl ? 'Nog geen kosten' : 'No expenses yet',
                                     style: const TextStyle(
                                         fontSize: 18,
-                                        color:
-                                            BigDoggTheme.lightTextSecondary)),
+                                        color: BigDoggTheme.lightTextSecondary)),
                                 const SizedBox(height: 8),
                                 Text(
                                     isNl
@@ -512,9 +493,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                       color: BigDoggTheme.lightBorder),
                                 ),
                                 child: ListTile(
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 8),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
                                   leading: CircleAvatar(
                                     backgroundColor: BigDoggTheme.teal100,
                                     child: Icon(
@@ -526,8 +506,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   title: Text(exp['description'],
                                       style: const TextStyle(
                                           fontWeight: FontWeight.w600,
-                                          color: BigDoggTheme
-                                              .lightTextPrimary)),
+                                          color:
+                                              BigDoggTheme.lightTextPrimary)),
                                   subtitle: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -548,8 +528,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                             children: [
                                               const Icon(Icons.attach_file,
                                                   size: 12,
-                                                  color:
-                                                      BigDoggTheme.teal700),
+                                                  color: BigDoggTheme.teal700),
                                               const SizedBox(width: 2),
                                               Text(
                                                 isNl
@@ -557,8 +536,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                                     : 'View receipt',
                                                 style: const TextStyle(
                                                     fontSize: 11,
-                                                    color:
-                                                        BigDoggTheme.teal700,
+                                                    color: BigDoggTheme.teal700,
                                                     fontWeight:
                                                         FontWeight.w500),
                                               ),
@@ -579,10 +557,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                           Text('€${exp['amount_ex_btw']}',
                                               style: const TextStyle(
                                                   fontWeight: FontWeight.bold,
-                                                  color:
-                                                      BigDoggTheme.teal800)),
-                                          Text(
-                                              '+ €${exp['btw_amount']} BTW',
+                                                  color: BigDoggTheme.teal800)),
+                                          Text('+ €${exp['btw_amount']} BTW',
                                               style: const TextStyle(
                                                   fontSize: 11,
                                                   color: BigDoggTheme
@@ -624,8 +600,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     const SizedBox(height: 16),
                     Text(
                       isNl ? 'Bon analyseren...' : 'Analysing receipt...',
-                      style:
-                          const TextStyle(fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),

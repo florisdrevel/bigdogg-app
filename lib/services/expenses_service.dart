@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 
@@ -64,33 +65,46 @@ class ExpensesService {
       return {'success': false, 'message': 'Connection error'};
     }
   }
+
   static Future<Map<String, dynamic>> parseReceipt({
-  required Uint8List fileBytes,
-  required String fileName,
-}) async {
-  final token = await _getToken();
-  try {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('$baseUrl/api/v1/expenses/parse-receipt'),
-    );
-    request.headers['Authorization'] = 'Bearer $token';
-    request.files.add(http.MultipartFile.fromBytes(
-      'file',
-      fileBytes,
-      filename: fileName,
-    ));
-    final response = await request.send();
-    final body = await response.stream.bytesToString();
-    final data = jsonDecode(body);
-    if (response.statusCode == 200) {
-      return {'success': true, ...data};
+    required Uint8List fileBytes,
+    required String fileName,
+  }) async {
+    final token = await _getToken();
+    try {
+      final uri = Uri.parse('$baseUrl/api/v1/expenses/parse-receipt');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+
+      String contentType = 'image/jpeg';
+      final ext = fileName.toLowerCase().split('.').last;
+      if (ext == 'png') contentType = 'image/png';
+      if (ext == 'gif') contentType = 'image/gif';
+      if (ext == 'webp') contentType = 'image/webp';
+      if (ext == 'pdf') contentType = 'application/pdf';
+      if (ext == 'heic' || ext == 'heif') contentType = 'image/heic';
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          fileBytes,
+          filename: fileName,
+          contentType: MediaType.parse(contentType),
+        ),
+      );
+
+      final response = await request.send();
+      final body = await response.stream.bytesToString();
+      final data = jsonDecode(body);
+      if (response.statusCode == 200) {
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': data['detail'] ?? 'Parse failed'};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error: $e'};
     }
-    return {'success': false, 'message': data['detail']};
-  } catch (e) {
-    return {'success': false, 'message': 'Connection error'};
   }
-}
+
   static Future<Map<String, dynamic>> uploadReceipt(
     String expenseId,
     Uint8List imageBytes,
