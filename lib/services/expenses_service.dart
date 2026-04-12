@@ -64,7 +64,33 @@ class ExpensesService {
       return {'success': false, 'message': 'Connection error'};
     }
   }
-
+  static Future<Map<String, dynamic>> parseReceipt({
+  required Uint8List fileBytes,
+  required String fileName,
+}) async {
+  final token = await _getToken();
+  try {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/api/v1/expenses/parse-receipt'),
+    );
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(http.MultipartFile.fromBytes(
+      'file',
+      fileBytes,
+      filename: fileName,
+    ));
+    final response = await request.send();
+    final body = await response.stream.bytesToString();
+    final data = jsonDecode(body);
+    if (response.statusCode == 200) {
+      return {'success': true, ...data};
+    }
+    return {'success': false, 'message': data['detail']};
+  } catch (e) {
+    return {'success': false, 'message': 'Connection error'};
+  }
+}
   static Future<Map<String, dynamic>> uploadReceipt(
     String expenseId,
     Uint8List imageBytes,

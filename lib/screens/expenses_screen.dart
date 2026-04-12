@@ -16,6 +16,7 @@ class ExpensesScreen extends StatefulWidget {
 class _ExpensesScreenState extends State<ExpensesScreen> {
   List<dynamic> _expenses = [];
   bool _loading = true;
+  bool _parsing = false;
 
   @override
   void initState() {
@@ -37,13 +38,53 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     _loadExpenses();
   }
 
-  void _showAddExpense(bool isNl) {
-    final descController = TextEditingController();
-    final amountController = TextEditingController();
-    int btwRate = 21;
-    String category = 'general';
-    Uint8List? receiptBytes;
-    String? receiptFileName;
+  Future<void> _pickAndParseReceipt(bool isNl, ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 80);
+    if (picked == null) return;
+
+    final bytes = await picked.readAsBytes();
+    setState(() => _parsing = true);
+
+    final parsed = await ExpensesService.parseReceipt(
+      fileBytes: bytes,
+      fileName: picked.name,
+    );
+
+    setState(() => _parsing = false);
+
+    if (!mounted) return;
+
+    if (parsed['success']) {
+      _showAddExpense(
+        isNl,
+        prefill: parsed,
+        receiptBytes: bytes,
+        receiptFileName: picked.name,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isNl ? 'Kon bon niet lezen' : 'Could not read receipt'),
+          backgroundColor: BigDoggTheme.error,
+        ),
+      );
+    }
+  }
+
+  void _showAddExpense(bool isNl, {
+    Map<String, dynamic>? prefill,
+    Uint8List? receiptBytes,
+    String? receiptFileName,
+  }) {
+    final descController = TextEditingController(text: prefill?['description'] ?? '');
+    final amountController = TextEditingController(
+      text: prefill?['amount_ex_btw'] != null ? prefill!['amount_ex_btw'].toStringAsFixed(2) : '',
+    );
+    int btwRate = prefill?['btw_rate'] ?? 21;
+    String category = prefill?['category'] ?? 'general';
+    Uint8List? currentReceiptBytes = receiptBytes;
+    String? currentReceiptFileName = receiptFileName;
     bool uploading = false;
 
     showDialog(
@@ -55,6 +96,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (prefill != null)
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: BigDoggTheme.successBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.auto_awesome, size: 14, color: BigDoggTheme.success),
+                        const SizedBox(width: 6),
+                        Text(
+                          isNl ? 'Automatisch ingevuld via bon' : 'Auto-filled from receipt',
+                          style: const TextStyle(fontSize: 12, color: BigDoggTheme.success, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
                 TextField(
                   controller: descController,
                   decoration: InputDecoration(labelText: isNl ? 'Omschrijving' : 'Description'),
@@ -62,7 +122,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: amountController,
-                  decoration: InputDecoration(labelText: isNl ? 'Bedrag ex BTW (€)' : 'Amount ex BTW (€)'),
+                  decoration: InputDecoration(labelText: isNl ? 'Bedrag ex BTW (€)' : 'Amount ex VAT (€)'),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
                 const SizedBox(height: 12),
@@ -92,8 +152,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   onChanged: (val) => setDialogState(() => category = val!),
                 ),
                 const SizedBox(height: 16),
-
-                // Receipt section
+                // Receipt preview
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
@@ -106,68 +165,28 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isNl ? 'Bon (optioneel)' : 'Receipt (optional)',
+                        isNl ? 'Bon' : 'Receipt',
                         style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 8),
-                      if (receiptBytes != null) ...[
+                      if (currentReceiptBytes != null) ...[
                         ClipRRect(
                           borderRadius: BorderRadius.circular(6),
-                          child: Image.memory(receiptBytes!, height: 120, width: double.infinity, fit: BoxFit.cover),
+                          child: Image.memory(currentReceiptBytes!, height: 120, width: double.infinity, fit: BoxFit.cover),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         TextButton.icon(
-                          onPressed: () => setDialogState(() { receiptBytes = null; receiptFileName = null; }),
+                          onPressed: () => setDialogState(() {
+                            currentReceiptBytes = null;
+                            currentReceiptFileName = null;
+                          }),
                           icon: const Icon(Icons.close, size: 14, color: BigDoggTheme.error),
                           label: Text(isNl ? 'Verwijderen' : 'Remove',
                               style: const TextStyle(color: BigDoggTheme.error, fontSize: 12)),
                         ),
                       ] else
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () async {
-                                  final picker = ImagePicker();
-                                  final picked = await picker.pickImage(
-                                    source: ImageSource.camera,
-                                    imageQuality: 80,
-                                  );
-                                  if (picked != null) {
-                                    final bytes = await picked.readAsBytes();
-                                    setDialogState(() {
-                                      receiptBytes = bytes;
-                                      receiptFileName = picked.name;
-                                    });
-                                  }
-                                },
-                                icon: const Icon(Icons.camera_alt_outlined, size: 16),
-                                label: Text(isNl ? 'Camera' : 'Camera', style: const TextStyle(fontSize: 12)),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () async {
-                                  final picker = ImagePicker();
-                                  final picked = await picker.pickImage(
-                                    source: ImageSource.gallery,
-                                    imageQuality: 80,
-                                  );
-                                  if (picked != null) {
-                                    final bytes = await picked.readAsBytes();
-                                    setDialogState(() {
-                                      receiptBytes = bytes;
-                                      receiptFileName = picked.name;
-                                    });
-                                  }
-                                },
-                                icon: const Icon(Icons.upload_outlined, size: 16),
-                                label: Text(isNl ? 'Uploaden' : 'Upload', style: const TextStyle(fontSize: 12)),
-                              ),
-                            ),
-                          ],
-                        ),
+                        Text(isNl ? 'Geen bon bijgevoegd' : 'No receipt attached',
+                            style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint)),
                     ],
                   ),
                 ),
@@ -190,14 +209,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   amountExBtw: double.parse(amountController.text),
                   btwRate: btwRate,
                   category: category,
+                  expenseDate: prefill?['expense_date'],
                 );
 
-                if (result['success'] && receiptBytes != null) {
-                  final expenseId = result['expense']['id'];
+                if (result['success'] && currentReceiptBytes != null) {
                   await ExpensesService.uploadReceipt(
-                    expenseId,
-                    receiptBytes!,
-                    receiptFileName ?? 'receipt.jpg',
+                    result['expense']['id'],
+                    currentReceiptBytes!,
+                    currentReceiptFileName ?? 'receipt.jpg',
                   );
                 }
 
@@ -408,12 +427,70 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                 ],
               ),
+
+        // Parsing overlay
+        if (_parsing)
+          Container(
+            color: Colors.black45,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text(
+                      isNl ? 'Bon analyseren...' : 'Analysing receipt...',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+        // FABs
         Positioned(
           bottom: 16,
           right: 16,
-          child: FloatingActionButton(
-            onPressed: () => _showAddExpense(isNl),
-            child: const Icon(Icons.add),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton(
+                heroTag: 'camera_fab',
+                mini: true,
+                onPressed: _parsing ? null : () => _pickAndParseReceipt(
+                  context.read<AppProvider>().language == 'nl',
+                  ImageSource.camera,
+                ),
+                backgroundColor: BigDoggTheme.teal800,
+                child: const Icon(Icons.camera_alt_outlined, color: Colors.white, size: 20),
+              ),
+              const SizedBox(height: 8),
+              FloatingActionButton(
+                heroTag: 'upload_fab',
+                mini: true,
+                onPressed: _parsing ? null : () => _pickAndParseReceipt(
+                  context.read<AppProvider>().language == 'nl',
+                  ImageSource.gallery,
+                ),
+                backgroundColor: BigDoggTheme.teal800,
+                child: const Icon(Icons.upload_outlined, color: Colors.white, size: 20),
+              ),
+              const SizedBox(height: 8),
+              FloatingActionButton(
+                heroTag: 'add_fab',
+                onPressed: () => _showAddExpense(
+                  context.read<AppProvider>().language == 'nl',
+                ),
+                child: const Icon(Icons.add),
+              ),
+            ],
           ),
         ),
       ],
