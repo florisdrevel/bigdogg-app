@@ -14,6 +14,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
   bool _loading = false;
   bool _obscurePassword = true;
   bool _isNl = true;
@@ -21,6 +23,15 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _resetMessage;
 
   String t(String nl, String en) => _isNl ? nl : en;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
     setState(() { _loading = true; _error = null; _resetMessage = null; });
@@ -59,8 +70,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
           Positioned(
@@ -71,16 +84,16 @@ class _LoginScreenState extends State<LoginScreen> {
             width: double.infinity,
             height: double.infinity,
             child: SingleChildScrollView(
+              padding: EdgeInsets.only(bottom: bottomInset),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight: MediaQuery.of(context).size.height,
+                  minHeight: MediaQuery.of(context).size.height - bottomInset,
                 ),
                 child: IntrinsicHeight(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Spacer(),
-                      // Language toggle
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Row(
@@ -172,23 +185,30 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 TextField(
                                   controller: _emailController,
+                                  focusNode: _emailFocus,
                                   autofillHints: const [AutofillHints.email],
                                   decoration: InputDecoration(labelText: t('E-mailadres', 'Email address')),
                                   keyboardType: TextInputType.emailAddress,
                                   textInputAction: TextInputAction.next,
+                                  onSubmitted: (_) {
+                                    FocusScope.of(context).requestFocus(_passwordFocus);
+                                  },
                                 ),
                                 const SizedBox(height: 14),
                                 TextField(
                                   controller: _passwordController,
+                                  focusNode: _passwordFocus,
                                   autofillHints: const [AutofillHints.password],
                                   decoration: InputDecoration(
                                     labelText: t('Wachtwoord', 'Password'),
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                                        color: BigDoggTheme.lightTextSecondary,
+                                    suffixIcon: ExcludeFocus(
+                                      child: IconButton(
+                                        icon: Icon(
+                                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                          color: BigDoggTheme.lightTextSecondary,
+                                        ),
+                                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                                       ),
-                                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                                     ),
                                   ),
                                   obscureText: _obscurePassword,
