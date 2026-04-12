@@ -4,11 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 import '../services/expenses_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -50,7 +50,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       final completer = Completer<void>();
       final input = html.FileUploadInputElement();
       input.accept = 'image/*';
-      if (camera) input.capture = 'environment';
       input.click();
       input.onChange.listen((event) async {
         final file = input.files?.first;
@@ -506,8 +505,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                       ),
                                       const SizedBox(width: 4),
                                       IconButton(
-                                        icon: const Icon(Icons.delete,
-                                            color: BigDoggTheme.error),
+                                        icon: const Icon(Icons.delete, color: BigDoggTheme.error),
                                         onPressed: () => _deleteExpense(exp['id']),
                                       ),
                                     ],
