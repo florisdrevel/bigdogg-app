@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/services.dart';
 import 'api_config.dart';
 
 class ClientsService {
@@ -133,7 +132,7 @@ class ClientsService {
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
-        await Clipboard.setData(ClipboardData(text: data['invite_url']));
+        // No clipboard here — handled in UI on user tap
         return {'success': true, 'invite_url': data['invite_url']};
       }
       return {'success': false, 'message': data['detail']};

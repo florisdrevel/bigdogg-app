@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/clients_service.dart';
 import '../services/invoices_service.dart';
@@ -163,40 +164,60 @@ class _ClientsScreenState extends State<ClientsScreen> {
   Future<void> _showInviteLink(bool isNl) async {
     final result = await ClientsService.createInvite();
     if (result['success'] && mounted) {
-      final inviteUrl = result['invite_url'];
+      final inviteUrl = result['invite_url'] as String;
+      bool copied = false;
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text(isNl ? 'Uitnodigingslink' : 'Invite Link'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                isNl ? 'Stuur deze link naar je klant:' : 'Send this link to your client:',
-                style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: BigDoggTheme.lightBg,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: BigDoggTheme.lightBorder),
+        builder: (context) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(isNl ? 'Uitnodigingslink' : 'Invite Link'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isNl ? 'Stuur deze link naar je klant:' : 'Send this link to your client:',
+                  style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 14),
                 ),
-                child: SelectableText(
-                  inviteUrl,
-                  style: const TextStyle(fontSize: 12, color: BigDoggTheme.teal800, fontWeight: FontWeight.w500),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: BigDoggTheme.lightBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: BigDoggTheme.lightBorder),
+                  ),
+                  child: SelectableText(
+                    inviteUrl,
+                    style: const TextStyle(fontSize: 12, color: BigDoggTheme.teal800, fontWeight: FontWeight.w500),
+                  ),
                 ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await Clipboard.setData(ClipboardData(text: inviteUrl));
+                      setDialogState(() => copied = true);
+                    },
+                    icon: Icon(copied ? Icons.check : Icons.copy, size: 16),
+                    label: Text(copied
+                        ? (isNl ? 'Gekopieerd!' : 'Copied!')
+                        : (isNl ? 'Kopieer link' : 'Copy link')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: copied ? BigDoggTheme.success : BigDoggTheme.teal800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(isNl ? 'Sluiten' : 'Close'),
               ),
             ],
           ),
-          actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(isNl ? 'Sluiten' : 'Close'),
-            ),
-          ],
         ),
       );
     }
@@ -397,7 +418,6 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Client info header
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -441,8 +461,6 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                     ],
                   ),
                 ),
-
-                // Filter bar
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   color: BigDoggTheme.lightSurface,
@@ -490,8 +508,6 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                   ),
                 ),
                 const Divider(height: 1),
-
-                // Invoice list
                 Expanded(
                   child: filtered.isEmpty
                       ? Center(
