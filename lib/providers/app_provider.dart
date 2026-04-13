@@ -4,10 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AppProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   String _language = 'en';
+  bool _projectsEnabled = false;
 
   ThemeMode get themeMode => _themeMode;
   String get language => _language;
   bool get isDark => _themeMode == ThemeMode.dark;
+  bool get projectsEnabled => _projectsEnabled;
 
   AppProvider() {
     _loadPreferences();
@@ -17,8 +19,10 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final theme = prefs.getString('theme') ?? 'light';
     final lang = prefs.getString('language') ?? 'en';
+    final projects = prefs.getBool('projects_enabled') ?? false;
     _themeMode = theme == 'dark' ? ThemeMode.dark : ThemeMode.light;
     _language = lang;
+    _projectsEnabled = projects;
     notifyListeners();
   }
 
@@ -33,6 +37,13 @@ class AppProvider extends ChangeNotifier {
     _language = lang;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('language', lang);
+    notifyListeners();
+  }
+
+  Future<void> setProjectsEnabled(bool enabled) async {
+    _projectsEnabled = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('projects_enabled', enabled);
     notifyListeners();
   }
 }

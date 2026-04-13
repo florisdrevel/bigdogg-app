@@ -6,6 +6,11 @@ import 'api_config.dart';
 class AuthService {
   static const String baseUrl = ApiConfig.baseUrl;
 
+  static Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('access_token');
+  }
+
   static Future<Map<String, dynamic>> register(
     String email,
     String password,
@@ -91,6 +96,49 @@ class AuthService {
         return {'success': true};
       }
       return {'success': false, 'message': data['detail'] ?? 'Error sending reset email'};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error. Please try again.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> changePassword(String newPassword) async {
+    try {
+      final token = await _getToken();
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/auth/change-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'new_password': newPassword}),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true};
+      }
+      return {'success': false, 'message': data['detail'] ?? 'Failed to change password'};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error. Please try again.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteAccount() async {
+    try {
+      final token = await _getToken();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/v1/auth/delete-account'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+        return {'success': true};
+      }
+      return {'success': false, 'message': data['detail'] ?? 'Failed to delete account'};
     } catch (e) {
       return {'success': false, 'message': 'Connection error. Please try again.'};
     }
