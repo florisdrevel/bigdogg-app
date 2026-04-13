@@ -76,6 +76,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     }
   }
 
+  // Manual fallback — generate payment link if somehow missing
   Future<void> _generatePaymentLink(bool isNl) async {
     setState(() => _generatingLink = true);
     final result = await PaymentsService.createPaymentLink(widget.invoiceId);
@@ -83,52 +84,29 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
 
     if (result['success']) {
       await _loadInvoice();
-      if (mounted) _showQrDialog(isNl, result['payment_link']);
     } else {
       if (mounted) {
-        final msg = result['message'] ?? '';
-        if (msg.contains('No Stripe account') || msg.contains('not fully set up')) {
-          _showStripeNotConnectedDialog(isNl);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(msg),
-            backgroundColor: BigDoggTheme.error,
-          ));
-        }
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(result['message'] ?? 'Error'),
+          backgroundColor: BigDoggTheme.error,
+        ));
       }
     }
-  }
-
-  void _showStripeNotConnectedDialog(bool isNl) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isNl ? 'Stripe niet gekoppeld' : 'Stripe not connected'),
-        content: Text(isNl
-            ? 'Koppel eerst je Stripe account via Instellingen om betalingslinks te genereren.'
-            : 'Connect your Stripe account first via Settings to generate payment links.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(isNl ? 'Sluiten' : 'Close'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _showQrDialog(bool isNl, String paymentUrl) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                isNl ? 'Betaallink & QR Code' : 'Payment Link & QR Code',
+                isNl ? 'QR Code — Directe betaling' : 'QR Code — Instant payment',
                 style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -137,10 +115,11 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
               const SizedBox(height: 8),
               Text(
                 isNl
-                    ? 'Laat de klant de QR code scannen voor directe betaling.'
-                    : 'Let the client scan the QR code for instant payment.',
+                    ? 'Laat de klant de QR code scannen voor directe betaling via iDEAL of creditcard.'
+                    : 'Let the client scan the QR code for instant payment via iDEAL or credit card.',
                 style: const TextStyle(
-                    fontSize: 13, color: BigDoggTheme.lightTextSecondary),
+                    fontSize: 13,
+                    color: BigDoggTheme.lightTextSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -158,7 +137,6 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Copy link
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -178,14 +156,13 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.copy, size: 18,
-                          color: BigDoggTheme.teal700),
+                      icon: const Icon(Icons.copy,
+                          size: 18, color: BigDoggTheme.teal700),
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: paymentUrl));
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(isNl
-                              ? 'Link gekopieerd'
-                              : 'Link copied'),
+                          content: Text(
+                              isNl ? 'Link gekopieerd' : 'Link copied'),
                           backgroundColor: BigDoggTheme.success,
                           behavior: SnackBarBehavior.floating,
                           duration: const Duration(seconds: 2),
@@ -239,61 +216,51 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
             Text(isNl
                 ? 'Verstuur factuur ${_invoice!['invoice_number']} naar $clientEmail?'
                 : 'Send invoice ${_invoice!['invoice_number']} to $clientEmail?'),
-            if (paymentLink != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: BigDoggTheme.successBg,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.link,
-                        size: 16, color: BigDoggTheme.success),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        isNl
-                            ? 'Betaallink wordt toegevoegd aan de e-mail.'
-                            : 'Payment link will be included in the email.',
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: BigDoggTheme.success),
-                      ),
-                    ),
-                  ],
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: paymentLink != null
+                    ? BigDoggTheme.successBg
+                    : BigDoggTheme.lightBg,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: paymentLink != null
+                      ? BigDoggTheme.success.withOpacity(0.3)
+                      : BigDoggTheme.lightBorder,
                 ),
               ),
-            ] else ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: BigDoggTheme.lightBg,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: BigDoggTheme.lightBorder),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline,
-                        size: 16,
-                        color: BigDoggTheme.lightTextSecondary),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        isNl
-                            ? 'Geen betaallink. Genereer er eerst een voor directe betaling.'
-                            : 'No payment link. Generate one first for instant payment.',
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: BigDoggTheme.lightTextSecondary),
-                      ),
+              child: Row(
+                children: [
+                  Icon(
+                    paymentLink != null
+                        ? Icons.link
+                        : Icons.link_off,
+                    size: 16,
+                    color: paymentLink != null
+                        ? BigDoggTheme.success
+                        : BigDoggTheme.lightTextSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      paymentLink != null
+                          ? (isNl
+                              ? 'Betaallink automatisch bijgevoegd.'
+                              : 'Payment link automatically included.')
+                          : (isNl
+                              ? 'Geen betaallink — Stripe niet gekoppeld.'
+                              : 'No payment link — Stripe not connected.'),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: paymentLink != null
+                              ? BigDoggTheme.success
+                              : BigDoggTheme.lightTextSecondary),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ],
         ),
         actions: [
@@ -362,6 +329,13 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
             style: const TextStyle(color: Colors.white)),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          // QR button in app bar if payment link exists and not paid
+          if (paymentLink != null && !isPaid)
+            IconButton(
+              icon: const Icon(Icons.qr_code, color: Colors.white),
+              onPressed: () => _showQrDialog(isNl, paymentLink),
+              tooltip: isNl ? 'QR Code' : 'QR Code',
+            ),
           Container(
             margin: const EdgeInsets.only(right: 8),
             padding: const EdgeInsets.symmetric(
@@ -465,28 +439,24 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                           isNl ? 'Omschrijving' : 'Description',
                           style: const TextStyle(
                               fontSize: 12,
-                              color:
-                                  BigDoggTheme.lightTextSecondary))),
+                              color: BigDoggTheme.lightTextSecondary))),
                   Expanded(
                       child: Text(isNl ? 'Aantal' : 'Qty',
                           style: const TextStyle(
                               fontSize: 12,
-                              color:
-                                  BigDoggTheme.lightTextSecondary),
+                              color: BigDoggTheme.lightTextSecondary),
                           textAlign: TextAlign.right)),
                   Expanded(
                       child: Text(isNl ? 'Prijs' : 'Price',
                           style: const TextStyle(
                               fontSize: 12,
-                              color:
-                                  BigDoggTheme.lightTextSecondary),
+                              color: BigDoggTheme.lightTextSecondary),
                           textAlign: TextAlign.right)),
                   Expanded(
                       child: Text(isNl ? 'Totaal' : 'Total',
                           style: const TextStyle(
                               fontSize: 12,
-                              color:
-                                  BigDoggTheme.lightTextSecondary),
+                              color: BigDoggTheme.lightTextSecondary),
                           textAlign: TextAlign.right)),
                 ],
               ),
@@ -503,13 +473,12 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                               children: [
                                 Text(line['description'],
                                     style: const TextStyle(
-                                        fontWeight:
-                                            FontWeight.w500)),
+                                        fontWeight: FontWeight.w500)),
                                 Text('${line['btw_rate']}% BTW',
                                     style: const TextStyle(
                                         fontSize: 11,
-                                        color: BigDoggTheme
-                                            .lightTextHint)),
+                                        color:
+                                            BigDoggTheme.lightTextHint)),
                               ],
                             )),
                         Expanded(
@@ -530,8 +499,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                                 '€${line['line_total_ex_btw']}',
                                 textAlign: TextAlign.right,
                                 style: const TextStyle(
-                                    fontWeight:
-                                        FontWeight.w600))),
+                                    fontWeight: FontWeight.w600))),
                       ],
                     ),
                   )),
@@ -549,10 +517,10 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
             ]),
             const SizedBox(height: 12),
 
-            // Payment link card — show if exists or not paid
+            // Payment link status card — shown when not paid
             if (!isPaid) ...[
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: BigDoggTheme.lightSurface,
                   borderRadius: BorderRadius.circular(12),
@@ -562,118 +530,64 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                         : BigDoggTheme.lightBorder,
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          paymentLink != null
-                              ? Icons.qr_code
-                              : Icons.qr_code_outlined,
+                    Icon(
+                      paymentLink != null
+                          ? Icons.check_circle
+                          : Icons.info_outline,
+                      color: paymentLink != null
+                          ? BigDoggTheme.success
+                          : BigDoggTheme.lightTextSecondary,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        paymentLink != null
+                            ? (isNl
+                                ? 'Betaallink actief — automatisch bijgevoegd aan e-mail.'
+                                : 'Payment link active — automatically included in email.')
+                            : (isNl
+                                ? 'Geen betaallink — koppel Stripe via Instellingen.'
+                                : 'No payment link — connect Stripe via Settings.'),
+                        style: TextStyle(
+                          fontSize: 13,
                           color: paymentLink != null
                               ? BigDoggTheme.success
-                              : BigDoggTheme.teal800,
-                          size: 20,
+                              : BigDoggTheme.lightTextSecondary,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isNl ? 'Betaallink & QR Code' : 'Payment Link & QR Code',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: BigDoggTheme.teal800),
-                        ),
-                        if (paymentLink != null) ...[
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: BigDoggTheme.successBg,
-                              borderRadius:
-                                  BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              isNl ? 'Actief' : 'Active',
-                              style: const TextStyle(
-                                  color: BigDoggTheme.success,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      paymentLink != null
-                          ? (isNl
-                              ? 'Betaallink is gegenereerd. Toon QR code voor directe betaling ter plekke, of stuur de factuur per e-mail.'
-                              : 'Payment link generated. Show QR code for instant on-site payment, or send invoice by email.')
-                          : (isNl
-                              ? 'Genereer een betaallink zodat de klant direct kan betalen via iDEAL of creditcard.'
-                              : 'Generate a payment link so the client can pay instantly via iDEAL or credit card.'),
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: BigDoggTheme.lightTextSecondary),
-                    ),
-                    const SizedBox(height: 12),
+                    // Manual fallback generate button if no link
+                    if (paymentLink == null)
+                      _generatingLink
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2))
+                          : TextButton(
+                              onPressed: () =>
+                                  _generatePaymentLink(isNl),
+                              child: Text(
+                                  isNl ? 'Genereer' : 'Generate',
+                                  style: const TextStyle(
+                                      color: BigDoggTheme.teal800,
+                                      fontSize: 12)),
+                            ),
+                    // QR button if link exists
                     if (paymentLink != null)
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () =>
-                              _showQrDialog(isNl, paymentLink),
-                          icon: const Icon(Icons.qr_code,
-                              color: Colors.white),
-                          label: Text(
-                              isNl
-                                  ? 'Toon QR Code'
-                                  : 'Show QR Code',
-                              style: const TextStyle(
-                                  color: Colors.white)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: BigDoggTheme.success,
-                            shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(10)),
-                          ),
-                        ),
-                      )
-                    else
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _generatingLink
-                              ? null
-                              : () => _generatePaymentLink(isNl),
-                          icon: _generatingLink
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white))
-                              : const Icon(Icons.qr_code_outlined,
-                                  color: Colors.white),
-                          label: Text(
-                              _generatingLink
-                                  ? (isNl
-                                      ? 'Genereren...'
-                                      : 'Generating...')
-                                  : (isNl
-                                      ? 'Genereer betaallink & QR'
-                                      : 'Generate payment link & QR'),
-                              style: const TextStyle(
-                                  color: Colors.white)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: BigDoggTheme.teal800,
-                            shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(10)),
-                          ),
-                        ),
+                      TextButton.icon(
+                        onPressed: () =>
+                            _showQrDialog(isNl, paymentLink),
+                        icon: const Icon(Icons.qr_code,
+                            size: 16, color: BigDoggTheme.teal800),
+                        label: Text(
+                            isNl ? 'QR Code' : 'QR Code',
+                            style: const TextStyle(
+                                color: BigDoggTheme.teal800,
+                                fontSize: 12)),
                       ),
                   ],
                 ),
@@ -759,9 +673,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: _actionButton(
-                    isNl
-                        ? 'Concept verwijderen'
-                        : 'Delete Draft',
+                    isNl ? 'Concept verwijderen' : 'Delete Draft',
                     BigDoggTheme.lightTextSecondary,
                     Icons.delete_outline,
                     () async {
@@ -778,9 +690,8 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                             TextButton(
                               onPressed: () =>
                                   Navigator.pop(context, false),
-                              child: Text(isNl
-                                  ? 'Annuleren'
-                                  : 'Cancel'),
+                              child: Text(
+                                  isNl ? 'Annuleren' : 'Cancel'),
                             ),
                             ElevatedButton(
                               onPressed: () =>
@@ -788,9 +699,8 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                               style: ElevatedButton.styleFrom(
                                   backgroundColor:
                                       BigDoggTheme.error),
-                              child: Text(isNl
-                                  ? 'Verwijderen'
-                                  : 'Delete'),
+                              child: Text(
+                                  isNl ? 'Verwijderen' : 'Delete'),
                             ),
                           ],
                         ),
@@ -864,8 +774,8 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         onPressed: onTap,
         icon: Icon(icon, color: Colors.white),
         label: Text(label,
-            style:
-                const TextStyle(color: Colors.white, fontSize: 15)),
+            style: const TextStyle(
+                color: Colors.white, fontSize: 15)),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           shape: RoundedRectangleBorder(
