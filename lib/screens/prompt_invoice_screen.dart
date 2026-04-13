@@ -1,6 +1,10 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:speech_to_text/speech_to_text.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+import 'dart:js' as js;
 import '../services/ai_service.dart';
 import '../services/invoices_service.dart';
 import '../providers/app_provider.dart';
@@ -15,62 +19,90 @@ class PromptInvoiceScreen extends StatefulWidget {
 
 class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
   final _promptController = TextEditingController();
-  final SpeechToText _speech = SpeechToText();
   Map<String, dynamic>? _parsed;
   bool _loading = false;
   bool _creating = false;
   bool _listening = false;
-  bool _speechAvailable = false;
   String? _error;
+  dynamic _recognition;
+
+  void _startListening(bool isNl) {
+    try {
+      final speechRecognition = js.context['SpeechRecognition'] ??
+          js.context['webkitSpeechRecognition'];
+
+      if (speechRecognition == null) {
+        setState(() => _error = isNl
+            ? 'Spraakherkenning niet beschikbaar in deze browser'
+            : 'Speech recognition not available in this browser');
+        return;
+      }
+
+      _recognition = js.JsObject(speechRecognition);
+      _recognition['lang'] = isNl ? 'nl-NL' : 'en-US';
+      _recognition['continuous'] = false;
+      _recognition['interimResults'] = false;
+      _recognition['maxAlternatives'] = 1;
+
+      _recognition['onresult'] = js.allowInterop((event) {
+        final results = event['results'];
+        if (results != null && results['length'] > 0) {
+          final transcript = results[0][0]['transcript'] as String;
+          setState(() {
+            _promptController.text = transcript;
+            _listening = false;
+          });
+        }
+      });
+
+      _recognition['onerror'] = js.allowInterop((event) {
+        setState(() {
+          _listening = false;
+          _error = isNl
+              ? 'Fout bij spraakherkenning'
+              : 'Speech recognition error';
+        });
+      });
+
+      _recognition['onend'] = js.allowInterop((event) {
+        setState(() => _listening = false);
+      });
+
+      _recognition.callMethod('start');
+      setState(() {
+        _listening = true;
+        _error = null;
+      });
+    } catch (e) {
+      setState(() {
+        _listening = false;
+        _error = isNl
+            ? 'Spraakherkenning niet beschikbaar'
+            : 'Speech recognition not available';
+      });
+    }
+  }
+
+  void _stopListening() {
+    try {
+      _recognition?.callMethod('stop');
+    } catch (_) {}
+    setState(() => _listening = false);
+  }
+
+  void _toggleListening(bool isNl) {
+    if (_listening) {
+      _stopListening();
+    } else {
+      _startListening(isNl);
+    }
+  }
 
   @override
-  void initState() {
-    super.initState();
-    _initSpeech();
-  }
-
-  Future<void> _initSpeech() async {
-    final available = await _speech.initialize(
-      onError: (error) => setState(() => _listening = false),
-      onStatus: (status) {
-        if (status == 'done' || status == 'notListening') {
-          setState(() => _listening = false);
-        }
-      },
-    );
-    setState(() => _speechAvailable = available);
-  }
-
-  Future<void> _toggleListening(bool isNl) async {
-    if (_listening) {
-      await _speech.stop();
-      setState(() => _listening = false);
-      return;
-    }
-
-    if (!_speechAvailable) {
-      setState(() => _error = isNl
-          ? 'Spraakherkenning niet beschikbaar in deze browser'
-          : 'Speech recognition not available in this browser');
-      return;
-    }
-
-    setState(() {
-      _listening = true;
-      _error = null;
-    });
-
-    await _speech.listen(
-      onResult: (result) {
-        setState(() {
-          _promptController.text = result.recognizedWords;
-          if (result.finalResult) _listening = false;
-        });
-      },
-      localeId: isNl ? 'nl_NL' : 'en_US',
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 3),
-    );
+  void dispose() {
+    _stopListening();
+    _promptController.dispose();
+    super.dispose();
   }
 
   Future<void> _parse(bool isNl) async {
@@ -108,7 +140,8 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
     if (result['success'] && mounted) {
       Navigator.pop(context, true);
     } else {
-      setState(() => _error = result['message'] ?? (isNl ? 'Aanmaken mislukt' : 'Failed to create'));
+      setState(() => _error = result['message'] ??
+          (isNl ? 'Aanmaken mislukt' : 'Failed to create'));
     }
   }
 
@@ -152,7 +185,8 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                         ? 'bijv. "5 dagen gewerkt voor ToraTora en een reiskostenvergoeding"'
                         : 'e.g. "5 days work for ToraTora plus travel expenses"',
                     style: const TextStyle(
-                        fontSize: 13, color: BigDoggTheme.lightTextSecondary),
+                        fontSize: 13,
+                        color: BigDoggTheme.lightTextSecondary),
                   ),
                   const SizedBox(height: 12),
                   Stack(
@@ -163,8 +197,29 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                         decoration: InputDecoration(
                           hintText: _listening
                               ? (isNl ? 'Luisteren...' : 'Listening...')
-                              : (isNl ? 'Typ of spreek je omschrijving...' : 'Type or speak your description...'),
-                          contentPadding: const EdgeInsets.fromLTRB(12, 12, 48, 12),
+                              : (isNl
+                                  ? 'Typ of spreek je omschrijving...'
+                                  : 'Type or speak your description...'),
+                          contentPadding:
+                              const EdgeInsets.fromLTRB(12, 12, 48, 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: _listening
+                                  ? BigDoggTheme.error
+                                  : BigDoggTheme.lightBorder,
+                              width: _listening ? 2 : 1,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: _listening
+                                  ? BigDoggTheme.error
+                                  : BigDoggTheme.lightBorder,
+                              width: _listening ? 2 : 1,
+                            ),
+                          ),
                         ),
                       ),
                       Positioned(
@@ -172,11 +227,15 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                         top: 4,
                         child: IconButton(
                           icon: Icon(
-                            _listening ? Icons.mic : Icons.mic_none_outlined,
-                            color: _listening ? BigDoggTheme.error : BigDoggTheme.teal800,
+                            _listening ? Icons.mic : Icons.mic_none,
+                            color: _listening
+                                ? BigDoggTheme.error
+                                : BigDoggTheme.teal800,
                           ),
                           onPressed: () => _toggleListening(isNl),
-                          tooltip: isNl ? 'Spreek je factuur in' : 'Speak your invoice',
+                          tooltip: isNl
+                              ? 'Spreek je factuur in'
+                              : 'Speak your invoice',
                         ),
                       ),
                     ],
@@ -188,12 +247,16 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                         const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: BigDoggTheme.error),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: BigDoggTheme.error),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          isNl ? 'Aan het luisteren... tik opnieuw om te stoppen' : 'Listening... tap again to stop',
-                          style: const TextStyle(fontSize: 12, color: BigDoggTheme.error),
+                          isNl
+                              ? 'Aan het luisteren... tik opnieuw om te stoppen'
+                              : 'Listening... tap again to stop',
+                          style: const TextStyle(
+                              fontSize: 12, color: BigDoggTheme.error),
                         ),
                       ],
                     ),
@@ -203,7 +266,7 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: _loading ? null : () => _parse(isNl),
-                      icon: const Icon(Icons.smart_toy_outlined),
+                      icon: const Icon(Icons.smart_toy),
                       label: Text(isNl ? 'Genereer' : 'Generate'),
                     ),
                   ),
@@ -218,7 +281,8 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                   color: BigDoggTheme.errorBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(_error!, style: const TextStyle(color: BigDoggTheme.error)),
+                child: Text(_error!,
+                    style: const TextStyle(color: BigDoggTheme.error)),
               ),
             if (_loading)
               const Padding(
@@ -239,10 +303,13 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.check_circle, color: BigDoggTheme.success),
+                        const Icon(Icons.check_circle,
+                            color: BigDoggTheme.success),
                         const SizedBox(width: 8),
                         Text(
-                          isNl ? 'AI heeft je factuur verwerkt' : 'AI parsed your invoice',
+                          isNl
+                              ? 'AI heeft je factuur verwerkt'
+                              : 'AI parsed your invoice',
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -250,7 +317,8 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: BigDoggTheme.teal100,
                             borderRadius: BorderRadius.circular(6),
@@ -275,32 +343,36 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     ...(_parsed!['lines'] as List).map((line) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(line['description'],
-                                    style: const TextStyle(fontWeight: FontWeight.w500)),
-                                Text(
-                                  '${line['quantity']}x €${line['unit_price_ex_btw']} (${line['btw_rate']}% BTW)',
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      color: BigDoggTheme.lightTextSecondary),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(line['description'],
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w500)),
+                                    Text(
+                                      '${line['quantity']}x €${line['unit_price_ex_btw']} (${line['btw_rate']}% BTW)',
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color:
+                                              BigDoggTheme.lightTextSecondary),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+                              Text(
+                                '€${((line['quantity'] as num) * (line['unit_price_ex_btw'] as num)).toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
                           ),
-                          Text(
-                            '€${((line['quantity'] as num) * (line['unit_price_ex_btw'] as num)).toStringAsFixed(2)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    )),
-                    if (_parsed!['notes'] != null && _parsed!['notes'].toString().isNotEmpty) ...[
+                        )),
+                    if (_parsed!['notes'] != null &&
+                        _parsed!['notes'].toString().isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Text(
                         '${isNl ? 'Opmerking' : 'Note'}: ${_parsed!['notes']}',
@@ -315,12 +387,20 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: _creating ? null : () => _createInvoice(isNl),
-                        style: ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.success),
+                        onPressed:
+                            _creating ? null : () => _createInvoice(isNl),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: BigDoggTheme.success),
                         child: _creating
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : Text(isNl ? 'Factuur aanmaken' : 'Create Invoice',
-                                style: const TextStyle(fontSize: 16, color: Colors.white)),
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : Text(
+                                isNl ? 'Factuur aanmaken' : 'Create Invoice',
+                                style: const TextStyle(
+                                    fontSize: 16, color: Colors.white)),
                       ),
                     ),
                   ],
