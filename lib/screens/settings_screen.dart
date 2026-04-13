@@ -6,6 +6,8 @@ import '../services/subscription_service.dart';
 import '../services/auth_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../services/payments_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -18,6 +20,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, dynamic>? _subscription;
   bool _loading = true;
   bool _checkingOut = false;
+  Map<String, dynamic>? _stripeStatus;
+  bool _loadingStripe = false;
+  bool _connectingStripe = false;
 
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -31,6 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadStatus();
+    _loadStripeStatus();
   }
 
   @override
@@ -48,7 +54,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (result['success']) _subscription = result['subscription'];
     });
   }
+Future<void> _loadStripeStatus() async {
+  setState(() => _loadingStripe = true);
+  final result = await PaymentsService.getConnectStatus();
+  setState(() {
+    _loadingStripe = false;
+    if (result['success']) _stripeStatus = result;
+  });
+}
 
+Future<void> _connectStripe(bool isNl) async {
+  setState(() => _connectingStripe = true);
+  final result = await PaymentsService.createConnectLink();
+  setState(() => _connectingStripe = false);
+  if (result['success']) {
+    final url = Uri.parse(result['url']);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  } else {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result['message'] ?? 'Error'),
+        backgroundColor: BigDoggTheme.error,
+      ));
+    }
+  }
+}
   Future<void> _startCheckout() async {
     setState(() => _checkingOut = true);
     final result = await SubscriptionService.createCheckout();
@@ -326,7 +358,118 @@ For questions about these terms: info@bigdogg.nl''';
           const SizedBox(height: 8),
           _buildPlanCard(isNl),
           const SizedBox(height: 24),
-
+          const SizedBox(height: 24),
+_sectionHeader(isNl ? 'Betalingen' : 'Payments'),
+const SizedBox(height: 8),
+Container(
+  decoration: BoxDecoration(
+    color: BigDoggTheme.lightSurface,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(color: BigDoggTheme.lightBorder),
+  ),
+  padding: const EdgeInsets.all(16),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        isNl ? 'Stripe betaalaccount' : 'Stripe payment account',
+        style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+            color: BigDoggTheme.teal800),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        isNl
+            ? 'Koppel je Stripe account om betaallinks en QR codes te genereren op je facturen.'
+            : 'Connect your Stripe account to generate payment links and QR codes on your invoices.',
+        style: const TextStyle(
+            fontSize: 13,
+            color: BigDoggTheme.lightTextSecondary),
+      ),
+      const SizedBox(height: 12),
+      if (_loadingStripe)
+        const Center(child: CircularProgressIndicator())
+      else if (_stripeStatus?['connected'] == true &&
+          _stripeStatus?['enabled'] == true)
+        Row(
+          children: [
+            const Icon(Icons.check_circle,
+                color: BigDoggTheme.success, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              isNl
+                  ? 'Stripe account gekoppeld en actief'
+                  : 'Stripe account connected and active',
+              style: const TextStyle(
+                  color: BigDoggTheme.success,
+                  fontWeight: FontWeight.w600),
+            ),
+          ],
+        )
+      else if (_stripeStatus?['connected'] == true &&
+          _stripeStatus?['enabled'] == false)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.warning_amber,
+                    color: BigDoggTheme.warning, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isNl
+                        ? 'Account gekoppeld maar onboarding nog niet voltooid.'
+                        : 'Account connected but onboarding not complete.',
+                    style: const TextStyle(
+                        color: BigDoggTheme.warning,
+                        fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _connectingStripe
+                    ? null
+                    : () => _connectStripe(isNl),
+                child: Text(isNl
+                    ? 'Onboarding afronden'
+                    : 'Complete onboarding'),
+              ),
+            ),
+          ],
+        )
+      else
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _connectingStripe
+                ? null
+                : () => _connectStripe(isNl),
+            icon: _connectingStripe
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.link, color: Colors.white),
+            label: Text(
+                isNl
+                    ? 'Koppel Stripe account'
+                    : 'Connect Stripe account',
+                style: const TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: BigDoggTheme.teal800,
+            ),
+          ),
+        ),
+    ],
+  ),
+),
           // ── Security ──────────────────────────────────────────────
           _sectionHeader(isNl ? 'Beveiliging' : 'Security'),
           const SizedBox(height: 8),
