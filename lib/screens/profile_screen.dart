@@ -87,12 +87,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  Future<void> _pickFiles(bool isNl) async {
+  Future<void> _pickFiles(bool isNl, {bool camera = false}) async {
     if (kIsWeb) {
       final completer = Completer<void>();
       final input = html.FileUploadInputElement();
-      input.accept =
-          'application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.webp,.heic';
+      if (camera) {
+        input.accept = 'image/*';
+        input.setAttribute('capture', 'environment');
+      } else {
+        input.accept =
+            'application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.webp,.heic';
+      }
       input.multiple = true;
       input.click();
       input.onChange.listen((event) async {
@@ -279,20 +284,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-  isNl
-      ? 'Upload PDF facturen of screenshots van je vorige boekhoudprogramma. Ze worden toegevoegd aan je jaaroverzicht. Gebruik bij voorkeur een desktop browser voor het importeren.'
-      : 'Upload PDF invoices or screenshots from your previous accounting tool. They will be added to your annual overview. We recommend using a desktop browser for importing.',
-  style: const TextStyle(
-      fontSize: 13, color: BigDoggTheme.lightTextSecondary),
-),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _importing ? null : () => _pickFiles(isNl),
-                  icon: const Icon(Icons.upload_file),
-                  label: Text(isNl
-                      ? 'PDFs of afbeeldingen selecteren'
-                      : 'Select PDFs or images'),
+                  isNl
+                      ? 'Upload PDF facturen of screenshots van je vorige boekhoudprogramma. Ze worden toegevoegd aan je jaaroverzicht.'
+                      : 'Upload PDF invoices or screenshots from your previous accounting tool. They will be added to your annual overview.',
+                  style: const TextStyle(
+                      fontSize: 13, color: BigDoggTheme.lightTextSecondary),
                 ),
+                const SizedBox(height: 12),
+
+                // Two buttons — camera and files
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _importing
+                            ? null
+                            : () => _pickFiles(isNl, camera: true),
+                        icon: const Icon(Icons.camera_alt, size: 18),
+                        label: Text(isNl ? 'Camera' : 'Camera',
+                            style: const TextStyle(fontSize: 13)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _importing
+                            ? null
+                            : () => _pickFiles(isNl, camera: false),
+                        icon: const Icon(Icons.folder_open, size: 18),
+                        label: Text(isNl ? 'Bestanden' : 'Files',
+                            style: const TextStyle(fontSize: 13)),
+                      ),
+                    ),
+                  ],
+                ),
+
                 if (_importFileNames.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Container(
@@ -318,16 +344,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: Row(
                                 children: [
                                   const Icon(Icons.insert_drive_file,
-                                      size: 14,
-                                      color: BigDoggTheme.teal700),
+                                      size: 14, color: BigDoggTheme.teal700),
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
                                       name,
                                       style: const TextStyle(
                                           fontSize: 12,
-                                          color: BigDoggTheme
-                                              .lightTextSecondary),
+                                          color:
+                                              BigDoggTheme.lightTextSecondary),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -356,6 +381,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ],
+
                 if (_importResult != null) ...[
                   const SizedBox(height: 12),
                   Container(
@@ -391,14 +417,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 8),
                         ...(_importResult!['imported'] as List)
                             .map((inv) => Padding(
-                                  padding:
-                                      const EdgeInsets.only(bottom: 2),
+                                  padding: const EdgeInsets.only(bottom: 2),
                                   child: Text(
                                     '• ${inv['client_name']} — €${inv['total']} (${inv['date']})',
                                     style: const TextStyle(
                                         fontSize: 12,
-                                        color: BigDoggTheme
-                                            .lightTextSecondary),
+                                        color:
+                                            BigDoggTheme.lightTextSecondary),
                                   ),
                                 )),
                       ],
