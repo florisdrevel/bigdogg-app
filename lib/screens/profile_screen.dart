@@ -279,13 +279,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isNl
-                      ? 'Upload PDF facturen of screenshots van je vorige boekhoudprogramma. Ze worden toegevoegd aan je jaaroverzicht.'
-                      : 'Upload PDF invoices or screenshots from your previous accounting tool. They will be added to your annual overview.',
-                  style: const TextStyle(
-                      fontSize: 13,
-                      color: BigDoggTheme.lightTextSecondary),
-                ),
+  isNl
+      ? 'Upload PDF facturen of screenshots van je vorige boekhoudprogramma. Ze worden toegevoegd aan je jaaroverzicht. Gebruik bij voorkeur een desktop browser voor het importeren.'
+      : 'Upload PDF invoices or screenshots from your previous accounting tool. They will be added to your annual overview. We recommend using a desktop browser for importing.',
+  style: const TextStyle(
+      fontSize: 13, color: BigDoggTheme.lightTextSecondary),
+),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _importing ? null : () => _pickFiles(isNl),

@@ -79,7 +79,11 @@ class InvoicesService {
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
-        return {'success': true, 'invoice': data['invoice'], 'lines': data['lines']};
+        return {
+          'success': true,
+          'invoice': data['invoice'],
+          'lines': data['lines']
+        };
       }
       return {'success': false, 'message': data['detail']};
     } catch (e) {
@@ -125,38 +129,65 @@ class InvoicesService {
       return {'success': false, 'message': 'Connection error'};
     }
   }
-static Future<Map<String, dynamic>> importInvoices({
-  required List<Uint8List> filesBytes,
-  required List<String> fileNames,
-}) async {
-  final token = await getToken();
-  try {
-    final uri = Uri.parse('$baseUrl/api/v1/invoices/import-invoices');
-    final request = http.MultipartRequest('POST', uri);
-    request.headers['Authorization'] = 'Bearer $token';
 
-    for (int i = 0; i < filesBytes.length; i++) {
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'files',
-          filesBytes[i],
-          filename: fileNames[i],
-          contentType: MediaType.parse('application/pdf'),
-        ),
-      );
-    }
+  static Future<Map<String, dynamic>> importInvoices({
+    required List<Uint8List> filesBytes,
+    required List<String> fileNames,
+  }) async {
+    final token = await getToken();
+    try {
+      final uri = Uri.parse('$baseUrl/api/v1/invoices/import-invoices');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $token';
 
-    final response = await request.send();
-    final body = await response.stream.bytesToString();
-    final data = jsonDecode(body);
-    if (response.statusCode == 200) {
-      return {'success': true, ...data};
+      for (int i = 0; i < filesBytes.length; i++) {
+        final fileName = fileNames[i];
+        final ext = fileName.toLowerCase().split('.').last;
+
+        String contentType;
+        switch (ext) {
+          case 'pdf':
+            contentType = 'application/pdf';
+            break;
+          case 'png':
+            contentType = 'image/png';
+            break;
+          case 'jpg':
+          case 'jpeg':
+            contentType = 'image/jpeg';
+            break;
+          case 'webp':
+            contentType = 'image/webp';
+            break;
+          case 'heic':
+          case 'heif':
+            contentType = 'image/heic';
+            break;
+          default:
+            contentType = 'image/jpeg';
+        }
+
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'files',
+            filesBytes[i],
+            filename: fileName,
+            contentType: MediaType.parse(contentType),
+          ),
+        );
+      }
+
+      final response = await request.send();
+      final body = await response.stream.bytesToString();
+      final data = jsonDecode(body);
+      if (response.statusCode == 200) {
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': data['detail'] ?? 'Import failed'};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error: $e'};
     }
-    return {'success': false, 'message': data['detail'] ?? 'Import failed'};
-  } catch (e) {
-    return {'success': false, 'message': 'Connection error: $e'};
   }
-}
 
   static Future<Map<String, dynamic>> sendReminder(String invoiceId) async {
     final token = await _getToken();

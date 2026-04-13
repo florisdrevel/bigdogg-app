@@ -31431,54 +31431,66 @@ case 7:case 1:return A.r(q,r)
 case 2:return A.q(o.at(-1),r)}})
 return A.t($async$QX,r)},
 Dd(a,b){return A.b2o(a,b)},
-b2o(b0,b1){var s=0,r=A.u(t.P),q,p=2,o=[],n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5,a6,a7,a8,a9
-var $async$Dd=A.p(function(b2,b3){if(b2===1){o.push(b3)
+b2o(b2,b3){var s=0,r=A.u(t.P),q,p=2,o=[],n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,b0,b1
+var $async$Dd=A.p(function(b4,b5){if(b4===1){o.push(b5)
 s=p}for(;;)switch(s){case 0:s=3
 return A.l(A.wv(),$async$Dd)
-case 3:a8=b3
+case 3:b0=b5
 p=5
 n=A.bc("https://bigdogg-production.up.railway.app/api/v1/invoices/import-invoices",0,null)
 m=A.aM6("POST",n)
-m.r.m(0,"Authorization","Bearer "+A.h(a8))
-for(l=0,c=t.zb,b=c.i("dt<1>");l<b1.length;++l){a=m.y
-a0=b1[l]
-a1=b0[l]
-a2=A.aiG("application/pdf")
-a3=new A.i8(null,null,null,null,c)
-a4=a3.A4()
-a5=new A.pN(a0)
-a6=a4.c
-if(a6==null)a4.b=a4.c=a5
-else{a6.soe(0,a5)
-a4.c=a5}a3.zM()
-a3=A.aKr(new A.j5(new A.dt(a3,b)))
-a.push(new A.E_("files",a0.length,a1,a2,a3))}s=8
+m.r.m(0,"Authorization","Bearer "+A.h(b0))
+for(l=0,a0=t.zb,a1=a0.i("dt<1>");l<b3.length;++l){k=b2[l]
+j=B.b.ga4(k.toLowerCase().split("."))
+i=null
+switch(j){case"pdf":i="application/pdf"
+break
+case"png":i="image/png"
+break
+case"jpg":case"jpeg":i="image/jpeg"
+break
+case"webp":i="image/webp"
+break
+case"heic":case"heif":i="image/heic"
+break
+default:i="image/jpeg"}a2=m.y
+a3=b3[l]
+a4=A.aiG(i)
+a5=new A.i8(null,null,null,null,a0)
+a6=a5.A4()
+a7=new A.pN(a3)
+a8=a6.c
+if(a8==null)a6.b=a6.c=a7
+else{a8.soe(0,a7)
+a6.c=a7}a5.zM()
+a5=A.aKr(new A.j5(new A.dt(a5,a1)))
+a2.push(new A.E_("files",a3.length,k,a4,a5))}s=8
 return A.l(J.aKT(m),$async$Dd)
-case 8:k=b3
+case 8:h=b5
 s=9
-return A.l(B.a3.Ly(k.w),$async$Dd)
-case 9:j=b3
-i=B.z.cY(0,j,null)
-if(k.b===200){h=A.z(t.N,t.z)
-J.ep(h,"success",!0)
-for(c=J.MV(i),c=c.gaj(c);c.A();){g=c.gP(c)
-f=g.a
-e=g.b
-J.ep(h,f,e)}q=h
+return A.l(B.a3.Ly(h.w),$async$Dd)
+case 9:g=b5
+f=B.z.cY(0,g,null)
+if(h.b===200){e=A.z(t.N,t.z)
+J.ep(e,"success",!0)
+for(a0=J.MV(f),a0=a0.gaj(a0);a0.A();){d=a0.gP(a0)
+c=d.a
+b=d.b
+J.ep(e,c,b)}q=e
 s=1
-break}h=J.N(i,"detail")
-h=A.H(["success",!1,"message",h==null?"Import failed":h],t.N,t.z)
-q=h
+break}e=J.N(f,"detail")
+e=A.H(["success",!1,"message",e==null?"Import failed":e],t.N,t.z)
+q=e
 s=1
 break
 p=2
 s=7
 break
 case 5:p=4
-a9=o.pop()
-d=A.ak(a9)
-h=A.H(["success",!1,"message","Connection error: "+A.h(d)],t.N,t.z)
-q=h
+b1=o.pop()
+a=A.ak(b1)
+e=A.H(["success",!1,"message","Connection error: "+A.h(a)],t.N,t.z)
+q=e
 s=1
 break
 s=7
@@ -52114,7 +52126,7 @@ r.push(B.D)
 q=A.aN(12)
 p=A.cE(B.a4)
 o=A.x(g?"Oude facturen importeren":"Import old invoices",i,i,i,i,B.be,i,i,i)
-n=A.x(g?"Upload PDF facturen of screenshots van je vorige boekhoudprogramma. Ze worden toegevoegd aan je jaaroverzicht.":"Upload PDF invoices or screenshots from your previous accounting tool. They will be added to your annual overview.",i,i,i,i,B.hS,i,i,i)
+n=A.x(g?"Upload PDF facturen of screenshots van je vorige boekhoudprogramma. Ze worden toegevoegd aan je jaaroverzicht. Gebruik bij voorkeur een desktop browser voor het importeren.":"Upload PDF invoices or screenshots from your previous accounting tool. They will be added to your annual overview. We recommend using a desktop browser for importing.",i,i,i,i,B.hS,i,i,i)
 m=j.at?i:new A.aDu(j,g)
 l=A.x(g?"PDFs of afbeeldingen selecteren":"Select PDFs or images",i,i,i,i,i,i,i,i)
 o=A.b([o,B.c3,n,B.D,new A.S4(!0,m,i,i,i,i,i,i,!1,i,!0,i,new A.a03(l,B.KJ,i,i,i),i)],s)
