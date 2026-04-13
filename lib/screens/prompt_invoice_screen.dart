@@ -58,7 +58,8 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
     setState(() => _creating = false);
 
     if (result['success'] && mounted) {
-      Navigator.pop(context, true);
+      final invoiceId = result['invoice']['id'];
+      Navigator.pop(context, invoiceId);
     } else {
       setState(() => _error = result['message'] ??
           (isNl ? 'Aanmaken mislukt' : 'Failed to create'));
@@ -202,7 +203,8 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(isNl ? 'Regels:' : 'Lines:',
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                        style:
+                            const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     ...(_parsed!['lines'] as List).map((line) => Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -220,8 +222,8 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                                       '${line['quantity']}x €${line['unit_price_ex_btw']} (${line['btw_rate']}% BTW)',
                                       style: const TextStyle(
                                           fontSize: 12,
-                                          color:
-                                              BigDoggTheme.lightTextSecondary),
+                                          color: BigDoggTheme
+                                              .lightTextSecondary),
                                     ),
                                   ],
                                 ),

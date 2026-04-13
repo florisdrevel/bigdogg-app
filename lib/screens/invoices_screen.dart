@@ -440,14 +440,17 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 onPressed: () => Navigator.pop(context),
                 child: Text(isNl ? 'Annuleren' : 'Cancel')),
             ElevatedButton(
-              onPressed: selectedClientId == null || lines.isEmpty
-                  ? null
-                  : () async {
-                      Navigator.pop(context);
-                      final result = await InvoicesService.createInvoice(
-                          clientId: selectedClientId!, lines: lines);
-                      if (result['success']) _loadInvoices();
-                    },
+              onPressed: selectedClientId == null || lines.isEmpty ? null : () async {
+  Navigator.pop(context);
+  final result = await InvoicesService.createInvoice(clientId: selectedClientId!, lines: lines);
+  if (result['success'] && mounted) {
+    _loadInvoices();
+    final invoiceId = result['invoice']['id'];
+    Navigator.push(context,
+      MaterialPageRoute(builder: (context) => InvoiceDetailScreen(invoiceId: invoiceId)),
+    ).then((_) => _loadInvoices());
+  }
+},
               child: Text(isNl ? 'Aanmaken' : 'Create'),
             ),
           ],
