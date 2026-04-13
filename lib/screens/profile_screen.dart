@@ -26,12 +26,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _kvkController = TextEditingController();
   final _btwController = TextEditingController();
   final _ibanController = TextEditingController();
+
   bool _loading = true;
   bool _saving = false;
-  bool _importing = false;
-  List<String> _importFileNames = [];
-  List<Uint8List> _importFilesBytes = [];
-  Map<String, dynamic>? _importResult;
+
+  // Invoice import
+  bool _importingInvoices = false;
+  List<String> _invoiceFileNames = [];
+  List<Uint8List> _invoiceFilesBytes = [];
+  Map<String, dynamic>? _invoiceImportResult;
+
+  // Expense import
+  bool _importingExpenses = false;
+  List<String> _expenseFileNames = [];
+  List<Uint8List> _expenseFilesBytes = [];
+  Map<String, dynamic>? _expenseImportResult;
+
+  // Imported invoices list
+  List<dynamic> _importedInvoices = [];
+  bool _loadingImported = false;
+
   String? _success;
   String? _error;
 
@@ -39,6 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadProfile();
+    _loadImportedInvoices();
   }
 
   bool _isMobile() {
@@ -69,6 +84,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  Future<void> _loadImportedInvoices() async {
+    setState(() => _loadingImported = true);
+    final result = await InvoicesService.getImportedInvoices();
+    setState(() {
+      _loadingImported = false;
+      if (result['success']) _importedInvoices = result['invoices'];
+    });
+  }
+
+  Future<void> _deleteImportedInvoice(String id, bool isNl) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isNl ? 'Verwijderen?' : 'Delete?'),
+        content: Text(isNl
+            ? 'Weet je zeker dat je deze geïmporteerde factuur wilt verwijderen?'
+            : 'Are you sure you want to delete this imported invoice?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(isNl ? 'Annuleren' : 'Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.error),
+            child: Text(isNl ? 'Verwijderen' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await InvoicesService.deleteImportedInvoice(id);
+      _loadImportedInvoices();
+    }
+  }
+
   Future<void> _saveProfile(bool isNl) async {
     setState(() {
       _saving = true;
@@ -96,7 +147,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  Future<void> _pickFiles(bool isNl, {bool camera = false}) async {
+  Future<void> _pickFiles(bool isNl,
+      {bool camera = false, required bool forExpenses}) async {
     if (kIsWeb) {
       final completer = Completer<void>();
       final input = html.FileUploadInputElement();
@@ -122,9 +174,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             names.add(file.name);
           }
           setState(() {
-            _importFilesBytes = bytes;
-            _importFileNames = names;
-            _importResult = null;
+            if (forExpenses) {
+              _expenseFilesBytes = bytes;
+              _expenseFileNames = names;
+              _expenseImportResult = null;
+            } else {
+              _invoiceFilesBytes = bytes;
+              _invoiceFileNames = names;
+              _invoiceImportResult = null;
+            }
           });
         }
         completer.complete();
@@ -133,29 +191,239 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _runImport(bool isNl) async {
-    if (_importFilesBytes.isEmpty) return;
+  Future<void> _runInvoiceImport(bool isNl) async {
+    if (_invoiceFilesBytes.isEmpty) return;
     setState(() {
-      _importing = true;
-      _importResult = null;
+      _importingInvoices = true;
+      _invoiceImportResult = null;
       _error = null;
     });
 
     final result = await InvoicesService.importInvoices(
-      filesBytes: _importFilesBytes,
-      fileNames: _importFileNames,
+      filesBytes: _invoiceFilesBytes,
+      fileNames: _invoiceFileNames,
     );
 
     setState(() {
-      _importing = false;
+      _importingInvoices = false;
       if (result['success']) {
-        _importResult = result;
-        _importFilesBytes = [];
-        _importFileNames = [];
+        _invoiceImportResult = result;
+        _invoiceFilesBytes = [];
+        _invoiceFileNames = [];
       } else {
         _error = result['message'];
       }
     });
+    _loadImportedInvoices();
+  }
+
+  Future<void> _runExpenseImport(bool isNl) async {
+    if (_expenseFilesBytes.isEmpty) return;
+    setState(() {
+      _importingExpenses = true;
+      _expenseImportResult = null;
+      _error = null;
+    });
+
+    final result = await InvoicesService.importExpenses(
+      filesBytes: _expenseFilesBytes,
+      fileNames: _expenseFileNames,
+    );
+
+    setState(() {
+      _importingExpenses = false;
+      if (result['success']) {
+        _expenseImportResult = result;
+        _expenseFilesBytes = [];
+        _expenseFileNames = [];
+      } else {
+        _error = result['message'];
+      }
+    });
+  }
+
+  Widget _importSection({
+    required bool isNl,
+    required String title,
+    required String description,
+    required bool isMobile,
+    required bool importing,
+    required List<String> fileNames,
+    required Map<String, dynamic>? importResult,
+    required bool forExpenses,
+    required VoidCallback onImport,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: BigDoggTheme.lightSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: BigDoggTheme.lightBorder),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: BigDoggTheme.teal800)),
+          const SizedBox(height: 4),
+          Text(description,
+              style: const TextStyle(
+                  fontSize: 13, color: BigDoggTheme.lightTextSecondary)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (isMobile) ...[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: importing
+                        ? null
+                        : () => _pickFiles(isNl,
+                            camera: true, forExpenses: forExpenses),
+                    icon: const Icon(Icons.camera_alt, size: 18),
+                    label: Text(isNl ? 'Camera' : 'Camera',
+                        style: const TextStyle(fontSize: 13)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: importing
+                      ? null
+                      : () => _pickFiles(isNl,
+                          camera: false, forExpenses: forExpenses),
+                  icon: const Icon(Icons.folder_open, size: 18),
+                  label: Text(isNl ? 'Bestanden' : 'Files',
+                      style: const TextStyle(fontSize: 13)),
+                ),
+              ),
+            ],
+          ),
+          if (isMobile) ...[
+            const SizedBox(height: 4),
+            Text(
+              isNl
+                  ? 'Tik op "Bestanden" en kies "Bladeren" voor alle bestandstypen.'
+                  : 'Tap "Files" then choose "Browse" to access all file types.',
+              style: const TextStyle(
+                  fontSize: 11, color: BigDoggTheme.lightTextHint),
+            ),
+          ],
+          if (fileNames.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: BigDoggTheme.lightBg,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: BigDoggTheme.lightBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${fileNames.length} ${isNl ? 'bestand(en) geselecteerd' : 'file(s) selected'}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: BigDoggTheme.teal800),
+                  ),
+                  const SizedBox(height: 6),
+                  ...fileNames.map((name) => Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.insert_drive_file,
+                                size: 14, color: BigDoggTheme.teal700),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(name,
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: BigDoggTheme.lightTextSecondary),
+                                  overflow: TextOverflow.ellipsis),
+                            ),
+                          ],
+                        ),
+                      )),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: importing ? null : onImport,
+                icon: importing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.cloud_upload),
+                label: Text(importing
+                    ? (isNl ? 'Importeren...' : 'Importing...')
+                    : (isNl ? 'Importeren' : 'Import')),
+              ),
+            ),
+          ],
+          if (importResult != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: BigDoggTheme.successBg,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.check_circle,
+                          color: BigDoggTheme.success, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${importResult['total_imported']} ${isNl ? 'geïmporteerd' : 'imported'}',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: BigDoggTheme.success),
+                      ),
+                    ],
+                  ),
+                  if ((importResult['total_duplicates'] ?? 0) > 0) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber,
+                            color: BigDoggTheme.warning, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${importResult['total_duplicates']} ${isNl ? 'dubbel — al aanwezig' : 'duplicate(s) — already exist'}',
+                          style: const TextStyle(
+                              color: BigDoggTheme.warning, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if ((importResult['total_failed'] ?? 0) > 0) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '${importResult['total_failed']} ${isNl ? 'mislukt' : 'failed'}',
+                      style: const TextStyle(
+                          color: BigDoggTheme.error, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   @override
@@ -210,8 +478,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                    isNl ? 'Bedrijfsgegevens' : 'Business details',
+                Text(isNl ? 'Bedrijfsgegevens' : 'Business details',
                     style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -223,8 +490,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _inputField(_fullNameController,
                     isNl ? 'Volledige naam' : 'Full name'),
                 const SizedBox(height: 12),
-                _inputField(
-                    _addressController, isNl ? 'Adres' : 'Address'),
+                _inputField(_addressController, isNl ? 'Adres' : 'Address'),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -272,7 +538,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Import old invoices
+          // Import invoices
+          _importSection(
+            isNl: isNl,
+            title: isNl ? 'Oude facturen importeren' : 'Import old invoices',
+            description: isNl
+                ? 'Upload PDF facturen of screenshots van je vorige boekhoudprogramma. Ze worden toegevoegd aan je jaaroverzicht.'
+                : 'Upload PDF invoices or screenshots from your previous accounting tool. They will be added to your annual overview.',
+            isMobile: isMobile,
+            importing: _importingInvoices,
+            fileNames: _invoiceFileNames,
+            importResult: _invoiceImportResult,
+            forExpenses: false,
+            onImport: () => _runInvoiceImport(isNl),
+          ),
+          const SizedBox(height: 12),
+
+          // Import expenses
+          _importSection(
+            isNl: isNl,
+            title: isNl ? 'Oude kosten importeren' : 'Import old expenses',
+            description: isNl
+                ? 'Upload PDF bonnen of screenshots van oude zakelijke kosten. Ze worden toegevoegd aan je kostenregistratie.'
+                : 'Upload PDF receipts or screenshots of old business expenses. They will be added to your expense records.',
+            isMobile: isMobile,
+            importing: _importingExpenses,
+            fileNames: _expenseFileNames,
+            importResult: _expenseImportResult,
+            forExpenses: true,
+            onImport: () => _runExpenseImport(isNl),
+          ),
+          const SizedBox(height: 12),
+
+          // View/delete imported invoices
           Container(
             decoration: BoxDecoration(
               color: BigDoggTheme.lightSurface,
@@ -283,174 +581,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  isNl
-                      ? 'Oude facturen importeren'
-                      : 'Import old invoices',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: BigDoggTheme.teal800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  isNl
-                      ? 'Upload PDF facturen of screenshots van je vorige boekhoudprogramma. Ze worden toegevoegd aan je jaaroverzicht.'
-                      : 'Upload PDF invoices or screenshots from your previous accounting tool. They will be added to your annual overview.',
-                  style: const TextStyle(
-                      fontSize: 13, color: BigDoggTheme.lightTextSecondary),
-                ),
-                const SizedBox(height: 12),
-
-                // Buttons — camera only on mobile
                 Row(
                   children: [
-                    if (isMobile) ...[
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _importing
-                              ? null
-                              : () => _pickFiles(isNl, camera: true),
-                          icon: const Icon(Icons.camera_alt, size: 18),
-                          label: Text(isNl ? 'Camera' : 'Camera',
-                              style: const TextStyle(fontSize: 13)),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _importing
-                            ? null
-                            : () => _pickFiles(isNl, camera: false),
-                        icon: const Icon(Icons.folder_open, size: 18),
-                        label: Text(isNl ? 'Bestanden' : 'Files',
-                            style: const TextStyle(fontSize: 13)),
+                      child: Text(
+                        isNl
+                            ? 'Geïmporteerde facturen'
+                            : 'Imported invoices',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: BigDoggTheme.teal800),
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, color: BigDoggTheme.teal700),
+                      onPressed: _loadImportedInvoices,
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                if (isMobile)
+                const SizedBox(height: 8),
+                if (_loadingImported)
+                  const Center(child: CircularProgressIndicator())
+                else if (_importedInvoices.isEmpty)
                   Text(
                     isNl
-                        ? 'Tik op "Bestanden" en kies "Bladeren" voor alle bestandstypen.'
-                        : 'Tap "Files" then choose "Browse" to access all file types.',
+                        ? 'Geen geïmporteerde facturen.'
+                        : 'No imported invoices.',
                     style: const TextStyle(
-                        fontSize: 11, color: BigDoggTheme.lightTextHint),
-                  ),
-
-                if (_importFileNames.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: BigDoggTheme.lightBg,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: BigDoggTheme.lightBorder),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${_importFileNames.length} ${isNl ? 'bestand(en) geselecteerd' : 'file(s) selected'}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              color: BigDoggTheme.teal800),
+                        fontSize: 13,
+                        color: BigDoggTheme.lightTextSecondary),
+                  )
+                else
+                  ...(_importedInvoices.map((inv) => Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: BigDoggTheme.lightBg,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: BigDoggTheme.lightBorder),
                         ),
-                        const SizedBox(height: 6),
-                        ..._importFileNames.map((name) => Padding(
-                              padding: const EdgeInsets.only(bottom: 2),
-                              child: Row(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(Icons.insert_drive_file,
-                                      size: 14, color: BigDoggTheme.teal700),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      name,
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          color:
-                                              BigDoggTheme.lightTextSecondary),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                  Text(
+                                    inv['invoice_number'] ?? '',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                        color: BigDoggTheme.teal800),
+                                  ),
+                                  Text(
+                                    '${inv['client_name'] ?? ''} · ${inv['invoice_date'] ?? ''}',
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        color: BigDoggTheme.lightTextSecondary),
                                   ),
                                 ],
                               ),
-                            )),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed:
-                          _importing ? null : () => _runImport(isNl),
-                      icon: _importing
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.cloud_upload),
-                      label: Text(_importing
-                          ? (isNl ? 'Importeren...' : 'Importing...')
-                          : (isNl ? 'Importeren' : 'Import')),
-                    ),
-                  ),
-                ],
-
-                if (_importResult != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: BigDoggTheme.successBg,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.check_circle,
-                                color: BigDoggTheme.success, size: 18),
-                            const SizedBox(width: 6),
+                            ),
                             Text(
-                              '${_importResult!['total_imported']} ${isNl ? 'facturen geïmporteerd' : 'invoices imported'}',
+                              '€${inv['total_incl_btw']}',
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: BigDoggTheme.success),
+                                  color: BigDoggTheme.teal800),
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.delete,
+                                  color: BigDoggTheme.error, size: 18),
+                              onPressed: () =>
+                                  _deleteImportedInvoice(inv['id'], isNl),
                             ),
                           ],
                         ),
-                        if ((_importResult!['total_failed'] as int) > 0) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            '${_importResult!['total_failed']} ${isNl ? 'mislukt' : 'failed'}',
-                            style: const TextStyle(
-                                color: BigDoggTheme.error, fontSize: 12),
-                          ),
-                        ],
-                        const SizedBox(height: 8),
-                        ...(_importResult!['imported'] as List)
-                            .map((inv) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: Text(
-                                    '• ${inv['client_name']} — €${inv['total']} (${inv['date']})',
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        color:
-                                            BigDoggTheme.lightTextSecondary),
-                                  ),
-                                )),
-                      ],
-                    ),
-                  ),
-                ],
+                      ))),
               ],
             ),
           ),
