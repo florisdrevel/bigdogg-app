@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
+import 'dart:typed_data';
+import 'package:http_parser/http_parser.dart';
 
 class InvoicesService {
   static const String baseUrl = ApiConfig.baseUrl;
@@ -123,6 +125,38 @@ class InvoicesService {
       return {'success': false, 'message': 'Connection error'};
     }
   }
+static Future<Map<String, dynamic>> importInvoices({
+  required List<Uint8List> filesBytes,
+  required List<String> fileNames,
+}) async {
+  final token = await getToken();
+  try {
+    final uri = Uri.parse('$baseUrl/api/v1/invoices/import-invoices');
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'Bearer $token';
+
+    for (int i = 0; i < filesBytes.length; i++) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'files',
+          filesBytes[i],
+          filename: fileNames[i],
+          contentType: MediaType.parse('application/pdf'),
+        ),
+      );
+    }
+
+    final response = await request.send();
+    final body = await response.stream.bytesToString();
+    final data = jsonDecode(body);
+    if (response.statusCode == 200) {
+      return {'success': true, ...data};
+    }
+    return {'success': false, 'message': data['detail'] ?? 'Import failed'};
+  } catch (e) {
+    return {'success': false, 'message': 'Connection error: $e'};
+  }
+}
 
   static Future<Map<String, dynamic>> sendReminder(String invoiceId) async {
     final token = await _getToken();

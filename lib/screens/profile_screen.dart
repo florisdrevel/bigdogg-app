@@ -1,6 +1,12 @@
+import 'dart:async';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 import '../services/profile_service.dart';
+import '../services/invoices_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 
@@ -22,6 +28,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _ibanController = TextEditingController();
   bool _loading = true;
   bool _saving = false;
+  bool _importing = false;
+  List<String> _importFileNames = [];
+  List<Uint8List> _importFilesBytes = [];
+  Map<String, dynamic>? _importResult;
   String? _success;
   String? _error;
 
@@ -73,6 +83,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  Future<void> _pickFiles(bool isNl) async {
+    if (kIsWeb) {
+      final completer = Completer<void>();
+      final input = html.FileUploadInputElement();
+      input.accept = 'application/pdf,.pdf';
+      input.multiple = true;
+      input.click();
+      input.onChange.listen((event) async {
+        final files = input.files;
+        if (files != null && files.isNotEmpty) {
+          final names = <String>[];
+          final bytes = <Uint8List>[];
+          for (final file in files) {
+            final reader = html.FileReader();
+            reader.readAsArrayBuffer(file);
+            await reader.onLoad.first;
+            bytes.add(Uint8List.fromList(reader.result as List<int>));
+            names.add(file.name);
+          }
+          setState(() {
+            _importFilesBytes = bytes;
+            _importFileNames = names;
+            _importResult = null;
+          });
+        }
+        completer.complete();
+      });
+      await completer.future;
+    }
+  }
+
+  Future<void> _runImport(bool isNl) async {
+    if (_importFilesBytes.isEmpty) return;
+    setState(() { _importing = true; _importResult = null; _error = null; });
+
+    final result = await InvoicesService.importInvoices(
+      filesBytes: _importFilesBytes,
+      fileNames: _importFileNames,
+    );
+
+    setState(() {
+      _importing = false;
+      if (result['success']) {
+        _importResult = result;
+        _importFilesBytes = [];
+        _importFileNames = [];
+      } else {
+        _error = result['message'];
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
@@ -85,24 +147,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isNl ? 'Deze informatie verschijnt op je facturen.' : 'This information appears on your invoices.',
-            style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 14),
+            isNl
+                ? 'Deze informatie verschijnt op je facturen.'
+                : 'This information appears on your invoices.',
+            style: const TextStyle(
+                color: BigDoggTheme.lightTextSecondary, fontSize: 14),
           ),
           const SizedBox(height: 16),
           if (_error != null)
             Container(
               padding: const EdgeInsets.all(12),
               margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(color: BigDoggTheme.errorBg, borderRadius: BorderRadius.circular(8)),
-              child: Text(_error!, style: const TextStyle(color: BigDoggTheme.error)),
+              decoration: BoxDecoration(
+                  color: BigDoggTheme.errorBg,
+                  borderRadius: BorderRadius.circular(8)),
+              child: Text(_error!,
+                  style: const TextStyle(color: BigDoggTheme.error)),
             ),
           if (_success != null)
             Container(
               padding: const EdgeInsets.all(12),
               margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(color: BigDoggTheme.successBg, borderRadius: BorderRadius.circular(8)),
-              child: Text(_success!, style: const TextStyle(color: BigDoggTheme.success)),
+              decoration: BoxDecoration(
+                  color: BigDoggTheme.successBg,
+                  borderRadius: BorderRadius.circular(8)),
+              child: Text(_success!,
+                  style: const TextStyle(color: BigDoggTheme.success)),
             ),
+
+          // Business details
           Container(
             decoration: BoxDecoration(
               color: BigDoggTheme.lightSurface,
@@ -113,26 +186,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(isNl ? 'Bedrijfsgegevens' : 'Business details',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+                Text(
+                    isNl ? 'Bedrijfsgegevens' : 'Business details',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: BigDoggTheme.teal800)),
                 const SizedBox(height: 16),
-                _inputField(_businessNameController, isNl ? 'Bedrijfsnaam' : 'Business name'),
+                _inputField(_businessNameController,
+                    isNl ? 'Bedrijfsnaam' : 'Business name'),
                 const SizedBox(height: 12),
-                _inputField(_fullNameController, isNl ? 'Volledige naam' : 'Full name'),
+                _inputField(
+                    _fullNameController, isNl ? 'Volledige naam' : 'Full name'),
                 const SizedBox(height: 12),
                 _inputField(_addressController, isNl ? 'Adres' : 'Address'),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: _inputField(_postcodeController, isNl ? 'Postcode' : 'Postcode')),
+                    Expanded(
+                        child: _inputField(_postcodeController,
+                            isNl ? 'Postcode' : 'Postcode')),
                     const SizedBox(width: 12),
-                    Expanded(flex: 2, child: _inputField(_cityController, isNl ? 'Stad' : 'City')),
+                    Expanded(
+                        flex: 2,
+                        child: _inputField(
+                            _cityController, isNl ? 'Stad' : 'City')),
                   ],
                 ),
               ],
             ),
           ),
           const SizedBox(height: 12),
+
+          // Tax & Payment
           Container(
             decoration: BoxDecoration(
               color: BigDoggTheme.lightSurface,
@@ -144,16 +230,171 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(isNl ? 'BTW & Betaling' : 'Tax & Payment',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BigDoggTheme.teal800)),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: BigDoggTheme.teal800)),
                 const SizedBox(height: 16),
-                _inputField(_kvkController, isNl ? 'KVK-nummer' : 'KVK number'),
+                _inputField(
+                    _kvkController, isNl ? 'KVK-nummer' : 'KVK number'),
                 const SizedBox(height: 12),
-                _inputField(_btwController, isNl ? 'BTW-nummer' : 'BTW number'),
+                _inputField(
+                    _btwController, isNl ? 'BTW-nummer' : 'BTW number'),
                 const SizedBox(height: 12),
                 _inputField(_ibanController, 'IBAN'),
               ],
             ),
           ),
+          const SizedBox(height: 12),
+
+          // Import old invoices
+          Container(
+            decoration: BoxDecoration(
+              color: BigDoggTheme.lightSurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: BigDoggTheme.lightBorder),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isNl ? 'Oude facturen importeren' : 'Import old invoices',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: BigDoggTheme.teal800),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isNl
+                      ? 'Upload PDF facturen van je vorige boekhoudprogramma. Ze worden toegevoegd aan je jaaroverzicht.'
+                      : 'Upload PDF invoices from your previous accounting tool. They will be added to your annual overview.',
+                  style: const TextStyle(
+                      fontSize: 13, color: BigDoggTheme.lightTextSecondary),
+                ),
+                const SizedBox(height: 12),
+
+                // File picker
+                OutlinedButton.icon(
+                  onPressed: _importing ? null : () => _pickFiles(isNl),
+                  icon: const Icon(Icons.upload_file),
+                  label: Text(isNl ? 'PDFs selecteren' : 'Select PDFs'),
+                ),
+
+                // Selected files list
+                if (_importFileNames.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: BigDoggTheme.lightBg,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: BigDoggTheme.lightBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${_importFileNames.length} ${isNl ? 'bestand(en) geselecteerd' : 'file(s) selected'}',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: BigDoggTheme.teal800),
+                        ),
+                        const SizedBox(height: 6),
+                        ..._importFileNames.map((name) => Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.picture_as_pdf,
+                                      size: 14, color: BigDoggTheme.teal700),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(name,
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color:
+                                                BigDoggTheme.lightTextSecondary),
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                                ],
+                              ),
+                            )),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _importing ? null : () => _runImport(isNl),
+                      icon: _importing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.cloud_upload),
+                      label: Text(_importing
+                          ? (isNl ? 'Importeren...' : 'Importing...')
+                          : (isNl ? 'Importeren' : 'Import')),
+                    ),
+                  ),
+                ],
+
+                // Import result
+                if (_importResult != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: BigDoggTheme.successBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.check_circle,
+                                color: BigDoggTheme.success, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${_importResult!['total_imported']} ${isNl ? 'facturen geïmporteerd' : 'invoices imported'}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: BigDoggTheme.success),
+                            ),
+                          ],
+                        ),
+                        if ((_importResult!['total_failed'] as int) > 0) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_importResult!['total_failed']} ${isNl ? 'mislukt' : 'failed'}',
+                            style: const TextStyle(
+                                color: BigDoggTheme.error, fontSize: 12),
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+                        ...(_importResult!['imported'] as List).map((inv) =>
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Text(
+                                '• ${inv['client_name']} — €${inv['total']} (${inv['date']})',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: BigDoggTheme.lightTextSecondary),
+                              ),
+                            )),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -161,8 +402,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: ElevatedButton(
               onPressed: _saving ? null : () => _saveProfile(isNl),
               child: _saving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Text(isNl ? 'Profiel opslaan' : 'Save Profile', style: const TextStyle(fontSize: 16)),
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Text(isNl ? 'Profiel opslaan' : 'Save Profile',
+                      style: const TextStyle(fontSize: 16)),
             ),
           ),
         ],
@@ -171,6 +417,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _inputField(TextEditingController controller, String label) {
-    return TextField(controller: controller, decoration: InputDecoration(labelText: label));
+    return TextField(
+        controller: controller,
+        decoration: InputDecoration(labelText: label));
   }
 }
