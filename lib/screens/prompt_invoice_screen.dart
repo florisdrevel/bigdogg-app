@@ -1,10 +1,6 @@
-import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
-import 'dart:js' as js;
+import 'package:speech_to_text/speech_to_text.dart';
 import '../services/ai_service.dart';
 import '../services/invoices_service.dart';
 import '../providers/app_provider.dart';
@@ -19,90 +15,69 @@ class PromptInvoiceScreen extends StatefulWidget {
 
 class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
   final _promptController = TextEditingController();
+  final SpeechToText _speech = SpeechToText();
   Map<String, dynamic>? _parsed;
   bool _loading = false;
   bool _creating = false;
   bool _listening = false;
+  bool _speechAvailable = false;
   String? _error;
-  dynamic _recognition;
+  String _lastWords = '';
 
-  void _startListening(bool isNl) {
-    try {
-      final speechRecognition = js.context['SpeechRecognition'] ??
-          js.context['webkitSpeechRecognition'];
+  @override
+  void initState() {
+    super.initState();
+    _initSpeech();
+  }
 
-      if (speechRecognition == null) {
-        setState(() => _error = isNl
-            ? 'Spraakherkenning niet beschikbaar in deze browser'
-            : 'Speech recognition not available in this browser');
-        return;
-      }
+  Future<void> _initSpeech() async {
+    final available = await _speech.initialize(
+      onError: (error) => setState(() => _listening = false),
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') {
+          setState(() => _listening = false);
+        }
+      },
+    );
+    setState(() => _speechAvailable = available);
+  }
 
-      _recognition = js.JsObject(speechRecognition);
-      _recognition['lang'] = isNl ? 'nl-NL' : 'en-US';
-      _recognition['continuous'] = false;
-      _recognition['interimResults'] = false;
-      _recognition['maxAlternatives'] = 1;
+  Future<void> _toggleListening(bool isNl) async {
+    if (_listening) {
+      await _speech.stop();
+      setState(() => _listening = false);
+      return;
+    }
 
-      _recognition['onresult'] = js.allowInterop((event) {
-        final results = event['results'];
-        if (results != null && results['length'] > 0) {
-          final transcript = results[0][0]['transcript'] as String;
+    if (!_speechAvailable) {
+      setState(() => _error = isNl
+          ? 'Spraakherkenning niet beschikbaar in deze browser'
+          : 'Speech recognition not available in this browser');
+      return;
+    }
+
+    setState(() {
+      _listening = true;
+      _error = null;
+      _lastWords = _promptController.text;
+    });
+
+    await _speech.listen(
+      onResult: (result) {
+        // Only update on final result to prevent duplication
+        if (result.finalResult) {
           setState(() {
-            _promptController.text = transcript;
+            _promptController.text = result.recognizedWords;
+            _lastWords = result.recognizedWords;
             _listening = false;
           });
         }
-      });
-
-      _recognition['onerror'] = js.allowInterop((event) {
-        setState(() {
-          _listening = false;
-          _error = isNl
-              ? 'Fout bij spraakherkenning'
-              : 'Speech recognition error';
-        });
-      });
-
-      _recognition['onend'] = js.allowInterop((event) {
-        setState(() => _listening = false);
-      });
-
-      _recognition.callMethod('start');
-      setState(() {
-        _listening = true;
-        _error = null;
-      });
-    } catch (e) {
-      setState(() {
-        _listening = false;
-        _error = isNl
-            ? 'Spraakherkenning niet beschikbaar'
-            : 'Speech recognition not available';
-      });
-    }
-  }
-
-  void _stopListening() {
-    try {
-      _recognition?.callMethod('stop');
-    } catch (_) {}
-    setState(() => _listening = false);
-  }
-
-  void _toggleListening(bool isNl) {
-    if (_listening) {
-      _stopListening();
-    } else {
-      _startListening(isNl);
-    }
-  }
-
-  @override
-  void dispose() {
-    _stopListening();
-    _promptController.dispose();
-    super.dispose();
+      },
+      localeId: isNl ? 'nl_NL' : 'en_US',
+      listenFor: const Duration(seconds: 30),
+      pauseFor: const Duration(seconds: 3),
+      listenMode: ListenMode.confirmation,
+    );
   }
 
   Future<void> _parse(bool isNl) async {
@@ -340,7 +315,8 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(isNl ? 'Regels:' : 'Lines:',
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                        style:
+                            const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     ...(_parsed!['lines'] as List).map((line) => Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -348,7 +324,8 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                             children: [
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
                                     Text(line['description'],
                                         style: const TextStyle(
@@ -357,8 +334,8 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                                       '${line['quantity']}x €${line['unit_price_ex_btw']} (${line['btw_rate']}% BTW)',
                                       style: const TextStyle(
                                           fontSize: 12,
-                                          color:
-                                              BigDoggTheme.lightTextSecondary),
+                                          color: BigDoggTheme
+                                              .lightTextSecondary),
                                     ),
                                   ],
                                 ),
@@ -398,7 +375,9 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2, color: Colors.white))
                             : Text(
-                                isNl ? 'Factuur aanmaken' : 'Create Invoice',
+                                isNl
+                                    ? 'Factuur aanmaken'
+                                    : 'Create Invoice',
                                 style: const TextStyle(
                                     fontSize: 16, color: Colors.white)),
                       ),
