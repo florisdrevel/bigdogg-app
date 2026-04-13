@@ -138,8 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
                 backgroundColor: BigDoggTheme.error),
-            child: Text(
-                isNl ? 'Verwijderen' : 'Delete',
+            child: Text(isNl ? 'Verwijderen' : 'Delete',
                 style: const TextStyle(color: Colors.white)),
           ),
         ],
@@ -157,6 +156,153 @@ class _SettingsScreenState extends State<SettingsScreen> {
           backgroundColor: BigDoggTheme.error,
         ));
       }
+    }
+  }
+
+  void _showTerms(BuildContext context, bool isNl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          constraints:
+              const BoxConstraints(maxWidth: 640, maxHeight: 600),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  color: BigDoggTheme.teal800,
+                  borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(15)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        isNl
+                            ? 'Algemene Voorwaarden'
+                            : 'Terms & Conditions',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close,
+                          color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    _termsText(isNl),
+                    style: const TextStyle(
+                        fontSize: 13,
+                        color: BigDoggTheme.lightTextPrimary,
+                        height: 1.7),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(
+                      top: BorderSide(
+                          color: BigDoggTheme.lightBorder)),
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(isNl ? 'Sluiten' : 'Close'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _termsText(bool isNl) {
+    if (isNl) {
+      return '''Algemene Voorwaarden — BigDogg
+Versie 1.0 | Ingangsdatum: 1 januari 2026
+
+1. OVER BIGDOGG
+BigDogg is een online boekhoud- en facturatiedienst voor zelfstandigen en ZZP'ers in Nederland, aangeboden door BigDogg (hierna: "BigDogg", "wij", "ons"). Door gebruik te maken van onze diensten ga je akkoord met deze voorwaarden.
+
+2. DIENSTVERLENING
+BigDogg biedt tools voor facturatie, uitgavenbeheer, BTW-overzichten en financiële rapportages. Wij streven naar correctheid en beschikbaarheid van onze diensten, maar bieden geen garanties met betrekking tot volledigheid of geschiktheid voor specifieke fiscale of juridische doeleinden.
+
+3. ABONNEMENT EN BETALING
+Het abonnement bedraagt €7,99 per maand, vooraf gefactureerd. Na een gratis proefperiode van 30 dagen wordt automatisch overgegaan op een betaald abonnement, tenzij je vóór het einde van de proefperiode opzegt. Opzegging kan op elk moment via de instellingen in de app. Je behoudt toegang tot het einde van de lopende betaalperiode.
+
+4. VERANTWOORDELIJKHEID VOOR ADMINISTRATIE
+BigDogg ondersteunt jou bij je administratie, maar de volledige verantwoordelijkheid voor de juistheid, volledigheid en tijdige indiening van je belastingaangiftes, facturen en overige administratieve verplichtingen ligt bij jou als gebruiker.
+
+Wij raden je nadrukkelijk aan om regelmatig lokale back-ups te maken van al je facturen, rapporten en financiële documenten door deze te downloaden en op te slaan op een eigen, veilige locatie. BigDogg is niet aansprakelijk voor verlies van gegevens als gevolg van technische storingen, beëindiging van het account of andere omstandigheden buiten onze directe controle. De Belastingdienst vereist dat je zelf een volledige en toegankelijke administratie bijhoudt — BigDogg ondersteunt dit proces, maar vervangt deze verplichting niet.
+
+5. GEGEVENSVERWERKING EN PRIVACY
+Wij verwerken persoonsgegevens in overeenstemming met de Algemene Verordening Gegevensbescherming (AVG). Je gegevens worden uitsluitend gebruikt voor het leveren van de dienst en worden niet verkocht aan derden. Bij beëindiging van je account worden je gegevens verwijderd conform ons bewaarbeleid.
+
+6. AANSPRAKELIJKHEIDSBEPERKING
+BigDogg is niet aansprakelijk voor indirecte schade, gederfde inkomsten, gemiste belastingvoordelen of schade voortvloeiend uit onjuist gebruik van het platform. De totale aansprakelijkheid van BigDogg is beperkt tot het bedrag dat je in de afgelopen drie maanden aan ons hebt betaald.
+
+7. INTELLECTUEEL EIGENDOM
+Alle inhoud, functionaliteiten en technologie van BigDogg zijn eigendom van BigDogg en mogen niet worden gekopieerd, verspreid of gebruikt zonder schriftelijke toestemming.
+
+8. WIJZIGINGEN
+Wij behouden het recht voor deze voorwaarden te wijzigen. Wezenlijke wijzigingen worden ten minste 30 dagen van tevoren per e-mail aangekondigd. Voortgezet gebruik van de dienst na de ingangsdatum van de wijziging geldt als aanvaarding.
+
+9. TOEPASSELIJK RECHT
+Op deze voorwaarden is Nederlands recht van toepassing. Geschillen worden voorgelegd aan de bevoegde rechter in Nederland.
+
+10. CONTACT
+Voor vragen over deze voorwaarden: info@bigdogg.nl''';
+    } else {
+      return '''Terms & Conditions — BigDogg
+Version 1.0 | Effective date: 1 January 2026
+
+1. ABOUT BIGDOGG
+BigDogg is an online accounting and invoicing service for freelancers in the Netherlands, provided by BigDogg (hereinafter: "BigDogg", "we", "us"). By using our services, you agree to these terms.
+
+2. SERVICES
+BigDogg provides tools for invoicing, expense management, VAT overviews and financial reporting. We strive for accuracy and availability of our services, but make no guarantees regarding completeness or suitability for specific tax or legal purposes.
+
+3. SUBSCRIPTION AND PAYMENT
+The subscription fee is €7.99 per month, billed in advance. After a 30-day free trial, a paid subscription begins automatically unless cancelled before the end of the trial period. You may cancel at any time via the settings in the app. You retain access until the end of the current billing period.
+
+4. RESPONSIBILITY FOR YOUR ADMINISTRATION
+BigDogg supports you in managing your administration, but full responsibility for the accuracy, completeness and timely submission of your tax returns, invoices and other administrative obligations rests with you as the user.
+
+We strongly encourage you to regularly create local backups of all your invoices, reports and financial documents by downloading and saving them to a secure location of your own. BigDogg is not liable for data loss resulting from technical failures, account termination or other circumstances beyond our direct control. The Dutch Tax Authority (Belastingdienst) requires you to maintain a complete and accessible administration yourself — BigDogg supports this process but does not replace this obligation.
+
+5. DATA PROCESSING AND PRIVACY
+We process personal data in accordance with the General Data Protection Regulation (GDPR). Your data is used solely to provide the service and is not sold to third parties. Upon account termination, your data will be deleted in accordance with our retention policy.
+
+6. LIMITATION OF LIABILITY
+BigDogg is not liable for indirect damages, lost revenue, missed tax benefits or damage resulting from improper use of the platform. BigDogg's total liability is limited to the amount you have paid us in the preceding three months.
+
+7. INTELLECTUAL PROPERTY
+All content, features and technology of BigDogg are owned by BigDogg and may not be copied, distributed or used without written permission.
+
+8. CHANGES
+We reserve the right to amend these terms. Material changes will be announced by email at least 30 days in advance. Continued use of the service after the effective date of the change constitutes acceptance.
+
+9. GOVERNING LAW
+These terms are governed by Dutch law. Disputes will be submitted to the competent court in the Netherlands.
+
+10. CONTACT
+For questions about these terms: info@bigdogg.nl''';
     }
   }
 
@@ -211,7 +357,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderRadius: BorderRadius.circular(8)),
                     child: Text(_passwordError!,
                         style: const TextStyle(
-                            color: BigDoggTheme.error, fontSize: 13)),
+                            color: BigDoggTheme.error,
+                            fontSize: 13)),
                   ),
                 if (_passwordSuccess != null)
                   Container(
@@ -222,14 +369,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderRadius: BorderRadius.circular(8)),
                     child: Text(_passwordSuccess!,
                         style: const TextStyle(
-                            color: BigDoggTheme.success, fontSize: 13)),
+                            color: BigDoggTheme.success,
+                            fontSize: 13)),
                   ),
                 TextField(
                   controller: _newPasswordController,
                   obscureText: _obscureNew,
                   decoration: InputDecoration(
-                    labelText:
-                        isNl ? 'Nieuw wachtwoord' : 'New password',
+                    labelText: isNl
+                        ? 'Nieuw wachtwoord'
+                        : 'New password',
                     suffixIcon: ExcludeFocus(
                       child: IconButton(
                         icon: Icon(_obscureNew
@@ -254,8 +403,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         icon: Icon(_obscureConfirm
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined),
-                        onPressed: () => setState(
-                            () => _obscureConfirm = !_obscureConfirm),
+                        onPressed: () => setState(() =>
+                            _obscureConfirm = !_obscureConfirm),
                       ),
                     ),
                   ),
@@ -305,7 +454,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onPressed: () => _deleteAccount(isNl),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: BigDoggTheme.error,
-                      side: const BorderSide(color: BigDoggTheme.error),
+                      side: const BorderSide(
+                          color: BigDoggTheme.error),
                     ),
                     child: Text(isNl
                         ? 'Account verwijderen'
@@ -334,14 +484,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Expanded(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
                         children: [
                           Text(
                             isNl ? 'Projecten' : 'Projects',
                             style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 15,
-                                color: BigDoggTheme.lightTextPrimary),
+                                color: BigDoggTheme
+                                    .lightTextPrimary),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -350,7 +502,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 : 'Link invoices and expenses to projects for a better overview.',
                             style: const TextStyle(
                                 fontSize: 12,
-                                color: BigDoggTheme.lightTextSecondary),
+                                color: BigDoggTheme
+                                    .lightTextSecondary),
                           ),
                         ],
                       ),
@@ -374,7 +527,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Row(
                       children: [
                         const Icon(Icons.info_outline,
-                            size: 16, color: BigDoggTheme.teal800),
+                            size: 16,
+                            color: BigDoggTheme.teal800),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -391,6 +545,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── Terms & Conditions ────────────────────────────────────
+          Center(
+            child: TextButton.icon(
+              onPressed: () => _showTerms(context, isNl),
+              icon: const Icon(Icons.description_outlined,
+                  size: 16,
+                  color: BigDoggTheme.lightTextSecondary),
+              label: Text(
+                isNl
+                    ? 'Algemene Voorwaarden'
+                    : 'Terms & Conditions',
+                style: const TextStyle(
+                    color: BigDoggTheme.lightTextSecondary,
+                    fontSize: 13),
+              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -564,29 +737,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 20),
           const Divider(),
           const SizedBox(height: 12),
-          _feature(isNl
-              ? '✓ Onbeperkt facturen'
-              : '✓ Unlimited invoices'),
-          _feature(isNl
-              ? '✓ AI factuur assistent'
-              : '✓ AI invoice assistant'),
-          _feature(isNl
-              ? '✓ Klantenbeheer'
-              : '✓ Client management'),
-          _feature(isNl
-              ? '✓ Uitgaven bijhouden'
-              : '✓ Expense tracking'),
-          _feature(isNl
-              ? '✓ Kwartaal BTW overzicht'
-              : '✓ Quarterly VAT overview'),
-          _feature(isNl
-              ? '✓ Jaaroverzicht financiën'
-              : '✓ Annual financial overview'),
-          _feature(
-              isNl ? '✓ Bonnen scannen' : '✓ Receipt scanning'),
-          _feature(isNl
-              ? '✓ Betalen via Stripe (iDEAL, creditcard)'
-              : '✓ Pay via Stripe (iDEAL, credit card)'),
+          _feature(isNl ? '✓ Onbeperkt facturen' : '✓ Unlimited invoices'),
+          _feature(isNl ? '✓ AI factuur assistent' : '✓ AI invoice assistant'),
+          _feature(isNl ? '✓ Historische factuurimport' : '✓ Historical invoice import'),
+          _feature(isNl ? '✓ Klantenbeheer' : '✓ Client management'),
+          _feature(isNl ? '✓ Uitgaven bijhouden' : '✓ Expense tracking'),
+          _feature(isNl ? '✓ Kwartaal BTW overzicht' : '✓ Quarterly VAT overview'),
+          _feature(isNl ? '✓ Jaaroverzicht financiën' : '✓ Annual financial overview'),
+          _feature(isNl ? '✓ Bonnen scannen' : '✓ Receipt scanning'),
+          _feature(isNl ? '✓ Betalen via Stripe (iDEAL, creditcard)' : '✓ Pay via Stripe (iDEAL, credit card)'),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,

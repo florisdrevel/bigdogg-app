@@ -14,6 +14,142 @@ class _LandingScreenState extends State<LandingScreen> {
 
   String t(String nl, String en) => _isNl ? nl : en;
 
+  void _showTerms(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 640, maxHeight: 600),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  color: BigDoggTheme.teal800,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        t('Algemene Voorwaarden', 'Terms & Conditions'),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    _termsText(),
+                    style: const TextStyle(
+                        fontSize: 13,
+                        color: BigDoggTheme.lightTextPrimary,
+                        height: 1.7),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(
+                      top: BorderSide(color: BigDoggTheme.lightBorder)),
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(t('Sluiten', 'Close')),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _termsText() {
+    if (_isNl) {
+      return '''Algemene Voorwaarden — BigDogg
+Versie 1.0 | Ingangsdatum: 1 januari 2026
+
+1. OVER BIGDOGG
+BigDogg is een online boekhoud- en facturatiedienst voor zelfstandigen en ZZP'ers in Nederland, aangeboden door BigDogg (hierna: "BigDogg", "wij", "ons"). Door gebruik te maken van onze diensten ga je akkoord met deze voorwaarden.
+
+2. DIENSTVERLENING
+BigDogg biedt tools voor facturatie, uitgavenbeheer, BTW-overzichten en financiële rapportages. Wij streven naar correctheid en beschikbaarheid van onze diensten, maar bieden geen garanties met betrekking tot volledigheid of geschiktheid voor specifieke fiscale of juridische doeleinden.
+
+3. ABONNEMENT EN BETALING
+Het abonnement bedraagt €7,99 per maand, vooraf gefactureerd. Na een gratis proefperiode van 30 dagen wordt automatisch overgegaan op een betaald abonnement, tenzij je vóór het einde van de proefperiode opzegt. Opzegging kan op elk moment via de instellingen in de app. Je behoudt toegang tot het einde van de lopende betaalperiode.
+
+4. VERANTWOORDELIJKHEID VOOR ADMINISTRATIE
+BigDogg ondersteunt jou bij je administratie, maar de volledige verantwoordelijkheid voor de juistheid, volledigheid en tijdige indiening van je belastingaangiftes, facturen en overige administratieve verplichtingen ligt bij jou als gebruiker. Wij raden je nadrukkelijk aan om regelmatig lokale back-ups te maken van al je facturen, rapporten en financiële documenten door deze te downloaden en op te slaan op een eigen, veilige locatie. BigDogg is niet aansprakelijk voor verlies van gegevens als gevolg van technische storingen, beëindiging van het account of andere omstandigheden buiten onze directe controle.
+
+5. GEGEVENSVERWERKING EN PRIVACY
+Wij verwerken persoonsgegevens in overeenstemming met de Algemene Verordening Gegevensbescherming (AVG). Je gegevens worden uitsluitend gebruikt voor het leveren van de dienst en worden niet verkocht aan derden. Bij beëindiging van je account worden je gegevens verwijderd conform ons bewaarbeleid.
+
+6. AANSPRAKELIJKHEIDSBEPERKING
+BigDogg is niet aansprakelijk voor indirecte schade, gederfde inkomsten, gemiste belastingvoordelen of schade voortvloeiend uit onjuist gebruik van het platform. De totale aansprakelijkheid van BigDogg is beperkt tot het bedrag dat je in de afgelopen drie maanden aan ons hebt betaald.
+
+7. INTELLECTUEEL EIGENDOM
+Alle inhoud, functionaliteiten en technologie van BigDogg zijn eigendom van BigDogg en mogen niet worden gekopieerd, verspreid of gebruikt zonder schriftelijke toestemming.
+
+8. WIJZIGINGEN
+Wij behouden het recht voor deze voorwaarden te wijzigen. Wezenlijke wijzigingen worden ten minste 30 dagen van tevoren per e-mail aangekondigd. Voortgezet gebruik van de dienst na de ingangsdatum van de wijziging geldt als aanvaarding.
+
+9. TOEPASSELIJK RECHT
+Op deze voorwaarden is Nederlands recht van toepassing. Geschillen worden voorgelegd aan de bevoegde rechter in Nederland.
+
+10. CONTACT
+Voor vragen over deze voorwaarden: info@bigdogg.nl''';
+    } else {
+      return '''Terms & Conditions — BigDogg
+Version 1.0 | Effective date: 1 January 2026
+
+1. ABOUT BIGDOGG
+BigDogg is an online accounting and invoicing service for freelancers in the Netherlands, provided by BigDogg (hereinafter: "BigDogg", "we", "us"). By using our services, you agree to these terms.
+
+2. SERVICES
+BigDogg provides tools for invoicing, expense management, VAT overviews and financial reporting. We strive for accuracy and availability of our services, but make no guarantees regarding completeness or suitability for specific tax or legal purposes.
+
+3. SUBSCRIPTION AND PAYMENT
+The subscription fee is €7.99 per month, billed in advance. After a 30-day free trial, a paid subscription begins automatically unless cancelled before the end of the trial period. You may cancel at any time via the settings in the app. You retain access until the end of the current billing period.
+
+4. RESPONSIBILITY FOR YOUR ADMINISTRATION
+BigDogg supports you in managing your administration, but full responsibility for the accuracy, completeness and timely submission of your tax returns, invoices and other administrative obligations rests with you as the user. We strongly encourage you to regularly create local backups of all your invoices, reports and financial documents by downloading and saving them to a secure location of your own. BigDogg is not liable for data loss resulting from technical failures, account termination or other circumstances beyond our direct control.
+
+5. DATA PROCESSING AND PRIVACY
+We process personal data in accordance with the General Data Protection Regulation (GDPR). Your data is used solely to provide the service and is not sold to third parties. Upon account termination, your data will be deleted in accordance with our retention policy.
+
+6. LIMITATION OF LIABILITY
+BigDogg is not liable for indirect damages, lost revenue, missed tax benefits or damage resulting from improper use of the platform. BigDogg's total liability is limited to the amount you have paid us in the preceding three months.
+
+7. INTELLECTUAL PROPERTY
+All content, features and technology of BigDogg are owned by BigDogg and may not be copied, distributed or used without written permission.
+
+8. CHANGES
+We reserve the right to amend these terms. Material changes will be announced by email at least 30 days in advance. Continued use of the service after the effective date of the change constitutes acceptance.
+
+9. GOVERNING LAW
+These terms are governed by Dutch law. Disputes will be submitted to the competent court in the Netherlands.
+
+10. CONTACT
+For questions about these terms: info@bigdogg.nl''';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -206,9 +342,8 @@ class _LandingScreenState extends State<LandingScreen> {
                     fontSize: 16, fontWeight: FontWeight.w700),
                 elevation: 3,
               ),
-              child: Text(
-                  t('Start gratis proefperiode →',
-                      'Start free trial →')),
+              child: Text(t('Start gratis proefperiode →',
+                  'Start free trial →')),
             ),
             TextButton(
               onPressed: () => context.go('/login'),
@@ -269,6 +404,10 @@ class _LandingScreenState extends State<LandingScreen> {
       ),
       child: Column(
         children: [
+          // Large logo
+          Image.asset('assets/images/logo.png',
+              width: 120, height: 120),
+          const SizedBox(height: 20),
           // Mock invoice
           Container(
             padding: const EdgeInsets.all(16),
@@ -281,7 +420,8 @@ class _LandingScreenState extends State<LandingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('FACTUUR',
                         style: TextStyle(
@@ -293,12 +433,12 @@ class _LandingScreenState extends State<LandingScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color:
-                            BigDoggTheme.success.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
+                        color: BigDoggTheme.success
+                            .withOpacity(0.1),
+                        borderRadius:
+                            BorderRadius.circular(6),
                       ),
-                      child: Text(
-                          t('Betaald', 'Paid'),
+                      child: Text(t('Betaald', 'Paid'),
                           style: const TextStyle(
                               color: BigDoggTheme.success,
                               fontSize: 10,
@@ -320,12 +460,14 @@ class _LandingScreenState extends State<LandingScreen> {
                 const Divider(height: 1),
                 const SizedBox(height: 10),
                 _invoiceLineItem(
-                    t('Coaching — 5 dagen', 'Coaching — 5 days'),
+                    t('Coaching — 5 dagen',
+                        'Coaching — 5 days'),
                     '€ 3.025,00'),
                 _invoiceLineItem('21% BTW', '€ 635,25'),
                 const Divider(height: 16),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
                   children: [
                     Text(t('Totaal', 'Total'),
                         style: const TextStyle(
@@ -343,7 +485,7 @@ class _LandingScreenState extends State<LandingScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          // AI prompt preview
+          // AI prompt preview with robot icon
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -354,7 +496,7 @@ class _LandingScreenState extends State<LandingScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.auto_awesome,
+                const Icon(Icons.smart_toy_outlined,
                     color: BigDoggTheme.teal800, size: 16),
                 const SizedBox(width: 8),
                 Expanded(
@@ -374,11 +516,10 @@ class _LandingScreenState extends State<LandingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            t('AI maakte dit in 3 seconden.',
-                'AI created this in 3 seconds.'),
+            t('AI maakt je factuur in een oogwenk.',
+                'AI creates your invoice near-instantly.'),
             style: const TextStyle(
-                fontSize: 11,
-                color: BigDoggTheme.lightTextHint),
+                fontSize: 11, color: BigDoggTheme.lightTextHint),
             textAlign: TextAlign.center,
           ),
         ],
@@ -427,10 +568,11 @@ class _LandingScreenState extends State<LandingScreen> {
             runSpacing: 16,
             alignment: WrapAlignment.center,
             children: [
-              _statItem('€ 0', t('Verborgen kosten', 'Hidden fees')),
+              _statItem('€ 0',
+                  t('Verborgen kosten', 'Hidden fees')),
               _statItem('30',
                   t('Dagen gratis proberen', 'Days free trial')),
-              _statItem('< 3s',
+              _statItem('~instant',
                   t('Factuur aanmaken', 'To create invoice')),
               _statItem('€7,99',
                   t('Per maand, alles in', 'Per month, all in')),
@@ -463,17 +605,17 @@ class _LandingScreenState extends State<LandingScreen> {
         'title':
             t('Switch in 60 seconden', 'Switch in 60 seconds'),
         'desc': t(
-          'Sleep je factuurhistorie van de afgelopen 10 jaar erin. BigDogg genereert direct historische jaarrapporten.',
-          'Drag in your invoice history from the last 10 years. BigDogg instantly generates historical annual reports.',
+          'Sleep je volledige factuurhistorie erin. BigDogg genereert direct historische jaarrapporten en organiseert je verleden.',
+          'Drag in your complete invoice history. BigDogg instantly generates historical annual reports and organises your past.',
         ),
         'highlight': true,
       },
       {
-        'icon': Icons.auto_awesome,
+        'icon': Icons.smart_toy_outlined,
         'title': t('Prompt-to-factuur', 'Prompt-to-invoice'),
         'desc': t(
-          'Stop met typen, begin met factureren. Maak professionele facturen in seconden met eenvoudige tekst.',
-          'Stop typing, start billing. Create professional, tax-compliant invoices in seconds using simple prompts.',
+          'Stop met typen, begin met factureren. Maak professionele, BTW-conforme facturen in een oogwenk met eenvoudige tekst.',
+          'Stop typing, start billing. Create professional, tax-compliant invoices near-instantly using simple prompts.',
         ),
         'highlight': false,
       },
@@ -489,7 +631,8 @@ class _LandingScreenState extends State<LandingScreen> {
       },
       {
         'icon': Icons.people_outline,
-        'title': t('Klant-onboarding', 'Client self-onboarding'),
+        'title':
+            t('Klant-onboarding', 'Client self-onboarding'),
         'desc': t(
           'Stuur een link, laat je klanten hun gegevens invullen. Geen gedoe meer met IBAN- of KvK-nummers.',
           'Send a link, let your clients fill in their details. No more chasing IBANs or KvK numbers.',
@@ -668,7 +811,8 @@ class _LandingScreenState extends State<LandingScreen> {
             decoration: BoxDecoration(
               color: BigDoggTheme.lightSurface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: BigDoggTheme.lightBorder),
+              border:
+                  Border.all(color: BigDoggTheme.lightBorder),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -679,13 +823,12 @@ class _LandingScreenState extends State<LandingScreen> {
             ),
             child: Column(
               children: [
-                // Header
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 20, vertical: 14),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: BigDoggTheme.teal800,
-                    borderRadius: const BorderRadius.vertical(
+                    borderRadius: BorderRadius.vertical(
                         top: Radius.circular(15)),
                   ),
                   child: Row(
@@ -720,8 +863,8 @@ class _LandingScreenState extends State<LandingScreen> {
                             borderRadius:
                                 BorderRadius.circular(6),
                           ),
-                          child: Text('BigDogg',
-                              style: const TextStyle(
+                          child: const Text('BigDogg',
+                              style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
                                   fontWeight:
@@ -732,14 +875,13 @@ class _LandingScreenState extends State<LandingScreen> {
                     ],
                   ),
                 ),
-                // Rows
-                ..._comparisonRows(isWide),
-                // Price row
+                ..._comparisonRows(),
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
-                    color: BigDoggTheme.gold500.withOpacity(0.06),
+                    color:
+                        BigDoggTheme.gold500.withOpacity(0.06),
                     borderRadius: const BorderRadius.vertical(
                         bottom: Radius.circular(15)),
                     border: Border(
@@ -755,27 +897,23 @@ class _LandingScreenState extends State<LandingScreen> {
                                   'Price per month'),
                               style: const TextStyle(
                                   fontWeight: FontWeight.w700,
-                                  color: BigDoggTheme
-                                      .teal800))),
-                      Expanded(
-                          child: Text('€29+',
-                              style: const TextStyle(
                                   color:
-                                      BigDoggTheme.error,
-                                  fontWeight:
-                                      FontWeight.w700),
+                                      BigDoggTheme.teal800))),
+                      Expanded(
+                          child: const Text('€29+',
+                              style: TextStyle(
+                                  color: BigDoggTheme.error,
+                                  fontWeight: FontWeight.w700),
                               textAlign: TextAlign.center)),
                       Expanded(
-                          child: Text('€39+',
-                              style: const TextStyle(
-                                  color:
-                                      BigDoggTheme.error,
-                                  fontWeight:
-                                      FontWeight.w700),
+                          child: const Text('€39+',
+                              style: TextStyle(
+                                  color: BigDoggTheme.error,
+                                  fontWeight: FontWeight.w700),
                               textAlign: TextAlign.center)),
                       Expanded(
-                        child: Text('€7,99',
-                            style: const TextStyle(
+                        child: const Text('€7,99',
+                            style: TextStyle(
                                 color: BigDoggTheme.success,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 16),
@@ -792,7 +930,7 @@ class _LandingScreenState extends State<LandingScreen> {
     );
   }
 
-  List<Widget> _comparisonRows(bool isWide) {
+  List<Widget> _comparisonRows() {
     final rows = [
       [t('AI factuur assistent', 'AI invoice assistant'), '✗', '✗', '✓'],
       [t('Historische import', 'Historical import'), '✗', '✗', '✓'],
@@ -822,8 +960,7 @@ class _LandingScreenState extends State<LandingScreen> {
                 child: Text(row[0],
                     style: const TextStyle(
                         fontSize: 13,
-                        color:
-                            BigDoggTheme.lightTextPrimary))),
+                        color: BigDoggTheme.lightTextPrimary))),
             Expanded(
                 child: Text(row[1],
                     style: TextStyle(
@@ -911,7 +1048,8 @@ class _LandingScreenState extends State<LandingScreen> {
                             color: Colors.white)),
                     const SizedBox(width: 8),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                      padding:
+                          const EdgeInsets.only(bottom: 10),
                       child: Text(t('/ maand', '/ month'),
                           style: const TextStyle(
                               color: Colors.white60,
@@ -924,7 +1062,8 @@ class _LandingScreenState extends State<LandingScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: BigDoggTheme.gold500.withOpacity(0.2),
+                    color:
+                        BigDoggTheme.gold500.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -944,8 +1083,8 @@ class _LandingScreenState extends State<LandingScreen> {
                       '✓ Unlimited invoicing'),
                   t('✓ AI factuur assistent',
                       '✓ AI invoice assistant'),
-                  t('✓ Historische import (10 jaar)',
-                      '✓ Historical import (10 years)'),
+                  t('✓ Historische factuurimport',
+                      '✓ Historical invoice import'),
                   t('✓ PDF generatie & e-mail',
                       '✓ PDF generation & email'),
                   t('✓ Klantenbeheer & onboarding',
@@ -983,7 +1122,8 @@ class _LandingScreenState extends State<LandingScreen> {
                           fontWeight: FontWeight.w700),
                       elevation: 0,
                     ),
-                    child: Text(t('Start gratis proefperiode →',
+                    child: Text(t(
+                        'Start gratis proefperiode →',
                         'Start free trial →')),
                   ),
                 ),
@@ -1034,8 +1174,8 @@ class _LandingScreenState extends State<LandingScreen> {
           const SizedBox(height: 12),
           Text(
             t(
-              'Sluit je aan bij honderden Nederlandse ZZP\'ers die al slimmer werken.',
-              'Join hundreds of Dutch freelancers already working smarter.',
+              'Sluit je aan bij Nederlandse ZZP\'ers die al slimmer werken.',
+              'Join Dutch freelancers already working smarter.',
             ),
             style: const TextStyle(
                 fontSize: 16,
@@ -1063,7 +1203,8 @@ class _LandingScreenState extends State<LandingScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            t('30 dagen gratis. Daarna €7,99/maand. Altijd opzegbaar.',
+            t(
+                '30 dagen gratis. Daarna €7,99/maand. Altijd opzegbaar.',
                 '30 days free. Then €7.99/month. Cancel anytime.'),
             style: const TextStyle(
                 color: BigDoggTheme.lightTextHint, fontSize: 13),
@@ -1100,11 +1241,25 @@ class _LandingScreenState extends State<LandingScreen> {
                   style: const TextStyle(
                       color: Colors.white38, fontSize: 12),
                 ),
-                TextButton(
-                  onPressed: () => context.go('/login'),
-                  child: Text(t('Inloggen', 'Sign in'),
-                      style:
-                          const TextStyle(color: Colors.white60)),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => _showTerms(context),
+                      child: Text(
+                          t('Algemene Voorwaarden',
+                              'Terms & Conditions'),
+                          style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 12)),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () => context.go('/login'),
+                      child: Text(t('Inloggen', 'Sign in'),
+                          style: const TextStyle(
+                              color: Colors.white60)),
+                    ),
+                  ],
                 ),
               ],
             )
@@ -1129,6 +1284,15 @@ class _LandingScreenState extends State<LandingScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => _showTerms(context),
+                  child: Text(
+                      t('Algemene Voorwaarden',
+                          'Terms & Conditions'),
+                      style: const TextStyle(
+                          color: Colors.white60, fontSize: 12)),
+                ),
+                const SizedBox(height: 4),
                 Text(
                   t('© 2026 BigDogg · Voor Nederlandse ZZP\'ers',
                       '© 2026 BigDogg · For Dutch freelancers'),

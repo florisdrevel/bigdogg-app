@@ -9,7 +9,7 @@ import 'invoices_screen.dart';
 import 'expenses_screen.dart';
 import 'overview_screen.dart';
 import 'profile_screen.dart';
-import 'subscription_screen.dart';
+import 'settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -28,15 +28,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ExpensesScreen(),
     OverviewScreen(),
     ProfileScreen(),
-    SubscriptionScreen(),
+    SettingsScreen(),
   ];
 
   final List<String> _titlesEn = const [
-    'Invoices', 'Clients', 'Products', 'Expenses', 'Overview', 'Profile', 'Plan',
+    'Invoices', 'Clients', 'Products', 'Expenses', 'Overview', 'Profile', 'Settings',
   ];
 
   final List<String> _titlesNl = const [
-    'Facturen', 'Klanten', 'Producten', 'Kosten', 'Overzicht', 'Profiel', 'Abonnement',
+    'Facturen', 'Klanten', 'Producten', 'Kosten', 'Overzicht', 'Profiel', 'Instellingen',
   ];
 
   @override
@@ -130,7 +130,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             BottomNavigationBarItem(icon: const Icon(Icons.receipt_outlined), label: isNl ? 'Kosten' : 'Expenses'),
             BottomNavigationBarItem(icon: const Icon(Icons.bar_chart_outlined), label: isNl ? 'Overzicht' : 'Overview'),
             BottomNavigationBarItem(icon: const Icon(Icons.person_outline), label: isNl ? 'Profiel' : 'Profile'),
-            BottomNavigationBarItem(icon: const Icon(Icons.credit_card_outlined), label: isNl ? 'Abonnement' : 'Plan'),
+            BottomNavigationBarItem(icon: const Icon(Icons.settings_outlined), label: isNl ? 'Instellingen' : 'Settings'),
           ],
         ),
       ),
