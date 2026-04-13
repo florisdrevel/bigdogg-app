@@ -15,7 +15,6 @@ dependencies:
   go_router: ^13.2.0
   url_launcher: ^6.2.4
   provider: ^6.1.2
-  speech_to_text: ^7.3.0
   supabase_flutter: ^2.12.2
   image_picker: ^1.1.2
 
@@ -39,3 +38,6 @@ flutter:
           weight: 600
         - asset: assets/fonts/PlusJakartaSans-Bold.ttf
           weight: 700
+    - family: MaterialIcons
+      fonts:
+        - asset: assets/fonts/MaterialIcons-Regular.otf
