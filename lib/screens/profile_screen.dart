@@ -61,7 +61,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _saveProfile(bool isNl) async {
-    setState(() { _saving = true; _error = null; _success = null; });
+    setState(() {
+      _saving = true;
+      _error = null;
+      _success = null;
+    });
     final result = await ProfileService.saveProfile(
       businessName: _businessNameController.text.trim(),
       fullName: _fullNameController.text.trim(),
@@ -87,7 +91,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (kIsWeb) {
       final completer = Completer<void>();
       final input = html.FileUploadInputElement();
-      input.accept = 'application/pdf,.pdf';
+      input.accept =
+          'application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.webp,.heic';
       input.multiple = true;
       input.click();
       input.onChange.listen((event) async {
@@ -116,7 +121,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _runImport(bool isNl) async {
     if (_importFilesBytes.isEmpty) return;
-    setState(() { _importing = true; _importResult = null; _error = null; });
+    setState(() {
+      _importing = true;
+      _importResult = null;
+      _error = null;
+    });
 
     final result = await InvoicesService.importInvoices(
       filesBytes: _importFilesBytes,
@@ -196,10 +205,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _inputField(_businessNameController,
                     isNl ? 'Bedrijfsnaam' : 'Business name'),
                 const SizedBox(height: 12),
-                _inputField(
-                    _fullNameController, isNl ? 'Volledige naam' : 'Full name'),
+                _inputField(_fullNameController,
+                    isNl ? 'Volledige naam' : 'Full name'),
                 const SizedBox(height: 12),
-                _inputField(_addressController, isNl ? 'Adres' : 'Address'),
+                _inputField(
+                    _addressController, isNl ? 'Adres' : 'Address'),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -259,7 +269,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isNl ? 'Oude facturen importeren' : 'Import old invoices',
+                  isNl
+                      ? 'Oude facturen importeren'
+                      : 'Import old invoices',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -268,21 +280,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 4),
                 Text(
                   isNl
-                      ? 'Upload PDF facturen van je vorige boekhoudprogramma. Ze worden toegevoegd aan je jaaroverzicht.'
-                      : 'Upload PDF invoices from your previous accounting tool. They will be added to your annual overview.',
+                      ? 'Upload PDF facturen of screenshots van je vorige boekhoudprogramma. Ze worden toegevoegd aan je jaaroverzicht.'
+                      : 'Upload PDF invoices or screenshots from your previous accounting tool. They will be added to your annual overview.',
                   style: const TextStyle(
-                      fontSize: 13, color: BigDoggTheme.lightTextSecondary),
+                      fontSize: 13,
+                      color: BigDoggTheme.lightTextSecondary),
                 ),
                 const SizedBox(height: 12),
-
-                // File picker
                 OutlinedButton.icon(
                   onPressed: _importing ? null : () => _pickFiles(isNl),
                   icon: const Icon(Icons.upload_file),
-                  label: Text(isNl ? 'PDFs selecteren' : 'Select PDFs'),
+                  label: Text(isNl
+                      ? 'PDFs of afbeeldingen selecteren'
+                      : 'Select PDFs or images'),
                 ),
-
-                // Selected files list
                 if (_importFileNames.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Container(
@@ -307,16 +318,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               padding: const EdgeInsets.only(bottom: 2),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.picture_as_pdf,
-                                      size: 14, color: BigDoggTheme.teal700),
+                                  const Icon(Icons.insert_drive_file,
+                                      size: 14,
+                                      color: BigDoggTheme.teal700),
                                   const SizedBox(width: 4),
                                   Expanded(
-                                    child: Text(name,
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            color:
-                                                BigDoggTheme.lightTextSecondary),
-                                        overflow: TextOverflow.ellipsis),
+                                    child: Text(
+                                      name,
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color: BigDoggTheme
+                                              .lightTextSecondary),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -328,7 +342,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _importing ? null : () => _runImport(isNl),
+                      onPressed:
+                          _importing ? null : () => _runImport(isNl),
                       icon: _importing
                           ? const SizedBox(
                               width: 16,
@@ -342,8 +357,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ],
-
-                // Import result
                 if (_importResult != null) ...[
                   const SizedBox(height: 12),
                   Container(
@@ -377,16 +390,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ],
                         const SizedBox(height: 8),
-                        ...(_importResult!['imported'] as List).map((inv) =>
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 2),
-                              child: Text(
-                                '• ${inv['client_name']} — €${inv['total']} (${inv['date']})',
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    color: BigDoggTheme.lightTextSecondary),
-                              ),
-                            )),
+                        ...(_importResult!['imported'] as List)
+                            .map((inv) => Padding(
+                                  padding:
+                                      const EdgeInsets.only(bottom: 2),
+                                  child: Text(
+                                    '• ${inv['client_name']} — €${inv['total']} (${inv['date']})',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: BigDoggTheme
+                                            .lightTextSecondary),
+                                  ),
+                                )),
                       ],
                     ),
                   ),
