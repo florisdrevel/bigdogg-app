@@ -42,43 +42,47 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
     setState(() => _speechAvailable = available);
   }
 
-  Future<void> _toggleListening(bool isNl) async {
-    if (_listening) {
-      await _speech.stop();
-      setState(() => _listening = false);
-      return;
-    }
+String _interimBuffer = '';
 
-    if (!_speechAvailable) {
-      setState(() => _error = isNl
-          ? 'Spraakherkenning niet beschikbaar in deze browser'
-          : 'Speech recognition not available in this browser');
-      return;
-    }
-
-    setState(() {
-      _listening = true;
-      _error = null;
-      _lastWords = _promptController.text;
-    });
-
-    await _speech.listen(
-      onResult: (result) {
-        // Only update on final result to prevent duplication
-        if (result.finalResult) {
-          setState(() {
-            _promptController.text = result.recognizedWords;
-            _lastWords = result.recognizedWords;
-            _listening = false;
-          });
-        }
-      },
-      localeId: isNl ? 'nl_NL' : 'en_US',
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 3),
-      listenMode: ListenMode.confirmation,
-    );
+Future<void> _toggleListening(bool isNl) async {
+  if (_listening) {
+    await _speech.stop();
+    setState(() => _listening = false);
+    return;
   }
+
+  if (!_speechAvailable) {
+    setState(() => _error = isNl
+        ? 'Spraakherkenning niet beschikbaar in deze browser'
+        : 'Speech recognition not available in this browser');
+    return;
+  }
+
+  setState(() {
+    _listening = true;
+    _error = null;
+    _interimBuffer = '';
+  });
+
+  await _speech.listen(
+    onResult: (result) {
+      // Completely ignore non-final results
+      if (!result.finalResult) return;
+      // Guard against duplicate final results
+      if (result.recognizedWords == _interimBuffer) return;
+      _interimBuffer = result.recognizedWords;
+      setState(() {
+        _promptController.text = result.recognizedWords;
+        _listening = false;
+      });
+    },
+    localeId: isNl ? 'nl_NL' : 'en_US',
+    listenFor: const Duration(seconds: 30),
+    pauseFor: const Duration(seconds: 3),
+    cancelOnError: true,
+    partialResults: false,
+  );
+}
 
   Future<void> _parse(bool isNl) async {
     if (_promptController.text.isEmpty) return;
