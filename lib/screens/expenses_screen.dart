@@ -290,7 +290,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       if (descController.text.isEmpty ||
                           amountController.text.isEmpty) return;
                       setDialogState(() => uploading = true);
-                      Navigator.pop(context);
 
                       final result = await ExpensesService.createExpense(
                         description: descController.text.trim(),
@@ -308,6 +307,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         );
                       }
 
+                      if (mounted) Navigator.pop(context);
                       _loadExpenses();
                     },
               child: uploading
@@ -326,69 +326,70 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   void _showReceiptDialog(String receiptUrl, bool isNl) {
-  final isPdf = receiptUrl.toLowerCase().contains('.pdf') ||
-      receiptUrl.toLowerCase().contains('%2Fpdf');
+    final isPdf = receiptUrl.toLowerCase().contains('.pdf') ||
+        receiptUrl.toLowerCase().contains('%2Fpdf');
 
-  showDialog(
-    context: context,
-    builder: (context) => Dialog(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppBar(
-            title: Text(isNl ? 'Bon' : 'Receipt'),
-            backgroundColor: BigDoggTheme.teal800,
-            foregroundColor: Colors.white,
-            automaticallyImplyLeading: false,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isPdf ? Icons.picture_as_pdf : Icons.image,
-                  size: 64,
-                  color: BigDoggTheme.teal800,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  isPdf
-                      ? (isNl ? 'PDF bon' : 'PDF receipt')
-                      : (isNl ? 'Foto bon' : 'Photo receipt'),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: BigDoggTheme.teal800),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final uri = Uri.parse(receiptUrl);
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri,
-                            mode: LaunchMode.externalApplication);
-                      }
-                    },
-                    icon: const Icon(Icons.open_in_new),
-                    label: Text(isNl ? 'Openen in browser' : 'Open in browser'),
-                  ),
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppBar(
+              title: Text(isNl ? 'Bon' : 'Receipt'),
+              backgroundColor: BigDoggTheme.teal800,
+              foregroundColor: Colors.white,
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isPdf ? Icons.picture_as_pdf : Icons.image,
+                    size: 64,
+                    color: BigDoggTheme.teal800,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isPdf
+                        ? (isNl ? 'PDF bon' : 'PDF receipt')
+                        : (isNl ? 'Foto bon' : 'Photo receipt'),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: BigDoggTheme.teal800),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final uri = Uri.parse(receiptUrl);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri,
+                              mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      icon: const Icon(Icons.open_in_new),
+                      label: Text(
+                          isNl ? 'Openen in browser' : 'Open in browser'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   IconData _categoryIcon(String category) {
     switch (category) {

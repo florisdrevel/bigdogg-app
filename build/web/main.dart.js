@@ -50245,7 +50245,7 @@ b.push(A.aV(f,A.aI(n,B.B,B.k,B.l),B.n,f,f,new A.aQ(B.b5,f,o,p,f,f,B.u),f,f,f,B.c
 b=A.h_(A.aI(b,B.o,B.k,B.a0),f,B.H,f,f,f,B.a1)
 p=A.em(A.x(e?"Annuleren":"Cancel",f,f,f,f,f,f,f,f),new A.axQ(a0),f)
 o=q.e
-a=o?f:new A.axR(q,g.b,s,r,a1,a0,a)
+a=o?f:new A.axR(q,g.b,s,r,a1,a,a0)
 if(o)e=B.Vm
 else{s=A.x(e?"Toevoegen":"Add",f,f,f,f,f,f,f,f)
 e=s}return A.m7(A.b([p,A.eD(e,a,f)],c),b,d)},
@@ -50284,12 +50284,11 @@ for(;;)switch(s){case 0:i=p.c
 if(i.a.a.length===0||p.d.a.a.length===0){s=1
 break}o=p.a
 p.e.$1(new A.axJ(o))
-A.cG(p.f,!1).dB(null)
 i=B.c.bw(i.a.a)
 n=A.Mi(p.d.a.a)
 m=o.a
 l=o.b
-k=p.r
+k=p.f
 s=3
 return A.l(A.Py(n,m,l,i,k==null?null:J.N(k,"expense_date")),$async$$0)
 case 3:j=b
@@ -50302,7 +50301,9 @@ n.toString
 o=o.d
 s=6
 return A.l(A.Cq(i,n,o==null?"receipt.jpg":o),$async$$0)
-case 6:case 5:p.b.rn()
+case 6:case 5:i=p.b
+if(i.c!=null)A.cG(p.r,!1).dB(null)
+i.rn()
 case 1:return A.r(q,r)}})
 return A.t($async$$0,r)},
 $S:6}
