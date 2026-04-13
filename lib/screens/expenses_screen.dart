@@ -23,6 +23,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   bool _loading = true;
   bool _parsing = false;
 
+  bool _isMobile() {
+    if (!kIsWeb) return true;
+    final ua = html.window.navigator.userAgent.toLowerCase();
+    return ua.contains('mobile') ||
+        ua.contains('android') ||
+        ua.contains('iphone') ||
+        ua.contains('ipad');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -393,43 +402,31 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   IconData _categoryIcon(String category) {
     switch (category) {
-      case 'travel':
-        return Icons.directions_car;
-      case 'materials':
-        return Icons.build;
-      case 'software':
-        return Icons.computer;
-      case 'food':
-        return Icons.restaurant;
-      case 'office':
-        return Icons.business;
-      default:
-        return Icons.receipt;
+      case 'travel': return Icons.directions_car;
+      case 'materials': return Icons.build;
+      case 'software': return Icons.computer;
+      case 'food': return Icons.restaurant;
+      case 'office': return Icons.business;
+      default: return Icons.receipt;
     }
   }
 
   String _categoryLabel(String category, bool isNl) {
     switch (category) {
-      case 'travel':
-        return isNl ? 'Reizen' : 'Travel';
-      case 'materials':
-        return isNl ? 'Materialen' : 'Materials';
-      case 'software':
-        return 'Software';
-      case 'food':
-        return isNl ? 'Eten & Drinken' : 'Food & Drinks';
-      case 'office':
-        return isNl ? 'Kantoor' : 'Office';
-      case 'other':
-        return isNl ? 'Overig' : 'Other';
-      default:
-        return isNl ? 'Algemeen' : 'General';
+      case 'travel': return isNl ? 'Reizen' : 'Travel';
+      case 'materials': return isNl ? 'Materialen' : 'Materials';
+      case 'software': return 'Software';
+      case 'food': return isNl ? 'Eten & Drinken' : 'Food & Drinks';
+      case 'office': return isNl ? 'Kantoor' : 'Office';
+      case 'other': return isNl ? 'Overig' : 'Other';
+      default: return isNl ? 'Algemeen' : 'General';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
+    final isMobile = _isMobile();
     double totalExBtw = _expenses.fold(
         0, (sum, e) => sum + (e['amount_ex_btw'] as num).toDouble());
     double totalBtw = _expenses.fold(
@@ -664,23 +661,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ),
           ),
 
-        // FABs
+        // FABs — camera only on mobile
         Positioned(
           bottom: 16,
           right: 16,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              FloatingActionButton(
-                heroTag: 'camera_fab',
-                onPressed: _parsing
-                    ? null
-                    : () => _pickAndParseReceipt(isNl, camera: true),
-                backgroundColor: BigDoggTheme.teal800,
-                child: const Icon(Icons.camera_alt,
-                    color: Colors.white, size: 24),
-              ),
-              const SizedBox(height: 12),
+              if (isMobile) ...[
+                FloatingActionButton(
+                  heroTag: 'camera_fab',
+                  onPressed: _parsing
+                      ? null
+                      : () => _pickAndParseReceipt(isNl, camera: true),
+                  backgroundColor: BigDoggTheme.teal800,
+                  child: const Icon(Icons.camera_alt,
+                      color: Colors.white, size: 24),
+                ),
+                const SizedBox(height: 12),
+              ],
               FloatingActionButton(
                 heroTag: 'upload_fab',
                 onPressed: _parsing

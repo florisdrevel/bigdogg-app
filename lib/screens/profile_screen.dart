@@ -41,6 +41,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfile();
   }
 
+  bool _isMobile() {
+    if (!kIsWeb) return true;
+    final ua = html.window.navigator.userAgent.toLowerCase();
+    return ua.contains('mobile') ||
+        ua.contains('android') ||
+        ua.contains('iphone') ||
+        ua.contains('ipad');
+  }
+
   Future<void> _loadProfile() async {
     setState(() => _loading = true);
     final result = await ProfileService.getProfile();
@@ -152,6 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
+    final isMobile = _isMobile();
 
     if (_loading) return const Center(child: CircularProgressIndicator());
 
@@ -292,20 +302,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Two buttons — camera and files
+                // Buttons — camera only on mobile
                 Row(
                   children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _importing
-                            ? null
-                            : () => _pickFiles(isNl, camera: true),
-                        icon: const Icon(Icons.camera_alt, size: 18),
-                        label: Text(isNl ? 'Camera' : 'Camera',
-                            style: const TextStyle(fontSize: 13)),
+                    if (isMobile) ...[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _importing
+                              ? null
+                              : () => _pickFiles(isNl, camera: true),
+                          icon: const Icon(Icons.camera_alt, size: 18),
+                          label: Text(isNl ? 'Camera' : 'Camera',
+                              style: const TextStyle(fontSize: 13)),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
+                      const SizedBox(width: 8),
+                    ],
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: _importing
@@ -318,6 +330,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 6),
+                if (isMobile)
+                  Text(
+                    isNl
+                        ? 'Tik op "Bestanden" en kies "Bladeren" voor alle bestandstypen.'
+                        : 'Tap "Files" then choose "Browse" to access all file types.',
+                    style: const TextStyle(
+                        fontSize: 11, color: BigDoggTheme.lightTextHint),
+                  ),
 
                 if (_importFileNames.isNotEmpty) ...[
                   const SizedBox(height: 12),
