@@ -169,7 +169,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('€7,99',
+                  const Text('€9,99',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 28, color: BigDoggTheme.teal800)),
                   Text(isNl ? 'per maand' : 'per month',
                       style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 12)),
@@ -209,7 +209,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               child: _checkingOut
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : Text(
-                      isNl ? 'Start abonnement — €7,99/maand' : 'Start subscription — €7.99/month',
+                      isNl ? 'Start abonnement — €9,99/maand' : 'Start subscription — €9.99/month',
                       style: const TextStyle(fontSize: 16),
                     ),
             ),
