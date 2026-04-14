@@ -79,8 +79,27 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
   Future<void> _downloadAnnualReport(bool isNl, int year) async {
     final token = await InvoicesService.getToken();
     final lang = isNl ? 'nl' : 'en';
-    final url = '${ApiConfig.baseUrl}/api/v1/reports/annual/pdf?token=$token&year=$year&lang=$lang';
+    final url =
+        '${ApiConfig.baseUrl}/api/v1/reports/annual/pdf?token=$token&year=$year&lang=$lang';
     final uri = Uri.parse(url);
+
+    // Pre-flight check — HEAD or just attempt and inspect response
+    try {
+      final response = await launchUrl(uri, mode: LaunchMode.externalApplication)
+          .then((_) => true)
+          .catchError((_) => false);
+
+      // If launchUrl succeeds silently but the server returned paid_tier_required,
+      // we catch it by doing a direct HTTP check first.
+    } catch (_) {}
+
+    // Do a lightweight HTTP check to detect paid_tier_required before launching
+    final checkResult = await OverviewService.checkAnnualReportAccess(year: year);
+    if (checkResult == 'paid_tier_required') {
+      if (mounted) _showPaywallDialog(isNl);
+      return;
+    }
+
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
@@ -93,6 +112,145 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
         );
       }
     }
+  }
+
+  void _showPaywallDialog(bool isNl) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 24),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Lock icon
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: BigDoggTheme.teal800.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.lock_outline_rounded,
+                size: 36,
+                color: BigDoggTheme.teal800,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              isNl ? 'Betaald abonnement vereist' : 'Paid plan required',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: BigDoggTheme.teal800,
+                fontFamily: 'PlusJakartaSans',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isNl
+                  ? 'Het jaarrapport is alleen beschikbaar voor gebruikers met een betaald abonnement. Upgrade je account om toegang te krijgen tot alle rapporten en functies.'
+                  : 'The annual report is only available for users on a paid plan. Upgrade your account to unlock all reports and features.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Feature list
+            _paywallFeatureRow(
+              Icons.analytics_outlined,
+              isNl ? 'Jaarlijkse financiële rapporten' : 'Annual financial reports',
+            ),
+            _paywallFeatureRow(
+              Icons.upload_file_outlined,
+              isNl ? 'Facturen & kosten importeren' : 'Import invoices & expenses',
+            ),
+            _paywallFeatureRow(
+              Icons.picture_as_pdf_outlined,
+              isNl ? 'PDF exports voor alle kwartalen' : 'PDF exports for all quarters',
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // TODO: Navigate to subscription/upgrade screen
+                  // Navigator.pushNamed(context, '/upgrade');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: BigDoggTheme.gold500,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  isNl ? 'Upgraden naar betaald' : 'Upgrade to paid',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'PlusJakartaSans',
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                isNl ? 'Niet nu' : 'Not now',
+                style: TextStyle(color: Colors.grey[500], fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _paywallFeatureRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: BigDoggTheme.teal800.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: BigDoggTheme.teal800),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            text,
+            style: const TextStyle(fontSize: 14, color: BigDoggTheme.lightTextPrimary),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -316,11 +474,13 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
                 '€${a['total_btw_to_pay']}', color: BigDoggTheme.error),
           ]),
           const SizedBox(height: 16),
+
+          // Annual report download button — shows paywall for trial users
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => _downloadAnnualReport(isNl, _selectedYear),
-              icon: const Icon(Icons.analytics_outlined, color: Colors.white),
+              icon: const Icon(Icons.lock_outline_rounded, color: Colors.white, size: 20),
               label: Text(
                 isNl
                     ? 'Download Jaarrapport $_selectedYear'
@@ -333,6 +493,19 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
+          ),
+          const SizedBox(height: 8),
+          // Subtle hint that this is a paid feature
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.workspace_premium_outlined, size: 14, color: Colors.grey[500]),
+              const SizedBox(width: 4),
+              Text(
+                isNl ? 'Alleen beschikbaar voor betaalde gebruikers' : 'Available on paid plan only',
+                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Container(
