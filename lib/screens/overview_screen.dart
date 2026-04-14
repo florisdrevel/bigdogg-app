@@ -77,28 +77,18 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
   }
 
   Future<void> _downloadAnnualReport(bool isNl, int year) async {
-    final token = await InvoicesService.getToken();
-    final lang = isNl ? 'nl' : 'en';
-    final url =
-        '${ApiConfig.baseUrl}/api/v1/reports/annual/pdf?token=$token&year=$year&lang=$lang';
-    final uri = Uri.parse(url);
-
-    // Pre-flight check — HEAD or just attempt and inspect response
-    try {
-      final response = await launchUrl(uri, mode: LaunchMode.externalApplication)
-          .then((_) => true)
-          .catchError((_) => false);
-
-      // If launchUrl succeeds silently but the server returned paid_tier_required,
-      // we catch it by doing a direct HTTP check first.
-    } catch (_) {}
-
-    // Do a lightweight HTTP check to detect paid_tier_required before launching
+    // Check access FIRST — never launch the URL until we know the user is allowed
     final checkResult = await OverviewService.checkAnnualReportAccess(year: year);
     if (checkResult == 'paid_tier_required') {
       if (mounted) _showPaywallDialog(isNl);
       return;
     }
+
+    final token = await InvoicesService.getToken();
+    final lang = isNl ? 'nl' : 'en';
+    final url =
+        '${ApiConfig.baseUrl}/api/v1/reports/annual/pdf?token=$token&year=$year&lang=$lang';
+    final uri = Uri.parse(url);
 
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
