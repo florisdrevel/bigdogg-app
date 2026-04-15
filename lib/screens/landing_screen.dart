@@ -247,7 +247,8 @@ For questions about these terms: info@bigdogg.nl''';
   Widget _buildHero(bool isWide) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isWide ? 64 : 20,
+        // FIX: tighter horizontal padding on mobile so content doesn't hug edges
+        horizontal: isWide ? 64 : 16,
         vertical: isWide ? 96 : 48,
       ),
       decoration: const BoxDecoration(
@@ -325,48 +326,83 @@ For questions about these terms: info@bigdogg.nl''';
           ),
         ),
         const SizedBox(height: 36),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            ElevatedButton(
-              onPressed: () => context.go('/register'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: BigDoggTheme.teal800,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 28, vertical: 16),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                textStyle: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w700),
-                elevation: 3,
+        // FIX: on mobile, stack buttons vertically so CTA gets full width
+        if (isWide)
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              ElevatedButton(
+                onPressed: () => context.go('/register'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: BigDoggTheme.teal800,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 28, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  textStyle: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700),
+                  elevation: 3,
+                ),
+                child: Text(t('Start gratis proefperiode →',
+                    'Start free trial →')),
               ),
-              child: Text(t('Start gratis proefperiode →',
-                  'Start free trial →')),
-            ),
-            TextButton(
-              onPressed: () => context.go('/login'),
-              child: Text(
-                t('Al een account? Inloggen',
-                    'Already have an account? Sign in'),
-                style: const TextStyle(
-                    color: BigDoggTheme.teal700,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14),
+              TextButton(
+                onPressed: () => context.go('/login'),
+                child: Text(
+                  t('Al een account? Inloggen',
+                      'Already have an account? Sign in'),
+                  style: const TextStyle(
+                      color: BigDoggTheme.teal700,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          )
+        else
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ElevatedButton(
+                onPressed: () => context.go('/register'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: BigDoggTheme.teal800,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  textStyle: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700),
+                  elevation: 3,
+                ),
+                child: Text(t('Start gratis proefperiode →',
+                    'Start free trial →')),
+              ),
+              TextButton(
+                onPressed: () => context.go('/login'),
+                child: Text(
+                  t('Al een account? Inloggen',
+                      'Already have an account? Sign in'),
+                  style: const TextStyle(
+                      color: BigDoggTheme.teal700,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14),
+                ),
+              ),
+            ],
+          ),
         const SizedBox(height: 16),
-        Row(
+        // FIX: use Wrap so trust badges flow to next line instead of overflowing
+        Wrap(
+          spacing: 16,
+          runSpacing: 8,
           children: [
             _trustBadge(Icons.lock_outline,
                 t('Geen creditcard', 'No credit card')),
-            const SizedBox(width: 16),
             _trustBadge(Icons.cancel_outlined,
                 t('Altijd opzegbaar', 'Cancel anytime')),
-            const SizedBox(width: 16),
             _trustBadge(Icons.flag_outlined, 'Made in NL 🇳🇱'),
           ],
         ),
@@ -404,11 +440,9 @@ For questions about these terms: info@bigdogg.nl''';
       ),
       child: Column(
         children: [
-          // Large logo
           Image.asset('assets/images/logo.png',
               width: 120, height: 120),
           const SizedBox(height: 20),
-          // Mock invoice
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -485,7 +519,6 @@ For questions about these terms: info@bigdogg.nl''';
             ),
           ),
           const SizedBox(height: 16),
-          // AI prompt preview with robot icon
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
