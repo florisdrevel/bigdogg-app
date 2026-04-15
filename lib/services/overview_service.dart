@@ -53,23 +53,23 @@ class OverviewService {
   }
 
   /// Pre-flight check before launching the annual report PDF URL.
-  /// Returns 'paid_tier_required' if the user is on a trial/free plan,
-  /// or 'ok' if access is allowed.
+  /// Uses HEAD so no PDF binary is downloaded — only the status code matters.
+  /// Returns 'paid_tier_required' if blocked, 'ok' for everything else.
   static Future<String> checkAnnualReportAccess({required int year}) async {
     final token = await _getToken();
     try {
-      final response = await http.get(
+      final response = await http.head(
         Uri.parse('$baseUrl/api/v1/reports/annual/pdf?token=$token&year=$year&lang=en'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
-      if (response.statusCode == 200) return 'ok';
-      final data = jsonDecode(response.body);
-      if (data['detail'] == 'paid_tier_required') return 'paid_tier_required';
-      return 'error';
+      // Only block on explicit 403 — treat 200 and any other status as allowed
+      if (response.statusCode == 403) return 'paid_tier_required';
+      return 'ok';
     } catch (e) {
-      return 'error';
+      // On network error, let it through — launchUrl will handle it
+      return 'ok';
     }
   }
 }
