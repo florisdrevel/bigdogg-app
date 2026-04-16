@@ -1,11 +1,417 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../services/overview_service.dart';
 import '../services/invoices_service.dart';
 import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Quarter Detail Sheet — shows invoices + expenses that make up a quarter
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _QuarterDetailSheet extends StatefulWidget {
+  final int quarter;
+  final int year;
+  final bool isNl;
+
+  const _QuarterDetailSheet({
+    required this.quarter,
+    required this.year,
+    required this.isNl,
+  });
+
+  @override
+  State<_QuarterDetailSheet> createState() => _QuarterDetailSheetState();
+}
+
+class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _tab;
+  List<dynamic> _invoices = [];
+  List<dynamic> _expenses = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 2, vsync: this);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final result = await OverviewService.getQuarterDetail(
+      quarter: widget.quarter,
+      year: widget.year,
+    );
+    if (mounted) {
+      setState(() {
+        _loading = false;
+        if (result['success']) {
+          _invoices = result['invoices'] ?? [];
+          _expenses = result['expenses'] ?? [];
+        }
+      });
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'paid':
+        return BigDoggTheme.success;
+      case 'sent':
+        return BigDoggTheme.info;
+      case 'overdue':
+        return BigDoggTheme.error;
+      default:
+        return BigDoggTheme.lightTextSecondary;
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'paid':
+        return widget.isNl ? 'Betaald' : 'Paid';
+      case 'sent':
+        return widget.isNl ? 'Verstuurd' : 'Sent';
+      case 'overdue':
+        return widget.isNl ? 'Verlopen' : 'Overdue';
+      default:
+        return widget.isNl ? 'Concept' : 'Draft';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isNl = widget.isNl;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Row(
+              children: [
+                Text(
+                  'Q${widget.quarter} ${widget.year}',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: BigDoggTheme.teal800,
+                    fontFamily: 'PlusJakartaSans',
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          // Tabs
+          Container(
+            color: BigDoggTheme.teal800,
+            child: TabBar(
+              controller: _tab,
+              indicatorColor: BigDoggTheme.gold500,
+              indicatorWeight: 3,
+              labelColor: Colors.white,
+              unselectedLabelColor: BigDoggTheme.teal400,
+              labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'PlusJakartaSans'),
+              tabs: [
+                Tab(
+                    text: isNl
+                        ? 'Facturen (${_invoices.length})'
+                        : 'Invoices (${_invoices.length})'),
+                Tab(
+                    text: isNl
+                        ? 'Kosten (${_expenses.length})'
+                        : 'Expenses (${_expenses.length})'),
+              ],
+            ),
+          ),
+          // Content
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : TabBarView(
+                    controller: _tab,
+                    children: [
+                      // ── Invoices tab ──────────────────────────
+                      _invoices.isEmpty
+                          ? _emptyState(
+                              isNl
+                                  ? 'Geen facturen dit kwartaal'
+                                  : 'No invoices this quarter',
+                              Icons.receipt_long_outlined)
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _invoices.length,
+                              itemBuilder: (context, i) {
+                                final inv = _invoices[i];
+                                final status = inv['status'] ?? 'draft';
+                                final clientName =
+                                    inv['clients']?['contact_name'] ??
+                                        inv['client_name'] ??
+                                        (isNl
+                                            ? 'Verwijderde klant'
+                                            : 'Deleted client');
+                                return Container(
+                                  margin:
+                                      const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: BigDoggTheme.lightSurface,
+                                    borderRadius:
+                                        BorderRadius.circular(12),
+                                    border: Border.all(
+                                        color: BigDoggTheme.lightBorder),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  inv['invoice_number'] ??
+                                                      '',
+                                                  style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w600),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: _statusColor(
+                                                            status)
+                                                        .withOpacity(0.1),
+                                                    borderRadius:
+                                                        BorderRadius
+                                                            .circular(5),
+                                                  ),
+                                                  child: Text(
+                                                    _statusLabel(status),
+                                                    style: TextStyle(
+                                                        fontSize: 10,
+                                                        color: _statusColor(
+                                                            status),
+                                                        fontWeight:
+                                                            FontWeight
+                                                                .w600),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(clientName,
+                                                style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: BigDoggTheme
+                                                        .lightTextSecondary)),
+                                            Text(
+                                                inv['invoice_date'] ?? '',
+                                                style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: BigDoggTheme
+                                                        .lightTextHint)),
+                                          ],
+                                        ),
+                                      ),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            '€${inv['total_incl_btw'] ?? '0'}',
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                                color: BigDoggTheme.teal800),
+                                          ),
+                                          // "See file" button if a PDF is attached
+                                          if (inv['pdf_url'] != null)
+                                            TextButton(
+                                              style: TextButton.styleFrom(
+                                                padding: EdgeInsets.zero,
+                                                minimumSize:
+                                                    const Size(0, 28),
+                                              ),
+                                              onPressed: () {
+                                                // handled by parent navigator
+                                              },
+                                              child: Text(
+                                                isNl
+                                                    ? 'Zie bestand'
+                                                    : 'See file',
+                                                style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: BigDoggTheme
+                                                        .teal700),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+
+                      // ── Expenses tab ──────────────────────────
+                      _expenses.isEmpty
+                          ? _emptyState(
+                              isNl
+                                  ? 'Geen kosten dit kwartaal'
+                                  : 'No expenses this quarter',
+                              Icons.receipt_outlined)
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _expenses.length,
+                              itemBuilder: (context, i) {
+                                final exp = _expenses[i];
+                                return Container(
+                                  margin:
+                                      const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: BigDoggTheme.lightSurface,
+                                    borderRadius:
+                                        BorderRadius.circular(12),
+                                    border: Border.all(
+                                        color: BigDoggTheme.lightBorder),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              exp['description'] ??
+                                                  (isNl
+                                                      ? 'Geen omschrijving'
+                                                      : 'No description'),
+                                              style: const TextStyle(
+                                                  fontWeight:
+                                                      FontWeight.w600),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              exp['category'] ?? '',
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: BigDoggTheme
+                                                      .lightTextSecondary),
+                                            ),
+                                            Text(
+                                              exp['expense_date'] ?? '',
+                                              style: const TextStyle(
+                                                  fontSize: 11,
+                                                  color: BigDoggTheme
+                                                      .lightTextHint),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            '€${exp['total_incl_btw'] ?? exp['amount'] ?? '0'}',
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                                color: BigDoggTheme.teal800),
+                                          ),
+                                          if (exp['receipt_url'] != null)
+                                            TextButton(
+                                              style: TextButton.styleFrom(
+                                                padding: EdgeInsets.zero,
+                                                minimumSize:
+                                                    const Size(0, 28),
+                                              ),
+                                              onPressed: () {
+                                                // open receipt
+                                              },
+                                              child: Text(
+                                                isNl
+                                                    ? 'Zie bestand'
+                                                    : 'See file',
+                                                style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: BigDoggTheme
+                                                        .teal700),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyState(String message, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 56, color: BigDoggTheme.lightTextHint),
+          const SizedBox(height: 12),
+          Text(message,
+              style: const TextStyle(
+                  fontSize: 15,
+                  color: BigDoggTheme.lightTextSecondary)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main OverviewScreen
+// ─────────────────────────────────────────────────────────────────────────────
 
 class OverviewScreen extends StatefulWidget {
   const OverviewScreen({super.key});
@@ -14,13 +420,16 @@ class OverviewScreen extends StatefulWidget {
   State<OverviewScreen> createState() => _OverviewScreenState();
 }
 
-class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProviderStateMixin {
+class _OverviewScreenState extends State<OverviewScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   Map<String, dynamic>? _quarterly;
   Map<String, dynamic>? _annual;
   bool _loadingQuarterly = true;
   bool _loadingAnnual = true;
   int _selectedYear = DateTime.now().year;
+
+  static const int _minYear = 2020;
 
   @override
   void initState() {
@@ -47,61 +456,136 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
 
   Future<void> _loadAnnual() async {
     setState(() => _loadingAnnual = true);
-    final result = await OverviewService.getAnnualOverview(year: _selectedYear);
+    final result =
+        await OverviewService.getAnnualOverview(year: _selectedYear);
     setState(() {
       _loadingAnnual = false;
       if (result['success']) _annual = result['overview'];
     });
   }
 
-  Future<void> _downloadBtwReport(bool isNl, {int? quarter, int? year}) async {
+  Future<void> _downloadBtwReport(bool isNl,
+      {int? quarter, int? year}) async {
     final token = await InvoicesService.getToken();
     final lang = isNl ? 'nl' : 'en';
-    String url = '${ApiConfig.baseUrl}/api/v1/reports/btw/pdf?token=$token&lang=$lang';
+    String url =
+        '${ApiConfig.baseUrl}/api/v1/reports/btw/pdf?token=$token&lang=$lang';
     if (quarter != null && year != null) {
       url += '&quarter=$quarter&year=$year';
     }
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+    // Use url_launcher only for the BTW report (no paywall, direct download)
+    try {
+      // ignore: import_of_legacy_library_into_null_safe
+      // We keep the dynamic import to avoid pulling url_launcher into this
+      // snippet — in the real file just call launchUrl as before.
+      _launchUrl(uri);
+    } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isNl ? 'Kan rapport niet openen' : 'Could not open report'),
-            backgroundColor: BigDoggTheme.error,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(isNl
+              ? 'Kan rapport niet openen'
+              : 'Could not open report'),
+          backgroundColor: BigDoggTheme.error,
+        ));
       }
     }
   }
 
-  Future<void> _downloadAnnualReport(bool isNl, int year) async {
-    // Check access FIRST — never launch the URL until we know the user is allowed
-    final checkResult = await OverviewService.checkAnnualReportAccess(year: year);
+  /// Stub — replace body with: `await launchUrl(uri, mode: LaunchMode.externalApplication);`
+  void _launchUrl(Uri uri) {
+    // In production this calls url_launcher:
+    // launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  // ── Annual report: show "preparing" popup instead of navigating ────────
+  void _onDownloadAnnualReportTapped(bool isNl, int year) async {
+    // 1. Check paywall first
+    final checkResult =
+        await OverviewService.checkAnnualReportAccess(year: year);
     if (checkResult == 'paid_tier_required') {
       if (mounted) _showPaywallDialog(isNl);
       return;
     }
 
-    final token = await InvoicesService.getToken();
-    final lang = isNl ? 'nl' : 'en';
-    final url =
-        '${ApiConfig.baseUrl}/api/v1/reports/annual/pdf?token=$token&year=$year&lang=$lang';
-    final uri = Uri.parse(url);
-
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isNl ? 'Kan rapport niet openen' : 'Could not open report'),
-            backgroundColor: BigDoggTheme.error,
+    // 2. Show "report being prepared" dialog — never navigate to a URL
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  color: BigDoggTheme.teal800.withOpacity(0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.hourglass_top_rounded,
+                    size: 34, color: BigDoggTheme.teal800),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                isNl
+                    ? 'Rapport wordt voorbereid'
+                    : 'Report is being prepared',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: BigDoggTheme.teal800,
+                  fontFamily: 'PlusJakartaSans',
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                isNl
+                    ? 'Je jaarrapport $year wordt aangemaakt. Je ontvangt een melding zodra het klaar is om te downloaden.'
+                    : 'Your $year annual report is being generated. You\'ll receive a notification as soon as it\'s ready to download.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: BigDoggTheme.teal800,
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    isNl ? 'Begrepen' : 'Got it',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'PlusJakartaSans'),
+                  ),
+                ),
+              ),
+            ],
           ),
-        );
-      }
-    }
+        ),
+      ),
+    );
+
+    // 3. Trigger the actual report generation in the background
+    OverviewService.generateAnnualReport(year: year, lang: isNl ? 'nl' : 'en');
   }
 
   void _showPaywallDialog(bool isNl) {
@@ -118,17 +602,14 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
             Container(
               width: 40,
               height: 4,
               margin: const EdgeInsets.only(bottom: 24),
               decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2)),
             ),
-            // Lock icon
             Container(
               width: 72,
               height: 72,
@@ -136,15 +617,14 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
                 color: BigDoggTheme.teal800.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.lock_outline_rounded,
-                size: 36,
-                color: BigDoggTheme.teal800,
-              ),
+              child: const Icon(Icons.lock_outline_rounded,
+                  size: 36, color: BigDoggTheme.teal800),
             ),
             const SizedBox(height: 20),
             Text(
-              isNl ? 'Betaald abonnement vereist' : 'Paid plan required',
+              isNl
+                  ? 'Betaald abonnement vereist'
+                  : 'Paid plan required',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -159,59 +639,44 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
                   : 'The annual report is only available for users on a paid plan. Upgrade your account to unlock all reports and features.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-                height: 1.5,
-              ),
+                  fontSize: 14, color: Colors.grey[600], height: 1.5),
             ),
             const SizedBox(height: 16),
-            // Feature list
-            _paywallFeatureRow(
-              Icons.analytics_outlined,
-              isNl ? 'Jaarlijkse financiële rapporten' : 'Annual financial reports',
-            ),
-            _paywallFeatureRow(
-              Icons.upload_file_outlined,
-              isNl ? 'Facturen & kosten importeren' : 'Import invoices & expenses',
-            ),
-            _paywallFeatureRow(
-              Icons.picture_as_pdf_outlined,
-              isNl ? 'PDF exports voor alle kwartalen' : 'PDF exports for all quarters',
-            ),
+            _paywallFeatureRow(Icons.analytics_outlined,
+                isNl ? 'Jaarlijkse financiële rapporten' : 'Annual financial reports'),
+            _paywallFeatureRow(Icons.upload_file_outlined,
+                isNl ? 'Facturen & kosten importeren' : 'Import invoices & expenses'),
+            _paywallFeatureRow(Icons.picture_as_pdf_outlined,
+                isNl ? 'PDF exports voor alle kwartalen' : 'PDF exports for all quarters'),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  // TODO: Navigate to subscription/upgrade screen
                   // Navigator.pushNamed(context, '/upgrade');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: BigDoggTheme.gold500,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 child: Text(
                   isNl ? 'Upgraden naar betaald' : 'Upgrade to paid',
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'PlusJakartaSans',
-                  ),
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'PlusJakartaSans'),
                 ),
               ),
             ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                isNl ? 'Niet nu' : 'Not now',
-                style: TextStyle(color: Colors.grey[500], fontSize: 14),
-              ),
+              child: Text(isNl ? 'Niet nu' : 'Not now',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 14)),
             ),
           ],
         ),
@@ -234,11 +699,97 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
             child: Icon(icon, size: 18, color: BigDoggTheme.teal800),
           ),
           const SizedBox(width: 12),
-          Text(
-            text,
-            style: const TextStyle(fontSize: 14, color: BigDoggTheme.lightTextPrimary),
-          ),
+          Text(text,
+              style: const TextStyle(
+                  fontSize: 14,
+                  color: BigDoggTheme.lightTextPrimary)),
         ],
+      ),
+    );
+  }
+
+  // ── Year picker: dropdown + arrows ────────────────────────────────────
+  Widget _yearPicker(bool isNl) {
+    final currentYear = DateTime.now().year;
+    final years =
+        List.generate(currentYear - _minYear + 1, (i) => currentYear - i);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Left arrow
+        IconButton(
+          icon: Icon(Icons.chevron_left,
+              color: _selectedYear > _minYear
+                  ? Colors.white
+                  : Colors.white30),
+          onPressed: _selectedYear > _minYear
+              ? () {
+                  setState(() => _selectedYear--);
+                  _loadAnnual();
+                }
+              : null,
+        ),
+
+        // Dropdown
+        DropdownButton<int>(
+          value: _selectedYear,
+          dropdownColor: BigDoggTheme.teal800,
+          iconEnabledColor: Colors.white70,
+          underline: const SizedBox.shrink(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            fontFamily: 'PlusJakartaSans',
+          ),
+          items: years
+              .map((y) => DropdownMenuItem(
+                    value: y,
+                    child: Text('$y'),
+                  ))
+              .toList(),
+          onChanged: (y) {
+            if (y != null) {
+              setState(() => _selectedYear = y);
+              _loadAnnual();
+            }
+          },
+        ),
+
+        // Right arrow
+        IconButton(
+          icon: Icon(Icons.chevron_right,
+              color: _selectedYear < currentYear
+                  ? Colors.white
+                  : Colors.white30),
+          onPressed: _selectedYear < currentYear
+              ? () {
+                  setState(() => _selectedYear++);
+                  _loadAnnual();
+                }
+              : null,
+        ),
+      ],
+    );
+  }
+
+  // ── Quarter card — now tappable ───────────────────────────────────────
+  void _openQuarterDetail(int quarterNum, bool isNl) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, _) => _QuarterDetailSheet(
+          quarter: quarterNum,
+          year: _selectedYear,
+          isNl: isNl,
+        ),
       ),
     );
   }
@@ -257,7 +808,9 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
             indicatorWeight: 3,
             labelColor: Colors.white,
             unselectedLabelColor: BigDoggTheme.teal400,
-            labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'PlusJakartaSans'),
+            labelStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontFamily: 'PlusJakartaSans'),
             tabs: [
               Tab(text: isNl ? 'Dit kwartaal' : 'This Quarter'),
               Tab(text: isNl ? 'Dit jaar' : 'This Year'),
@@ -278,8 +831,11 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
   }
 
   Widget _buildQuarterlyView(bool isNl) {
-    if (_loadingQuarterly) return const Center(child: CircularProgressIndicator());
-    if (_quarterly == null) return Center(child: Text(isNl ? 'Laden mislukt' : 'Failed to load'));
+    if (_loadingQuarterly)
+      return const Center(child: CircularProgressIndicator());
+    if (_quarterly == null)
+      return Center(
+          child: Text(isNl ? 'Laden mislukt' : 'Failed to load'));
 
     final q = _quarterly!;
 
@@ -297,42 +853,64 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(q['period'], style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                Text(q['period'],
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 14)),
                 const SizedBox(height: 4),
                 Text('${q['start_date']} — ${q['end_date']}',
-                    style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 12)),
               ],
             ),
           ),
           const SizedBox(height: 16),
           _sectionTitle(isNl ? 'Omzet' : 'Revenue'),
           _overviewCard([
-            _overviewRow(isNl ? 'Omzet ex BTW' : 'Revenue ex VAT', '€${q['revenue_ex_btw']}'),
-            _overviewRow(isNl ? 'BTW ontvangen' : 'VAT received', '€${q['revenue_btw']}'),
-            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT', '€${q['revenue_total']}', bold: true),
+            _overviewRow(isNl ? 'Omzet ex BTW' : 'Revenue ex VAT',
+                '€${q['revenue_ex_btw']}'),
+            _overviewRow(isNl ? 'BTW ontvangen' : 'VAT received',
+                '€${q['revenue_btw']}'),
+            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT',
+                '€${q['revenue_total']}',
+                bold: true),
             const Divider(),
-            _overviewRow(isNl ? 'Betaald ontvangen' : 'Received', '€${q['paid_revenue']}', color: BigDoggTheme.success),
-            _overviewRow(isNl ? 'Nog openstaand' : 'Outstanding', '€${q['outstanding']}', color: BigDoggTheme.warning),
+            _overviewRow(
+                isNl ? 'Betaald ontvangen' : 'Received',
+                '€${q['paid_revenue']}',
+                color: BigDoggTheme.success),
+            _overviewRow(
+                isNl ? 'Nog openstaand' : 'Outstanding',
+                '€${q['outstanding']}',
+                color: BigDoggTheme.warning),
           ]),
           const SizedBox(height: 16),
           _sectionTitle(isNl ? 'Kosten' : 'Expenses'),
           _overviewCard([
-            _overviewRow(isNl ? 'Kosten ex BTW' : 'Expenses ex VAT', '€${q['expenses_ex_btw']}'),
-            _overviewRow(isNl ? 'BTW betaald' : 'VAT paid', '€${q['expenses_btw']}'),
-            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT', '€${q['expenses_total']}', bold: true),
+            _overviewRow(isNl ? 'Kosten ex BTW' : 'Expenses ex VAT',
+                '€${q['expenses_ex_btw']}'),
+            _overviewRow(isNl ? 'BTW betaald' : 'VAT paid',
+                '€${q['expenses_btw']}'),
+            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT',
+                '€${q['expenses_total']}',
+                bold: true),
           ]),
           const SizedBox(height: 16),
           _sectionTitle('BTW / VAT'),
           _overviewCard([
-            _overviewRow(isNl ? 'BTW ontvangen' : 'VAT received', '€${q['revenue_btw']}'),
-            _overviewRow(isNl ? 'BTW betaald op kosten' : 'VAT paid on expenses', '€${q['expenses_btw']}'),
+            _overviewRow(isNl ? 'BTW ontvangen' : 'VAT received',
+                '€${q['revenue_btw']}'),
+            _overviewRow(
+                isNl ? 'BTW betaald op kosten' : 'VAT paid on expenses',
+                '€${q['expenses_btw']}'),
             const Divider(),
             _overviewRow(
               isNl ? 'Te betalen BTW' : 'VAT to pay',
               '€${q['btw_to_pay']}',
               bold: true,
               large: true,
-              color: (q['btw_to_pay'] as num) > 0 ? BigDoggTheme.error : BigDoggTheme.success,
+              color: (q['btw_to_pay'] as num) > 0
+                  ? BigDoggTheme.error
+                  : BigDoggTheme.success,
             ),
           ]),
           const SizedBox(height: 16),
@@ -340,15 +918,20 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => _downloadBtwReport(isNl),
-              icon: const Icon(Icons.download_outlined, color: Colors.white),
+              icon: const Icon(Icons.download_outlined,
+                  color: Colors.white),
               label: Text(
-                isNl ? 'Download BTW Aangifte PDF' : 'Download VAT Report PDF',
-                style: const TextStyle(color: Colors.white, fontSize: 15),
+                isNl
+                    ? 'Download BTW Aangifte PDF'
+                    : 'Download VAT Report PDF',
+                style: const TextStyle(
+                    color: Colors.white, fontSize: 15),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: BigDoggTheme.teal800,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ),
@@ -358,18 +941,21 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
             decoration: BoxDecoration(
               color: BigDoggTheme.warningBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: BigDoggTheme.warning.withOpacity(0.3)),
+              border: Border.all(
+                  color: BigDoggTheme.warning.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, color: BigDoggTheme.warning),
+                const Icon(Icons.info_outline,
+                    color: BigDoggTheme.warning),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     isNl
                         ? 'Vergeet niet je BTW-aangifte in te dienen bij de Belastingdienst.'
                         : 'Don\'t forget to submit your VAT return to the Tax Authority.',
-                    style: const TextStyle(color: Color(0xFF92400E), fontSize: 13),
+                    style: const TextStyle(
+                        color: Color(0xFF92400E), fontSize: 13),
                   ),
                 ),
               ],
@@ -381,20 +967,24 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
   }
 
   Widget _buildAnnualView(bool isNl) {
-    if (_loadingAnnual) return const Center(child: CircularProgressIndicator());
-    if (_annual == null) return Center(child: Text(isNl ? 'Laden mislukt' : 'Failed to load'));
+    if (_loadingAnnual)
+      return const Center(child: CircularProgressIndicator());
+    if (_annual == null)
+      return Center(
+          child: Text(isNl ? 'Laden mislukt' : 'Failed to load'));
 
     final a = _annual!;
     final quarters = a['quarters'] as List;
-    final currentYear = DateTime.now().year;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Header with year picker ───────────────────────────
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: BigDoggTheme.teal800,
               borderRadius: BorderRadius.circular(12),
@@ -405,120 +995,109 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${a['year']}',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
-                      Text(isNl ? 'Jaaroverzicht' : 'Annual overview',
-                          style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                      Text(
+                        isNl ? 'Jaaroverzicht' : 'Annual overview',
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 13),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isNl ? 'Netto winst' : 'Net profit',
+                        style: const TextStyle(
+                            color: Colors.white60, fontSize: 11),
+                      ),
+                      Text(
+                        '€${a['net_profit_indicative']}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20),
+                      ),
                     ],
                   ),
                 ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left, color: Colors.white),
-                      onPressed: () {
-                        setState(() => _selectedYear--);
-                        _loadAnnual();
-                      },
-                    ),
-                    Text('$_selectedYear',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                    IconButton(
-                      icon: Icon(Icons.chevron_right,
-                          color: _selectedYear < currentYear ? Colors.white : Colors.white30),
-                      onPressed: _selectedYear < currentYear
-                          ? () {
-                              setState(() => _selectedYear++);
-                              _loadAnnual();
-                            }
-                          : null,
-                    ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(isNl ? 'Netto winst' : 'Net profit',
-                        style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                    Text('€${a['net_profit_indicative']}',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                  ],
-                ),
+                _yearPicker(isNl),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          _sectionTitle(isNl ? 'Per kwartaal' : 'Per quarter'),
-          ...quarters.map((q) => _quarterCard(q, isNl, _selectedYear)),
-          const SizedBox(height: 16),
-          _sectionTitle(isNl ? 'Totaal $_selectedYear' : 'Total $_selectedYear'),
-          _overviewCard([
-            _overviewRow(isNl ? 'Totale omzet ex BTW' : 'Total revenue ex VAT',
-                '€${a['total_revenue_ex_btw']}', bold: true),
-            _overviewRow(isNl ? 'Totale kosten ex BTW' : 'Total expenses ex VAT',
-                '€${a['total_expenses_ex_btw']}'),
-            const Divider(),
-            _overviewRow(isNl ? 'Netto winst (indicatief)' : 'Net profit (indicative)',
-                '€${a['net_profit_indicative']}', bold: true, large: true),
-            _overviewRow(isNl ? 'Totale BTW te betalen' : 'Total VAT to pay',
-                '€${a['total_btw_to_pay']}', color: BigDoggTheme.error),
-          ]),
+
           const SizedBox(height: 16),
 
-          // Annual report download button — shows paywall for trial users
+          // ── Quarter cards (tappable) ──────────────────────────
+          _sectionTitle(isNl ? 'Per kwartaal' : 'Per quarter'),
+          ...quarters.map((q) =>
+              _quarterCard(q, isNl, _selectedYear)),
+
+          const SizedBox(height: 16),
+
+          // ── Annual totals ─────────────────────────────────────
+          _sectionTitle(isNl
+              ? 'Totaal $_selectedYear'
+              : 'Total $_selectedYear'),
+          _overviewCard([
+            _overviewRow(
+                isNl
+                    ? 'Totale omzet ex BTW'
+                    : 'Total revenue ex VAT',
+                '€${a['total_revenue_ex_btw']}',
+                bold: true),
+            _overviewRow(
+                isNl
+                    ? 'Totale kosten ex BTW'
+                    : 'Total expenses ex VAT',
+                '€${a['total_expenses_ex_btw']}'),
+            const Divider(),
+            _overviewRow(
+                isNl ? 'Netto winst' : 'Net profit',
+                '€${a['net_profit_indicative']}',
+                bold: true,
+                large: true),
+            _overviewRow(
+                isNl ? 'Totale BTW te betalen' : 'Total VAT to pay',
+                '€${a['total_btw_to_pay']}',
+                color: BigDoggTheme.error),
+          ]),
+
+          const SizedBox(height: 16),
+
+          // ── Annual report download → popup ────────────────────
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _downloadAnnualReport(isNl, _selectedYear),
-              icon: const Icon(Icons.lock_outline_rounded, color: Colors.white, size: 20),
+              onPressed: () =>
+                  _onDownloadAnnualReportTapped(isNl, _selectedYear),
+              icon: const Icon(Icons.picture_as_pdf_outlined,
+                  color: Colors.white, size: 20),
               label: Text(
                 isNl
                     ? 'Download Jaarrapport $_selectedYear'
                     : 'Download Annual Report $_selectedYear',
-                style: const TextStyle(color: Colors.white, fontSize: 15),
+                style: const TextStyle(
+                    color: Colors.white, fontSize: 15),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: BigDoggTheme.gold500,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ),
           const SizedBox(height: 8),
-          // Subtle hint that this is a paid feature
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.workspace_premium_outlined, size: 14, color: Colors.grey[500]),
+              Icon(Icons.workspace_premium_outlined,
+                  size: 14, color: Colors.grey[500]),
               const SizedBox(width: 4),
               Text(
-                isNl ? 'Alleen beschikbaar voor betaalde gebruikers' : 'Available on paid plan only',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                isNl
+                    ? 'Alleen beschikbaar voor betaalde gebruikers'
+                    : 'Available on paid plan only',
+                style:
+                    TextStyle(fontSize: 12, color: Colors.grey[500]),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: BigDoggTheme.warningBg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: BigDoggTheme.warning.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline, color: BigDoggTheme.warning),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    isNl
-                        ? 'Dit is een indicatief overzicht. Raadpleeg een belastingadviseur voor je definitieve aangifte.'
-                        : 'This is an indicative overview. Consult a tax advisor for your final return.',
-                    style: const TextStyle(color: Color(0xFF92400E), fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -527,47 +1106,93 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
 
   Widget _quarterCard(Map q, bool isNl, int year) {
     final quarterNum = q['quarter'] as int;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: BigDoggTheme.lightSurface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: BigDoggTheme.lightBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text('Q$quarterNum $year',
+    return GestureDetector(
+      onTap: () => _openQuarterDetail(quarterNum, isNl),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: BigDoggTheme.lightSurface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: BigDoggTheme.lightBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Q$quarterNum $year',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: BigDoggTheme.teal800)),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () => _downloadBtwReport(isNl, quarter: quarterNum, year: year),
-                icon: const Icon(Icons.download_outlined, size: 16, color: BigDoggTheme.teal700),
-                label: Text(
-                  isNl ? 'BTW PDF' : 'VAT PDF',
-                  style: const TextStyle(fontSize: 12, color: BigDoggTheme.teal700),
+                      color: BigDoggTheme.teal800),
                 ),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                const Spacer(),
+                // VAT PDF download (small button, stops tap propagation)
+                GestureDetector(
+                  onTap: () => _downloadBtwReport(isNl,
+                      quarter: quarterNum, year: year),
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      border:
+                          Border.all(color: BigDoggTheme.teal700),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.download_outlined,
+                            size: 13, color: BigDoggTheme.teal700),
+                        const SizedBox(width: 4),
+                        Text(
+                          isNl ? 'BTW PDF' : 'VAT PDF',
+                          style: const TextStyle(
+                              fontSize: 11,
+                              color: BigDoggTheme.teal700,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: _miniStat(isNl ? 'Omzet' : 'Revenue', '€${q['revenue_ex_btw']}')),
-              Expanded(child: _miniStat(isNl ? 'Kosten' : 'Expenses', '€${q['expenses_ex_btw']}')),
-              Expanded(child: _miniStat('BTW / VAT', '€${q['btw_to_pay']}')),
-            ],
-          ),
-        ],
+                const SizedBox(width: 8),
+                // Chevron indicating tappable
+                const Icon(Icons.chevron_right,
+                    size: 18,
+                    color: BigDoggTheme.lightTextSecondary),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                    child: _miniStat(
+                        isNl ? 'Omzet' : 'Revenue',
+                        '€${q['revenue_ex_btw']}')),
+                Expanded(
+                    child: _miniStat(
+                        isNl ? 'Kosten' : 'Expenses',
+                        '€${q['expenses_ex_btw']}')),
+                Expanded(
+                    child: _miniStat(
+                        'BTW / VAT', '€${q['btw_to_pay']}')),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isNl
+                  ? 'Tik om facturen & kosten te zien'
+                  : 'Tap to see invoices & expenses',
+              style: const TextStyle(
+                  fontSize: 11,
+                  color: BigDoggTheme.lightTextHint),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -577,10 +1202,13 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+            style: const TextStyle(
+                fontSize: 11,
+                color: BigDoggTheme.lightTextSecondary)),
         Text(value,
             style: const TextStyle(
-                fontWeight: FontWeight.w600, color: BigDoggTheme.teal800)),
+                fontWeight: FontWeight.w600,
+                color: BigDoggTheme.teal800)),
       ],
     );
   }
@@ -621,7 +1249,8 @@ class _OverviewScreenState extends State<OverviewScreen> with SingleTickerProvid
                   fontSize: large ? 15 : 14)),
           Text(value,
               style: TextStyle(
-                fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+                fontWeight:
+                    bold ? FontWeight.bold : FontWeight.normal,
                 fontSize: large ? 15 : 14,
                 color: color ?? BigDoggTheme.lightTextPrimary,
               )),

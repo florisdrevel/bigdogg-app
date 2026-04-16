@@ -24,9 +24,19 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   int? _filterMonth;
   String _sortBy = 'date_desc';
 
+  /// Returns the current quarter number (1–4) based on today's date.
+  static int get _currentQuarter {
+    final month = DateTime.now().month;
+    return ((month - 1) ~/ 3) + 1;
+  }
+
+  static int get _currentYear => DateTime.now().year;
+
   @override
   void initState() {
     super.initState();
+    // Default to current quarter
+    _filterQuarter = _currentQuarter;
     _loadInvoices();
   }
 
@@ -95,21 +105,53 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     return list;
   }
 
+  /// True only when the user has manually changed away from the default
+  /// current-quarter filter (or added a status or sort filter).
+  bool get _hasActiveFilters =>
+      _filterStatus != null ||
+      _filterMonth != null ||
+      _filterQuarter != _currentQuarter ||
+      _sortBy != 'date_desc';
+
+  /// Human-readable label for the active period filter shown in the header.
+  String _periodLabel(bool isNl) {
+    if (_filterMonth != null) {
+      final months = isNl
+          ? ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni',
+              'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December']
+          : ['January', 'February', 'March', 'April', 'May', 'June',
+              'July', 'August', 'September', 'October', 'November', 'December'];
+      return '${months[_filterMonth! - 1]} $_currentYear';
+    }
+    if (_filterQuarter != null) {
+      return 'Q$_filterQuarter $_currentYear';
+    }
+    return isNl ? 'Alle facturen' : 'All invoices';
+  }
+
   Color _statusColor(String status) {
     switch (status) {
-      case 'paid': return BigDoggTheme.success;
-      case 'sent': return BigDoggTheme.info;
-      case 'overdue': return BigDoggTheme.error;
-      default: return BigDoggTheme.lightTextSecondary;
+      case 'paid':
+        return BigDoggTheme.success;
+      case 'sent':
+        return BigDoggTheme.info;
+      case 'overdue':
+        return BigDoggTheme.error;
+      default:
+        return BigDoggTheme.lightTextSecondary;
     }
   }
 
   String _statusLabel(String status, bool isNl) {
     switch (status) {
-      case 'paid': return isNl ? 'Betaald' : 'Paid';
-      case 'sent': return isNl ? 'Verstuurd' : 'Sent';
-      case 'overdue': return isNl ? 'Verlopen' : 'Overdue';
-      default: return isNl ? 'Concept' : 'Draft';
+      case 'paid':
+        return isNl ? 'Betaald' : 'Paid';
+      case 'sent':
+        return isNl ? 'Verstuurd' : 'Sent';
+      case 'overdue':
+        return isNl ? 'Verlopen' : 'Overdue';
+      default:
+        return isNl ? 'Concept' : 'Draft';
     }
   }
 
@@ -162,23 +204,28 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                         spacing: 8,
                         runSpacing: 4,
                         children: [
-                          _filterChip(isNl ? 'Alle' : 'All', _filterStatus == null, () {
+                          _filterChip(isNl ? 'Alle' : 'All',
+                              _filterStatus == null, () {
                             setSheetState(() => _filterStatus = null);
                             setState(() => _filterStatus = null);
                           }),
-                          _filterChip(isNl ? 'Betaald' : 'Paid', _filterStatus == 'paid', () {
+                          _filterChip(isNl ? 'Betaald' : 'Paid',
+                              _filterStatus == 'paid', () {
                             setSheetState(() => _filterStatus = 'paid');
                             setState(() => _filterStatus = 'paid');
                           }),
-                          _filterChip(isNl ? 'Verstuurd' : 'Sent', _filterStatus == 'sent', () {
+                          _filterChip(isNl ? 'Verstuurd' : 'Sent',
+                              _filterStatus == 'sent', () {
                             setSheetState(() => _filterStatus = 'sent');
                             setState(() => _filterStatus = 'sent');
                           }),
-                          _filterChip(isNl ? 'Verlopen' : 'Overdue', _filterStatus == 'overdue', () {
+                          _filterChip(isNl ? 'Verlopen' : 'Overdue',
+                              _filterStatus == 'overdue', () {
                             setSheetState(() => _filterStatus = 'overdue');
                             setState(() => _filterStatus = 'overdue');
                           }),
-                          _filterChip(isNl ? 'Concept' : 'Draft', _filterStatus == 'draft', () {
+                          _filterChip(isNl ? 'Concept' : 'Draft',
+                              _filterStatus == 'draft', () {
                             setSheetState(() => _filterStatus = 'draft');
                             setState(() => _filterStatus = 'draft');
                           }),
@@ -210,8 +257,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                               }),
                           ...List.generate(
                               4,
-                              (i) => _filterChip('Q${i + 1}',
-                                  _filterQuarter == i + 1, () {
+                              (i) => _filterChip(
+                                  'Q${i + 1}', _filterQuarter == i + 1, () {
                                 setSheetState(() {
                                   _filterQuarter = i + 1;
                                   _filterMonth = null;
@@ -235,11 +282,16 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                         runSpacing: 4,
                         children: List.generate(12, (i) {
                           final months = isNl
-                              ? ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun',
-                                  'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec']
-                              : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                          return _filterChip(months[i], _filterMonth == i + 1, () {
+                              ? [
+                                  'Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun',
+                                  'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'
+                                ]
+                              : [
+                                  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                                ];
+                          return _filterChip(months[i], _filterMonth == i + 1,
+                              () {
                             setSheetState(() {
                               _filterMonth = i + 1;
                               _filterQuarter = null;
@@ -291,15 +343,16 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                           onPressed: () {
                             setState(() {
                               _filterStatus = null;
-                              _filterQuarter = null;
+                              // Reset to current quarter (the default), not "all"
+                              _filterQuarter = _currentQuarter;
                               _filterMonth = null;
                               _sortBy = 'date_desc';
                             });
                             Navigator.pop(context);
                           },
-                          child: Text(
-                              isNl ? 'Filters wissen' : 'Clear filters',
-                              style: const TextStyle(color: BigDoggTheme.error)),
+                          child: Text(isNl ? 'Filters wissen' : 'Clear filters',
+                              style:
+                                  const TextStyle(color: BigDoggTheme.error)),
                         ),
                       ),
                     ],
@@ -323,22 +376,19 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
           color: selected ? BigDoggTheme.teal800 : BigDoggTheme.lightBg,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: selected ? BigDoggTheme.teal800 : BigDoggTheme.lightBorder),
+              color:
+                  selected ? BigDoggTheme.teal800 : BigDoggTheme.lightBorder),
         ),
         child: Text(label,
             style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : BigDoggTheme.lightTextSecondary)),
+                color: selected
+                    ? Colors.white
+                    : BigDoggTheme.lightTextSecondary)),
       ),
     );
   }
-
-  bool get _hasActiveFilters =>
-      _filterStatus != null ||
-      _filterQuarter != null ||
-      _filterMonth != null ||
-      _sortBy != 'date_desc';
 
   void _showCreateInvoice(bool isNl) async {
     final clientsResult = await ClientsService.getClients();
@@ -363,12 +413,13 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
               children: [
                 DropdownButtonFormField<String>(
                   value: selectedClientId,
-                  decoration: InputDecoration(
-                      labelText: isNl ? 'Klant' : 'Client'),
+                  decoration:
+                      InputDecoration(labelText: isNl ? 'Klant' : 'Client'),
                   items: clients
                       .map((c) => DropdownMenuItem<String>(
                             value: c['id'] as String,
-                            child: Text(c['company_name'] ?? c['contact_name']),
+                            child: Text(
+                                c['company_name'] ?? c['contact_name']),
                           ))
                       .toList(),
                   onChanged: (val) =>
@@ -376,7 +427,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(isNl ? 'Regels' : 'Lines',
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                    style:
+                        const TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 ...lines.asMap().entries.map((entry) {
                   final i = entry.key;
@@ -389,7 +441,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                         children: [
                           Expanded(
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                               children: [
                                 Text(line['description'],
                                     style: const TextStyle(
@@ -398,15 +451,17 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                     '${line['quantity']}x €${line['unit_price_ex_btw']} (${line['btw_rate']}% BTW)',
                                     style: const TextStyle(
                                         fontSize: 12,
-                                        color: BigDoggTheme.lightTextSecondary)),
+                                        color: BigDoggTheme
+                                            .lightTextSecondary)),
                               ],
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.remove_circle_outline,
+                            icon: const Icon(
+                                Icons.remove_circle_outline,
                                 color: BigDoggTheme.error),
-                            onPressed: () =>
-                                setDialogState(() => lines.removeAt(i)),
+                            onPressed: () => setDialogState(
+                                () => lines.removeAt(i)),
                           ),
                         ],
                       ),
@@ -486,9 +541,11 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                     setDialogState(() {
                       selectedProductId = val;
                       if (val != null) {
-                        final p = products.firstWhere((p) => p['id'] == val);
+                        final p =
+                            products.firstWhere((p) => p['id'] == val);
                         descController.text = p['name'];
-                        priceController.text = p['unit_price'].toString();
+                        priceController.text =
+                            p['unit_price'].toString();
                         btwRate = p['btw_rate'];
                       }
                     });
@@ -498,7 +555,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 TextField(
                     controller: descController,
                     decoration: InputDecoration(
-                        labelText: isNl ? 'Omschrijving' : 'Description')),
+                        labelText:
+                            isNl ? 'Omschrijving' : 'Description')),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -524,13 +582,15 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   value: btwRate,
-                  decoration: const InputDecoration(labelText: 'BTW'),
+                  decoration:
+                      const InputDecoration(labelText: 'BTW'),
                   items: const [
                     DropdownMenuItem(value: 21, child: Text('21%')),
                     DropdownMenuItem(value: 9, child: Text('9%')),
                     DropdownMenuItem(value: 0, child: Text('0%')),
                   ],
-                  onChanged: (val) => setDialogState(() => btwRate = val!),
+                  onChanged: (val) =>
+                      setDialogState(() => btwRate = val!),
                 ),
               ],
             ),
@@ -547,7 +607,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 onAdd({
                   'description': descController.text,
                   'quantity': double.parse(qtyController.text),
-                  'unit_price_ex_btw': double.parse(priceController.text),
+                  'unit_price_ex_btw':
+                      double.parse(priceController.text),
                   'btw_rate': btwRate,
                 });
               },
@@ -568,8 +629,53 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       children: [
         Column(
           children: [
+            // ── Quarter header banner ──────────────────────────────
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              width: double.infinity,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: const BoxDecoration(
+                color: BigDoggTheme.teal800,
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_today_outlined,
+                      size: 14, color: Colors.white70),
+                  const SizedBox(width: 6),
+                  Text(
+                    _periodLabel(isNl),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      fontFamily: 'PlusJakartaSans',
+                    ),
+                  ),
+                  const Spacer(),
+                  // "See all" shortcut when in quarter mode
+                  if (_filterQuarter != null || _filterMonth != null)
+                    GestureDetector(
+                      onTap: () => setState(() {
+                        _filterQuarter = null;
+                        _filterMonth = null;
+                      }),
+                      child: Text(
+                        isNl ? 'Zie alle' : 'See all',
+                        style: const TextStyle(
+                          color: BigDoggTheme.gold500,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // ── Filter bar ────────────────────────────────────────
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: BigDoggTheme.lightSurface,
               child: Row(
                 children: [
@@ -577,7 +683,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                     child: Text(
                       '${filtered.length} ${isNl ? 'facturen' : 'invoices'}',
                       style: const TextStyle(
-                          color: BigDoggTheme.lightTextSecondary, fontSize: 13),
+                          color: BigDoggTheme.lightTextSecondary,
+                          fontSize: 13),
                     ),
                   ),
                   GestureDetector(
@@ -622,6 +729,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
               ),
             ),
             const Divider(height: 1),
+
+            // ── Invoice list ──────────────────────────────────────
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
@@ -640,8 +749,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                         ? 'Geen resultaten voor deze filter'
                                         : 'No results for this filter')
                                     : (isNl
-                                        ? 'Nog geen facturen'
-                                        : 'No invoices yet'),
+                                        ? 'Nog geen facturen dit kwartaal'
+                                        : 'No invoices this quarter yet'),
                                 style: const TextStyle(
                                     fontSize: 18,
                                     color: BigDoggTheme.lightTextSecondary),
@@ -651,7 +760,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                 TextButton(
                                   onPressed: () => setState(() {
                                     _filterStatus = null;
-                                    _filterQuarter = null;
+                                    _filterQuarter = _currentQuarter;
                                     _filterMonth = null;
                                     _sortBy = 'date_desc';
                                   }),
@@ -691,18 +800,23 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                     color: BigDoggTheme.lightBorder),
                               ),
                               child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                onTap: () => _navigateToInvoice(inv['id']),
+                                contentPadding:
+                                    const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
+                                onTap: () =>
+                                    _navigateToInvoice(inv['id']),
                                 title: Row(
                                   children: [
                                     Text(inv['invoice_number'],
                                         style: const TextStyle(
-                                            fontWeight: FontWeight.w600)),
+                                            fontWeight:
+                                                FontWeight.w600)),
                                     const SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 2),
+                                      padding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 2),
                                       decoration: BoxDecoration(
                                         color: _statusColor(status)
                                             .withOpacity(0.1),
@@ -714,7 +828,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                         style: TextStyle(
                                             fontSize: 11,
                                             color: _statusColor(status),
-                                            fontWeight: FontWeight.w600),
+                                            fontWeight:
+                                                FontWeight.w600),
                                       ),
                                     ),
                                   ],
@@ -730,11 +845,12 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                     Text(inv['invoice_date'] ?? '',
                                         style: const TextStyle(
                                             fontSize: 12,
-                                            color:
-                                                BigDoggTheme.lightTextHint)),
+                                            color: BigDoggTheme
+                                                .lightTextHint)),
                                   ],
                                 ),
-                                trailing: Text('€${inv['total_incl_btw']}',
+                                trailing: Text(
+                                    '€${inv['total_incl_btw']}',
                                     style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
@@ -746,15 +862,18 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
             ),
           ],
         ),
+
+        // ── FABs ─────────────────────────────────────────────────
         Positioned(
           bottom: 88,
           right: 16,
           child: FloatingActionButton(
             heroTag: 'ai_fab',
             onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const PromptInvoiceScreen()))
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            const PromptInvoiceScreen()))
                 .then((result) {
               if (result is String) {
                 _loadInvoices();
@@ -765,7 +884,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
             }),
             backgroundColor: BigDoggTheme.teal800,
             elevation: 2,
-            child: const Icon(Icons.smart_toy_outlined, color: Colors.white),
+            child:
+                const Icon(Icons.smart_toy_outlined, color: Colors.white),
           ),
         ),
         Positioned(

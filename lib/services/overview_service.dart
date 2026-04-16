@@ -51,7 +51,55 @@ class OverviewService {
       return {'success': false, 'message': 'Connection error'};
     }
   }
+  // ─────────────────────────────────────────────────────────────────────────────
+// ADD THESE TWO METHODS TO YOUR EXISTING OverviewService CLASS
+// ─────────────────────────────────────────────────────────────────────────────
 
+  /// Fetches the invoices + expenses that make up a specific quarter.
+  /// Your API endpoint should return:
+  ///   { "success": true, "invoices": [...], "expenses": [...] }
+  static Future<Map<String, dynamic>> getQuarterDetail({
+    required int quarter,
+    required int year,
+  }) async {
+    try {
+      final token = await _getToken();
+      final response = await http.get(
+        Uri.parse(
+            '${ApiConfig.baseUrl}/api/v1/reports/quarter-detail?quarter=$quarter&year=$year'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'invoices': data['invoices'] ?? [], 'expenses': data['expenses'] ?? []};
+      }
+      return {'success': false};
+    } catch (e) {
+      return {'success': false};
+    }
+  }
+
+  /// Triggers async generation of the annual PDF report on the server side.
+  /// The server should generate and then push a notification when done.
+  /// Fire-and-forget — no need to await a result in the UI.
+  static Future<void> generateAnnualReport({
+    required int year,
+    required String lang,
+  }) async {
+    try {
+      final token = await _getToken();
+      await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/reports/annual/generate'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'year': year, 'lang': lang}),
+      );
+    } catch (_) {
+      // Fire-and-forget — silently ignore errors
+    }
+  }
   /// Pre-flight check before launching the annual report PDF URL.
   /// Uses HEAD so no PDF binary is downloaded — only the status code matters.
   /// Returns 'paid_tier_required' if blocked, 'ok' for everything else.
