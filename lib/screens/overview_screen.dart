@@ -499,9 +499,7 @@ class _OverviewScreenState extends State<OverviewScreen>
     }
   }
 
-  // ── Annual report: show "preparing" popup instead of navigating ────────
   void _onDownloadAnnualReportTapped(bool isNl, int year) async {
-    // 1. Check paywall first
     final checkResult =
         await OverviewService.checkAnnualReportAccess(year: year);
     if (checkResult == 'paid_tier_required') {
@@ -509,8 +507,9 @@ class _OverviewScreenState extends State<OverviewScreen>
       return;
     }
 
-    // 2. Show "report being prepared" dialog — never navigate to a URL
     if (!mounted) return;
+
+    // Show modal first, then trigger download
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -529,14 +528,12 @@ class _OverviewScreenState extends State<OverviewScreen>
                   color: BigDoggTheme.teal800.withOpacity(0.08),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.hourglass_top_rounded,
+                child: const Icon(Icons.picture_as_pdf_outlined,
                     size: 34, color: BigDoggTheme.teal800),
               ),
               const SizedBox(height: 20),
               Text(
-                isNl
-                    ? 'Rapport wordt voorbereid'
-                    : 'Report is being prepared',
+                isNl ? 'Rapport wordt geopend' : 'Opening report',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 18,
@@ -548,8 +545,8 @@ class _OverviewScreenState extends State<OverviewScreen>
               const SizedBox(height: 10),
               Text(
                 isNl
-                    ? 'Je jaarrapport $year wordt aangemaakt. Je ontvangt een melding zodra het klaar is om te downloaden.'
-                    : 'Your $year annual report is being generated. You\'ll receive a notification as soon as it\'s ready to download.',
+                    ? 'Je jaarrapport $year wordt geopend als PDF in een nieuw tabblad.'
+                    : 'Your $year annual report is opening as a PDF in a new tab.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -570,7 +567,7 @@ class _OverviewScreenState extends State<OverviewScreen>
                         borderRadius: BorderRadius.circular(12)),
                   ),
                   child: Text(
-                    isNl ? 'Begrepen' : 'Got it',
+                    isNl ? 'Sluiten' : 'Close',
                     style: const TextStyle(
                         color: Colors.white,
                         fontSize: 15,
@@ -585,8 +582,15 @@ class _OverviewScreenState extends State<OverviewScreen>
       ),
     );
 
-    // 3. Trigger the actual report generation in the background
-    OverviewService.generateAnnualReport(year: year, lang: isNl ? 'nl' : 'en');
+    // Trigger actual PDF download
+    final token = await InvoicesService.getToken();
+    final lang = isNl ? 'nl' : 'en';
+    final url =
+        '${ApiConfig.baseUrl}/api/v1/reports/annual/pdf?token=$token&year=$year&lang=$lang';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   void _showPaywallDialog(bool isNl) {
@@ -655,7 +659,6 @@ class _OverviewScreenState extends State<OverviewScreen>
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  // Navigator.pushNamed(context, '/upgrade');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: BigDoggTheme.gold500,
@@ -709,7 +712,6 @@ class _OverviewScreenState extends State<OverviewScreen>
     );
   }
 
-  // ── Year picker: dropdown + arrows ────────────────────────────────────
   Widget _yearPicker(bool isNl) {
     final currentYear = DateTime.now().year;
     final years =
@@ -718,7 +720,6 @@ class _OverviewScreenState extends State<OverviewScreen>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Left arrow
         IconButton(
           icon: Icon(Icons.chevron_left,
               color: _selectedYear > _minYear
@@ -731,8 +732,6 @@ class _OverviewScreenState extends State<OverviewScreen>
                 }
               : null,
         ),
-
-        // Dropdown
         DropdownButton<int>(
           value: _selectedYear,
           dropdownColor: BigDoggTheme.teal800,
@@ -757,8 +756,6 @@ class _OverviewScreenState extends State<OverviewScreen>
             }
           },
         ),
-
-        // Right arrow
         IconButton(
           icon: Icon(Icons.chevron_right,
               color: _selectedYear < currentYear
@@ -775,7 +772,6 @@ class _OverviewScreenState extends State<OverviewScreen>
     );
   }
 
-  // ── Quarter card — now tappable ───────────────────────────────────────
   void _openQuarterDetail(int quarterNum, bool isNl) {
     showModalBottomSheet(
       context: context,
@@ -982,7 +978,6 @@ class _OverviewScreenState extends State<OverviewScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header with year picker ───────────────────────────
           Container(
             padding: const EdgeInsets.symmetric(
                 horizontal: 16, vertical: 12),
@@ -1024,14 +1019,12 @@ class _OverviewScreenState extends State<OverviewScreen>
 
           const SizedBox(height: 16),
 
-          // ── Quarter cards (tappable) ──────────────────────────
           _sectionTitle(isNl ? 'Per kwartaal' : 'Per quarter'),
           ...quarters.map((q) =>
               _quarterCard(q, isNl, _selectedYear)),
 
           const SizedBox(height: 16),
 
-          // ── Annual totals ─────────────────────────────────────
           _sectionTitle(isNl
               ? 'Totaal $_selectedYear'
               : 'Total $_selectedYear'),
@@ -1061,7 +1054,6 @@ class _OverviewScreenState extends State<OverviewScreen>
 
           const SizedBox(height: 16),
 
-          // ── Annual report download → popup ────────────────────
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -1130,7 +1122,6 @@ class _OverviewScreenState extends State<OverviewScreen>
                       color: BigDoggTheme.teal800),
                 ),
                 const Spacer(),
-                // VAT PDF download (small button, stops tap propagation)
                 GestureDetector(
                   onTap: () => _downloadBtwReport(isNl,
                       quarter: quarterNum, year: year),
@@ -1161,7 +1152,6 @@ class _OverviewScreenState extends State<OverviewScreen>
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Chevron indicating tappable
                 const Icon(Icons.chevron_right,
                     size: 18,
                     color: BigDoggTheme.lightTextSecondary),
