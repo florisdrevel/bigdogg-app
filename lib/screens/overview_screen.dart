@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/overview_service.dart';
 import '../services/invoices_service.dart';
 import '../services/api_config.dart';
@@ -84,6 +85,13 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
         return widget.isNl ? 'Verlopen' : 'Overdue';
       default:
         return widget.isNl ? 'Concept' : 'Draft';
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -254,13 +262,12 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                             CrossAxisAlignment.end,
                                         children: [
                                           Text(
-                                            '€${inv['total_incl_btw'] ?? '0'}',
+                                            '\u20ac${inv['total_incl_btw'] ?? '0'}',
                                             style: const TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 15,
                                                 color: BigDoggTheme.teal800),
                                           ),
-                                          // "See file" button if a PDF is attached
                                           if (inv['pdf_url'] != null)
                                             TextButton(
                                               style: TextButton.styleFrom(
@@ -268,9 +275,8 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                                 minimumSize:
                                                     const Size(0, 28),
                                               ),
-                                              onPressed: () {
-                                                // handled by parent navigator
-                                              },
+                                              onPressed: () => _openUrl(
+                                                  inv['pdf_url'] as String),
                                               child: Text(
                                                 isNl
                                                     ? 'Zie bestand'
@@ -351,7 +357,7 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                             CrossAxisAlignment.end,
                                         children: [
                                           Text(
-                                            '€${exp['total_incl_btw'] ?? exp['amount'] ?? '0'}',
+                                            '\u20ac${exp['total_incl_btw'] ?? exp['amount'] ?? '0'}',
                                             style: const TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 15,
@@ -364,9 +370,8 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                                 minimumSize:
                                                     const Size(0, 28),
                                               ),
-                                              onPressed: () {
-                                                // open receipt
-                                              },
+                                              onPressed: () => _openUrl(
+                                                  exp['receipt_url'] as String),
                                               child: Text(
                                                 isNl
                                                     ? 'Zie bestand'
@@ -429,7 +434,7 @@ class _OverviewScreenState extends State<OverviewScreen>
   bool _loadingAnnual = true;
   int _selectedYear = DateTime.now().year;
 
-  static const int _minYear = 2020;
+  int get _minYear => DateTime.now().year - 25;
 
   @override
   void initState() {
@@ -474,12 +479,8 @@ class _OverviewScreenState extends State<OverviewScreen>
       url += '&quarter=$quarter&year=$year';
     }
     final uri = Uri.parse(url);
-    // Use url_launcher only for the BTW report (no paywall, direct download)
     try {
-      // ignore: import_of_legacy_library_into_null_safe
-      // We keep the dynamic import to avoid pulling url_launcher into this
-      // snippet — in the real file just call launchUrl as before.
-      _launchUrl(uri);
+      await _launchUrl(uri);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -492,10 +493,10 @@ class _OverviewScreenState extends State<OverviewScreen>
     }
   }
 
-  /// Stub — replace body with: `await launchUrl(uri, mode: LaunchMode.externalApplication);`
-  void _launchUrl(Uri uri) {
-    // In production this calls url_launcher:
-    // launchUrl(uri, mode: LaunchMode.externalApplication);
+  Future<void> _launchUrl(Uri uri) async {
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   // ── Annual report: show "preparing" popup instead of navigating ────────
@@ -857,7 +858,7 @@ class _OverviewScreenState extends State<OverviewScreen>
                     style: const TextStyle(
                         color: Colors.white70, fontSize: 14)),
                 const SizedBox(height: 4),
-                Text('${q['start_date']} — ${q['end_date']}',
+                Text('${q['start_date']} \u2014 ${q['end_date']}',
                     style: const TextStyle(
                         color: Colors.white54, fontSize: 12)),
               ],
@@ -867,45 +868,45 @@ class _OverviewScreenState extends State<OverviewScreen>
           _sectionTitle(isNl ? 'Omzet' : 'Revenue'),
           _overviewCard([
             _overviewRow(isNl ? 'Omzet ex BTW' : 'Revenue ex VAT',
-                '€${q['revenue_ex_btw']}'),
+                '\u20ac${q['revenue_ex_btw']}'),
             _overviewRow(isNl ? 'BTW ontvangen' : 'VAT received',
-                '€${q['revenue_btw']}'),
+                '\u20ac${q['revenue_btw']}'),
             _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT',
-                '€${q['revenue_total']}',
+                '\u20ac${q['revenue_total']}',
                 bold: true),
             const Divider(),
             _overviewRow(
                 isNl ? 'Betaald ontvangen' : 'Received',
-                '€${q['paid_revenue']}',
+                '\u20ac${q['paid_revenue']}',
                 color: BigDoggTheme.success),
             _overviewRow(
                 isNl ? 'Nog openstaand' : 'Outstanding',
-                '€${q['outstanding']}',
+                '\u20ac${q['outstanding']}',
                 color: BigDoggTheme.warning),
           ]),
           const SizedBox(height: 16),
           _sectionTitle(isNl ? 'Kosten' : 'Expenses'),
           _overviewCard([
             _overviewRow(isNl ? 'Kosten ex BTW' : 'Expenses ex VAT',
-                '€${q['expenses_ex_btw']}'),
+                '\u20ac${q['expenses_ex_btw']}'),
             _overviewRow(isNl ? 'BTW betaald' : 'VAT paid',
-                '€${q['expenses_btw']}'),
+                '\u20ac${q['expenses_btw']}'),
             _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT',
-                '€${q['expenses_total']}',
+                '\u20ac${q['expenses_total']}',
                 bold: true),
           ]),
           const SizedBox(height: 16),
           _sectionTitle('BTW / VAT'),
           _overviewCard([
             _overviewRow(isNl ? 'BTW ontvangen' : 'VAT received',
-                '€${q['revenue_btw']}'),
+                '\u20ac${q['revenue_btw']}'),
             _overviewRow(
                 isNl ? 'BTW betaald op kosten' : 'VAT paid on expenses',
-                '€${q['expenses_btw']}'),
+                '\u20ac${q['expenses_btw']}'),
             const Divider(),
             _overviewRow(
               isNl ? 'Te betalen BTW' : 'VAT to pay',
-              '€${q['btw_to_pay']}',
+              '\u20ac${q['btw_to_pay']}',
               bold: true,
               large: true,
               color: (q['btw_to_pay'] as num) > 0
@@ -1007,7 +1008,7 @@ class _OverviewScreenState extends State<OverviewScreen>
                             color: Colors.white60, fontSize: 11),
                       ),
                       Text(
-                        '€${a['net_profit_indicative']}',
+                        '\u20ac${a['net_profit_indicative']}',
                         style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -1039,22 +1040,22 @@ class _OverviewScreenState extends State<OverviewScreen>
                 isNl
                     ? 'Totale omzet ex BTW'
                     : 'Total revenue ex VAT',
-                '€${a['total_revenue_ex_btw']}',
+                '\u20ac${a['total_revenue_ex_btw']}',
                 bold: true),
             _overviewRow(
                 isNl
                     ? 'Totale kosten ex BTW'
                     : 'Total expenses ex VAT',
-                '€${a['total_expenses_ex_btw']}'),
+                '\u20ac${a['total_expenses_ex_btw']}'),
             const Divider(),
             _overviewRow(
                 isNl ? 'Netto winst' : 'Net profit',
-                '€${a['net_profit_indicative']}',
+                '\u20ac${a['net_profit_indicative']}',
                 bold: true,
                 large: true),
             _overviewRow(
                 isNl ? 'Totale BTW te betalen' : 'Total VAT to pay',
-                '€${a['total_btw_to_pay']}',
+                '\u20ac${a['total_btw_to_pay']}',
                 color: BigDoggTheme.error),
           ]),
 
@@ -1172,14 +1173,14 @@ class _OverviewScreenState extends State<OverviewScreen>
                 Expanded(
                     child: _miniStat(
                         isNl ? 'Omzet' : 'Revenue',
-                        '€${q['revenue_ex_btw']}')),
+                        '\u20ac${q['revenue_ex_btw']}')),
                 Expanded(
                     child: _miniStat(
                         isNl ? 'Kosten' : 'Expenses',
-                        '€${q['expenses_ex_btw']}')),
+                        '\u20ac${q['expenses_ex_btw']}')),
                 Expanded(
                     child: _miniStat(
-                        'BTW / VAT', '€${q['btw_to_pay']}')),
+                        'BTW / VAT', '\u20ac${q['btw_to_pay']}')),
               ],
             ),
             const SizedBox(height: 6),
