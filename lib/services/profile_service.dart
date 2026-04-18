@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 
@@ -71,6 +73,45 @@ class ProfileService {
         return {'success': true, 'profile': data['profile']};
       }
       return {'success': false, 'message': data['detail']};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> uploadLogo({
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
+    final token = await _getToken();
+    try {
+      final ext = fileName.split('.').last.toLowerCase();
+      final mimeType = ext == 'png'
+          ? 'image/png'
+          : ext == 'jpg' || ext == 'jpeg'
+              ? 'image/jpeg'
+              : ext == 'webp'
+                  ? 'image/webp'
+                  : 'image/png';
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/v1/profile/logo'),
+      );
+      request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: fileName,
+        contentType: MediaType.parse(mimeType),
+      ));
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'logo_url': data['logo_url']};
+      }
+      return {'success': false, 'message': data['detail'] ?? 'Upload failed'};
     } catch (e) {
       return {'success': false, 'message': 'Connection error'};
     }
