@@ -10,6 +10,7 @@ import 'expenses_screen.dart';
 import 'overview_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
+import 'projects_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,29 +22,56 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    InvoicesScreen(),
-    ClientsScreen(),
-    ProductsScreen(),
-    ExpensesScreen(),
-    OverviewScreen(),
-    ProfileScreen(),
-    SettingsScreen(),
-  ];
+  List<Widget> _getScreens(bool projectsEnabled) {
+    final base = [
+      const InvoicesScreen(),
+      const ClientsScreen(),
+      const ProductsScreen(),
+      const ExpensesScreen(),
+      const OverviewScreen(),
+      const ProfileScreen(),
+      const SettingsScreen(),
+    ];
+    if (projectsEnabled) base.insert(4, const ProjectsScreen());
+    return base;
+  }
 
-  final List<String> _titlesEn = const [
-    'Invoices', 'Clients', 'Products', 'Expenses', 'Overview', 'Profile', 'Settings',
-  ];
+  List<String> _getTitlesEn(bool projectsEnabled) {
+    final base = ['Invoices', 'Clients', 'Products', 'Expenses', 'Overview', 'Profile', 'Settings'];
+    if (projectsEnabled) base.insert(4, 'Projects');
+    return base;
+  }
 
-  final List<String> _titlesNl = const [
-    'Facturen', 'Klanten', 'Producten', 'Kosten', 'Overzicht', 'Profiel', 'Instellingen',
-  ];
+  List<String> _getTitlesNl(bool projectsEnabled) {
+    final base = ['Facturen', 'Klanten', 'Producten', 'Kosten', 'Overzicht', 'Profiel', 'Instellingen'];
+    if (projectsEnabled) base.insert(4, 'Projecten');
+    return base;
+  }
+
+  List<BottomNavigationBarItem> _getNavItems(bool isNl, bool projectsEnabled) {
+    final base = [
+      BottomNavigationBarItem(icon: const Icon(Icons.receipt_long_outlined), label: isNl ? 'Facturen' : 'Invoices'),
+      BottomNavigationBarItem(icon: const Icon(Icons.people_outline), label: isNl ? 'Klanten' : 'Clients'),
+      BottomNavigationBarItem(icon: const Icon(Icons.inventory_2_outlined), label: isNl ? 'Producten' : 'Products'),
+      BottomNavigationBarItem(icon: const Icon(Icons.receipt_outlined), label: isNl ? 'Kosten' : 'Expenses'),
+      BottomNavigationBarItem(icon: const Icon(Icons.bar_chart_outlined), label: isNl ? 'Overzicht' : 'Overview'),
+      BottomNavigationBarItem(icon: const Icon(Icons.person_outline), label: isNl ? 'Profiel' : 'Profile'),
+      BottomNavigationBarItem(icon: const Icon(Icons.settings_outlined), label: isNl ? 'Instellingen' : 'Settings'),
+    ];
+    if (projectsEnabled) base.insert(4, BottomNavigationBarItem(icon: const Icon(Icons.folder_outlined), label: isNl ? 'Projecten' : 'Projects'));
+    return base;
+  }
 
   @override
   Widget build(BuildContext context) {
     final appProvider = context.watch<AppProvider>();
     final isNl = appProvider.language == 'nl';
-    final titles = isNl ? _titlesNl : _titlesEn;
+    final projectsEnabled = appProvider.projectsEnabled;
+    final screens = _getScreens(projectsEnabled);
+    final titles = isNl ? _getTitlesNl(projectsEnabled) : _getTitlesEn(projectsEnabled);
+
+    // Clamp index in case projects toggle changes while on a high index
+    final safeIndex = _currentIndex.clamp(0, screens.length - 1);
 
     return Scaffold(
       backgroundColor: BigDoggTheme.lightBg,
@@ -61,7 +89,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Image.asset('assets/images/logo.png', width: 56, height: 56),
             const SizedBox(width: 10),
             Text(
-              titles[_currentIndex],
+              titles[safeIndex],
               style: const TextStyle(
                 color: BigDoggTheme.lightTextPrimary,
                 fontWeight: FontWeight.w600,
@@ -98,40 +126,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      body: _screens[_currentIndex],
+      body: screens[safeIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: BigDoggTheme.teal800,
-          border: const Border(
-            top: BorderSide(color: BigDoggTheme.teal900, width: 1),
-          ),
+          border: const Border(top: BorderSide(color: BigDoggTheme.teal900, width: 1)),
         ),
         child: BottomNavigationBar(
-          currentIndex: _currentIndex,
+          currentIndex: safeIndex,
           onTap: (index) => setState(() => _currentIndex = index),
           backgroundColor: Colors.transparent,
           selectedItemColor: BigDoggTheme.gold500,
           unselectedItemColor: BigDoggTheme.teal400,
           selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 11,
-            fontFamily: 'PlusJakartaSans',
-          ),
+            fontWeight: FontWeight.w600, fontSize: 11, fontFamily: 'PlusJakartaSans'),
           unselectedLabelStyle: const TextStyle(
-            fontSize: 11,
-            fontFamily: 'PlusJakartaSans',
-          ),
+            fontSize: 11, fontFamily: 'PlusJakartaSans'),
           type: BottomNavigationBarType.fixed,
           elevation: 0,
-          items: [
-            BottomNavigationBarItem(icon: const Icon(Icons.receipt_long_outlined), label: isNl ? 'Facturen' : 'Invoices'),
-            BottomNavigationBarItem(icon: const Icon(Icons.people_outline), label: isNl ? 'Klanten' : 'Clients'),
-            BottomNavigationBarItem(icon: const Icon(Icons.inventory_2_outlined), label: isNl ? 'Producten' : 'Products'),
-            BottomNavigationBarItem(icon: const Icon(Icons.receipt_outlined), label: isNl ? 'Kosten' : 'Expenses'),
-            BottomNavigationBarItem(icon: const Icon(Icons.bar_chart_outlined), label: isNl ? 'Overzicht' : 'Overview'),
-            BottomNavigationBarItem(icon: const Icon(Icons.person_outline), label: isNl ? 'Profiel' : 'Profile'),
-            BottomNavigationBarItem(icon: const Icon(Icons.settings_outlined), label: isNl ? 'Instellingen' : 'Settings'),
-          ],
+          items: _getNavItems(isNl, projectsEnabled),
         ),
       ),
     );

@@ -1,13 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import '../services/expenses_service.dart';
+import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 
@@ -18,24 +22,43 @@ class ExpensesScreen extends StatefulWidget {
   State<ExpensesScreen> createState() => _ExpensesScreenState();
 }
 
-class _ExpensesScreenState extends State<ExpensesScreen> {
+class _ExpensesScreenState extends State<ExpensesScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  // Expenses
   List<dynamic> _expenses = [];
   bool _loading = true;
   bool _parsing = false;
 
+  // Investments
+  List<dynamic> _investments = [];
+  bool _loadingInvestments = true;
+
+  static Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('access_token');
+  }
+
   bool _isMobile() {
     if (!kIsWeb) return true;
     final ua = html.window.navigator.userAgent.toLowerCase();
-    return ua.contains('mobile') ||
-        ua.contains('android') ||
-        ua.contains('iphone') ||
-        ua.contains('ipad');
+    return ua.contains('mobile') || ua.contains('android') ||
+        ua.contains('iphone') || ua.contains('ipad');
   }
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadExpenses();
+    _loadInvestments();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadExpenses() async {
@@ -47,9 +70,37 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     });
   }
 
+  Future<void> _loadInvestments() async {
+    setState(() => _loadingInvestments = true);
+    try {
+      final token = await _getToken();
+      final r = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/investments/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (r.statusCode == 200) {
+        setState(() {
+          _investments = jsonDecode(r.body)['investments'] ?? [];
+          _loadingInvestments = false;
+        });
+      } else {
+        setState(() => _loadingInvestments = false);
+      }
+    } catch (_) { setState(() => _loadingInvestments = false); }
+  }
+
   Future<void> _deleteExpense(String id) async {
     await ExpensesService.deleteExpense(id);
     _loadExpenses();
+  }
+
+  Future<void> _deleteInvestment(String id) async {
+    final token = await _getToken();
+    await http.delete(
+      Uri.parse('${ApiConfig.baseUrl}/api/v1/investments/$id'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    _loadInvestments();
   }
 
   Future<void> _pickAndParseReceipt(bool isNl, {bool camera = false}) async {
@@ -91,58 +142,40 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     }
 
     if (bytes == null) return;
-
     setState(() => _parsing = true);
-
     final parsed = await ExpensesService.parseReceipt(
-      fileBytes: bytes!,
-      fileName: fileName ?? 'receipt.jpg',
-    );
-
+      fileBytes: bytes!, fileName: fileName ?? 'receipt.jpg');
     setState(() => _parsing = false);
-
     if (!mounted) return;
-
     if (parsed['success']) {
-      _showAddExpense(
-        isNl,
-        prefill: parsed,
-        receiptBytes: bytes,
-        receiptFileName: fileName,
-      );
+      _showAddExpense(isNl, prefill: parsed, receiptBytes: bytes, receiptFileName: fileName);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isNl ? 'Kon bon niet lezen' : 'Could not read receipt'),
-          backgroundColor: BigDoggTheme.error,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isNl ? 'Kon bon niet lezen' : 'Could not read receipt'),
+        backgroundColor: BigDoggTheme.error,
+      ));
     }
   }
 
-  void _showAddExpense(
-    bool isNl, {
+  void _showAddExpense(bool isNl, {
     Map<String, dynamic>? prefill,
     Uint8List? receiptBytes,
     String? receiptFileName,
   }) {
-    final descController =
-        TextEditingController(text: prefill?['description'] ?? '');
-    final amountController = TextEditingController(
+    final descCtrl = TextEditingController(text: prefill?['description'] ?? '');
+    final amtCtrl = TextEditingController(
       text: prefill?['amount_ex_btw'] != null
-          ? (prefill!['amount_ex_btw'] as num).toStringAsFixed(2)
-          : '',
-    );
+          ? (prefill!['amount_ex_btw'] as num).toStringAsFixed(2) : '');
     int btwRate = prefill?['btw_rate'] ?? 21;
     String category = prefill?['category'] ?? 'general';
-    Uint8List? currentReceiptBytes = receiptBytes;
-    String? currentReceiptFileName = receiptFileName;
+    Uint8List? recBytes = receiptBytes;
+    String? recName = receiptFileName;
     bool uploading = false;
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
           title: Text(isNl ? 'Uitgave toevoegen' : 'Add Expense'),
           content: SingleChildScrollView(
             child: Column(
@@ -152,41 +185,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: BigDoggTheme.successBg,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.auto_awesome,
-                            size: 14, color: BigDoggTheme.success),
-                        const SizedBox(width: 6),
-                        Text(
-                          isNl
-                              ? 'Automatisch ingevuld via bon'
-                              : 'Auto-filled from receipt',
-                          style: const TextStyle(
-                              fontSize: 12,
-                              color: BigDoggTheme.success,
-                              fontWeight: FontWeight.w500),
-                        ),
-                      ],
-                    ),
+                    decoration: BoxDecoration(color: BigDoggTheme.successBg, borderRadius: BorderRadius.circular(8)),
+                    child: Row(children: [
+                      const Icon(Icons.auto_awesome, size: 14, color: BigDoggTheme.success),
+                      const SizedBox(width: 6),
+                      Text(isNl ? 'Automatisch ingevuld via bon' : 'Auto-filled from receipt',
+                          style: const TextStyle(fontSize: 12, color: BigDoggTheme.success, fontWeight: FontWeight.w500)),
+                    ]),
                   ),
-                TextField(
-                  controller: descController,
-                  decoration: InputDecoration(
-                      labelText: isNl ? 'Omschrijving' : 'Description'),
-                ),
+                TextField(controller: descCtrl, decoration: InputDecoration(labelText: isNl ? 'Omschrijving' : 'Description')),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: amountController,
-                  decoration: InputDecoration(
-                      labelText:
-                          isNl ? 'Bedrag ex BTW (€)' : 'Amount ex VAT (€)'),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                ),
+                TextField(controller: amtCtrl,
+                    decoration: InputDecoration(labelText: isNl ? 'Bedrag ex BTW (\u20ac)' : 'Amount ex VAT (\u20ac)'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true)),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   value: btwRate,
@@ -196,136 +207,189 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     DropdownMenuItem(value: 9, child: Text('9%')),
                     DropdownMenuItem(value: 0, child: Text('0%')),
                   ],
-                  onChanged: (val) => setDialogState(() => btwRate = val!),
+                  onChanged: (v) => setSt(() => btwRate = v!),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: category,
-                  decoration: InputDecoration(
-                      labelText: isNl ? 'Categorie' : 'Category'),
+                  decoration: InputDecoration(labelText: isNl ? 'Categorie' : 'Category'),
                   items: [
-                    DropdownMenuItem(
-                        value: 'general',
-                        child: Text(isNl ? 'Algemeen' : 'General')),
-                    DropdownMenuItem(
-                        value: 'travel',
-                        child: Text(isNl ? 'Reizen' : 'Travel')),
-                    DropdownMenuItem(
-                        value: 'materials',
-                        child: Text(isNl ? 'Materialen' : 'Materials')),
-                    DropdownMenuItem(
-                        value: 'software', child: const Text('Software')),
-                    DropdownMenuItem(
-                        value: 'food',
-                        child:
-                            Text(isNl ? 'Eten & Drinken' : 'Food & Drinks')),
-                    DropdownMenuItem(
-                        value: 'office',
-                        child: Text(isNl ? 'Kantoor' : 'Office')),
-                    DropdownMenuItem(
-                        value: 'other',
-                        child: Text(isNl ? 'Overig' : 'Other')),
+                    DropdownMenuItem(value: 'general', child: Text(isNl ? 'Algemeen' : 'General')),
+                    DropdownMenuItem(value: 'travel', child: Text(isNl ? 'Reizen' : 'Travel')),
+                    DropdownMenuItem(value: 'materials', child: Text(isNl ? 'Materialen' : 'Materials')),
+                    const DropdownMenuItem(value: 'software', child: Text('Software')),
+                    DropdownMenuItem(value: 'food', child: Text(isNl ? 'Eten & Drinken' : 'Food & Drinks')),
+                    DropdownMenuItem(value: 'office', child: Text(isNl ? 'Kantoor' : 'Office')),
+                    DropdownMenuItem(value: 'other', child: Text(isNl ? 'Overig' : 'Other')),
                   ],
-                  onChanged: (val) => setDialogState(() => category = val!),
+                  onChanged: (v) => setSt(() => category = v!),
                 ),
                 const SizedBox(height: 16),
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: BigDoggTheme.lightBg,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: BigDoggTheme.lightBorder),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isNl ? 'Bon' : 'Receipt',
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: BigDoggTheme.lightTextSecondary,
-                            fontWeight: FontWeight.w600),
+                  width: double.infinity, padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: BigDoggTheme.lightBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: BigDoggTheme.lightBorder)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(isNl ? 'Bon' : 'Receipt',
+                        style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    if (recBytes != null) ...[
+                      ClipRRect(borderRadius: BorderRadius.circular(6),
+                          child: Image.memory(recBytes!, height: 120, width: double.infinity, fit: BoxFit.cover)),
+                      const SizedBox(height: 6),
+                      TextButton.icon(
+                        onPressed: () => setSt(() { recBytes = null; recName = null; }),
+                        icon: const Icon(Icons.close, size: 14, color: BigDoggTheme.error),
+                        label: Text(isNl ? 'Verwijderen' : 'Remove',
+                            style: const TextStyle(color: BigDoggTheme.error, fontSize: 12)),
                       ),
-                      const SizedBox(height: 8),
-                      if (currentReceiptBytes != null) ...[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.memory(
-                            currentReceiptBytes!,
-                            height: 120,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextButton.icon(
-                          onPressed: () => setDialogState(() {
-                            currentReceiptBytes = null;
-                            currentReceiptFileName = null;
-                          }),
-                          icon: const Icon(Icons.close,
-                              size: 14, color: BigDoggTheme.error),
-                          label: Text(
-                            isNl ? 'Verwijderen' : 'Remove',
-                            style: const TextStyle(
-                                color: BigDoggTheme.error, fontSize: 12),
-                          ),
-                        ),
-                      ] else
-                        Text(
-                          isNl
-                              ? 'Geen bon bijgevoegd'
-                              : 'No receipt attached',
-                          style: const TextStyle(
-                              fontSize: 12,
-                              color: BigDoggTheme.lightTextHint),
-                        ),
-                    ],
-                  ),
+                    ] else
+                      Text(isNl ? 'Geen bon bijgevoegd' : 'No receipt attached',
+                          style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint)),
+                  ]),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(isNl ? 'Annuleren' : 'Cancel'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(isNl ? 'Annuleren' : 'Cancel')),
             ElevatedButton(
-              onPressed: uploading
-                  ? null
-                  : () async {
-                      if (descController.text.isEmpty ||
-                          amountController.text.isEmpty) return;
-                      setDialogState(() => uploading = true);
-
-                      final result = await ExpensesService.createExpense(
-                        description: descController.text.trim(),
-                        amountExBtw: double.parse(amountController.text),
-                        btwRate: btwRate,
-                        category: category,
-                        expenseDate: prefill?['expense_date'],
-                      );
-
-                      if (result['success'] && currentReceiptBytes != null) {
-                        await ExpensesService.uploadReceipt(
-                          result['expense']['id'],
-                          currentReceiptBytes!,
-                          currentReceiptFileName ?? 'receipt.jpg',
-                        );
-                      }
-
-                      if (mounted) Navigator.pop(context);
-                      _loadExpenses();
-                    },
+              onPressed: uploading ? null : () async {
+                if (descCtrl.text.isEmpty || amtCtrl.text.isEmpty) return;
+                setSt(() => uploading = true);
+                final result = await ExpensesService.createExpense(
+                  description: descCtrl.text.trim(),
+                  amountExBtw: double.parse(amtCtrl.text),
+                  btwRate: btwRate, category: category,
+                  expenseDate: prefill?['expense_date'],
+                );
+                if (result['success'] && recBytes != null) {
+                  await ExpensesService.uploadReceipt(result['expense']['id'], recBytes!, recName ?? 'receipt.jpg');
+                }
+                if (mounted) Navigator.pop(ctx);
+                _loadExpenses();
+              },
               child: uploading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
+                  ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(isNl ? 'Toevoegen' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddInvestment(bool isNl) {
+    final descCtrl = TextEditingController();
+    final amtCtrl = TextEditingController();
+    String category = 'general';
+    int years = 5;
+    String date = DateTime.now().toIso8601String().substring(0, 10);
+    bool saving = false;
+
+    showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
+          title: Text(isNl ? 'Investering toevoegen' : 'Add investment'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: descCtrl,
+                    decoration: InputDecoration(labelText: isNl ? 'Omschrijving' : 'Description'), autofocus: true),
+                const SizedBox(height: 12),
+                TextField(controller: amtCtrl,
+                    decoration: InputDecoration(labelText: isNl ? 'Aankoopbedrag (\u20ac)' : 'Purchase amount (\u20ac)'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (v) {
+                      final amt = double.tryParse(v) ?? 0;
+                      if (amt > 450) setSt(() => years = 5);
+                    }),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) setSt(() => date = picked.toIso8601String().substring(0, 10));
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(labelText: isNl ? 'Aankoopdatum' : 'Purchase date'),
+                    child: Text(date),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: category,
+                  decoration: InputDecoration(labelText: isNl ? 'Categorie' : 'Category'),
+                  items: [
+                    DropdownMenuItem(value: 'general', child: Text(isNl ? 'Algemeen' : 'General')),
+                    DropdownMenuItem(value: 'equipment', child: Text(isNl ? 'Apparatuur' : 'Equipment')),
+                    DropdownMenuItem(value: 'software', child: const Text('Software')),
+                    DropdownMenuItem(value: 'vehicle', child: Text(isNl ? 'Voertuig' : 'Vehicle')),
+                    DropdownMenuItem(value: 'other', child: Text(isNl ? 'Overig' : 'Other')),
+                  ],
+                  onChanged: (v) => setSt(() => category = v!),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  value: years,
+                  decoration: InputDecoration(labelText: isNl ? 'Afschrijving (jaren)' : 'Depreciation (years)'),
+                  items: [1, 3, 5, 10].map((y) => DropdownMenuItem(value: y, child: Text('$y ${isNl ? 'jaar' : 'years'}'))).toList(),
+                  onChanged: (v) => setSt(() => years = v!),
+                ),
+                const SizedBox(height: 8),
+                // Tip for >€450
+                Builder(builder: (_) {
+                  final amt = double.tryParse(amtCtrl.text) ?? 0;
+                  if (amt > 450) {
+                    return Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: BigDoggTheme.teal100, borderRadius: BorderRadius.circular(8)),
+                      child: Row(children: [
+                        const Icon(Icons.info_outline, size: 14, color: BigDoggTheme.teal800),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(
+                          isNl ? 'Bedrag > \u20ac450: afschrijving over 5 jaar aanbevolen (NL belastingwet).'
+                              : 'Amount > \u20ac450: 5-year depreciation recommended (NL tax law).',
+                          style: const TextStyle(fontSize: 11, color: BigDoggTheme.teal800),
+                        )),
+                      ]),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                }),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(isNl ? 'Annuleren' : 'Cancel')),
+            ElevatedButton(
+              onPressed: saving ? null : () async {
+                if (descCtrl.text.trim().isEmpty || amtCtrl.text.isEmpty) return;
+                setSt(() => saving = true);
+                final token = await _getToken();
+                await http.post(
+                  Uri.parse('${ApiConfig.baseUrl}/api/v1/investments/'),
+                  headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+                  body: jsonEncode({
+                    'description': descCtrl.text.trim(),
+                    'amount': double.parse(amtCtrl.text),
+                    'purchase_date': date,
+                    'category': category,
+                    'depreciation_years': years,
+                  }),
+                );
+                if (mounted) Navigator.pop(ctx);
+                _loadInvestments();
+              },
+              child: saving
+                  ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : Text(isNl ? 'Toevoegen' : 'Add'),
             ),
           ],
@@ -335,12 +399,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   void _showReceiptDialog(String receiptUrl, bool isNl) {
-    final isPdf = receiptUrl.toLowerCase().contains('.pdf') ||
-        receiptUrl.toLowerCase().contains('%2Fpdf');
-
+    final isPdf = receiptUrl.toLowerCase().contains('.pdf') || receiptUrl.toLowerCase().contains('%2Fpdf');
     showDialog(
       context: context,
-      builder: (context) => Dialog(
+      builder: (_) => Dialog(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -349,50 +411,28 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               backgroundColor: BigDoggTheme.teal800,
               foregroundColor: Colors.white,
               automaticallyImplyLeading: false,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
+              actions: [IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context))],
             ),
             Padding(
               padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isPdf ? Icons.picture_as_pdf : Icons.image,
-                    size: 64,
-                    color: BigDoggTheme.teal800,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(isPdf ? Icons.picture_as_pdf : Icons.image, size: 64, color: BigDoggTheme.teal800),
+                const SizedBox(height: 16),
+                Text(isPdf ? (isNl ? 'PDF bon' : 'PDF receipt') : (isNl ? 'Foto bon' : 'Photo receipt'),
+                    style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.teal800)),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.parse(receiptUrl);
+                      if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    },
+                    icon: const Icon(Icons.open_in_new),
+                    label: Text(isNl ? 'Openen in browser' : 'Open in browser'),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    isPdf
-                        ? (isNl ? 'PDF bon' : 'PDF receipt')
-                        : (isNl ? 'Foto bon' : 'Photo receipt'),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: BigDoggTheme.teal800),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final uri = Uri.parse(receiptUrl);
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri,
-                              mode: LaunchMode.externalApplication);
-                        }
-                      },
-                      icon: const Icon(Icons.open_in_new),
-                      label: Text(
-                          isNl ? 'Openen in browser' : 'Open in browser'),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ]),
             ),
           ],
         ),
@@ -400,37 +440,35 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  IconData _categoryIcon(String category) {
-    switch (category) {
+  IconData _categoryIcon(String cat) {
+    switch (cat) {
       case 'travel': return Icons.directions_car;
-      case 'materials': return Icons.build;
+      case 'materials': case 'equipment': return Icons.build;
       case 'software': return Icons.computer;
       case 'food': return Icons.restaurant;
       case 'office': return Icons.business;
+      case 'vehicle': return Icons.directions_car;
       default: return Icons.receipt;
     }
   }
 
-  String _categoryLabel(String category, bool isNl) {
-    switch (category) {
+  String _categoryLabel(String cat, bool isNl) {
+    switch (cat) {
       case 'travel': return isNl ? 'Reizen' : 'Travel';
       case 'materials': return isNl ? 'Materialen' : 'Materials';
       case 'software': return 'Software';
       case 'food': return isNl ? 'Eten & Drinken' : 'Food & Drinks';
       case 'office': return isNl ? 'Kantoor' : 'Office';
+      case 'equipment': return isNl ? 'Apparatuur' : 'Equipment';
+      case 'vehicle': return isNl ? 'Voertuig' : 'Vehicle';
       case 'other': return isNl ? 'Overig' : 'Other';
       default: return isNl ? 'Algemeen' : 'General';
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isNl = context.watch<AppProvider>().language == 'nl';
-    final isMobile = _isMobile();
-    double totalExBtw = _expenses.fold(
-        0, (sum, e) => sum + (e['amount_ex_btw'] as num).toDouble());
-    double totalBtw = _expenses.fold(
-        0, (sum, e) => sum + (e['btw_amount'] as num).toDouble());
+  Widget _buildExpensesTab(bool isNl, bool isMobile) {
+    double totalExBtw = _expenses.fold(0, (s, e) => s + (e['amount_ex_btw'] as num).toDouble());
+    double totalBtw = _expenses.fold(0, (s, e) => s + (e['btw_amount'] as num).toDouble());
 
     return Stack(
       children: [
@@ -442,191 +480,73 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     Container(
                       margin: const EdgeInsets.all(16),
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: BigDoggTheme.teal800,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      decoration: BoxDecoration(color: BigDoggTheme.teal800, borderRadius: BorderRadius.circular(12)),
                       child: Row(
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                    isNl ? 'Totaal ex BTW' : 'Total ex VAT',
-                                    style: const TextStyle(
-                                        color: Colors.white70, fontSize: 12)),
-                                Text('€${totalExBtw.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18)),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('BTW / VAT',
-                                    style: TextStyle(
-                                        color: Colors.white70, fontSize: 12)),
-                                Text('€${totalBtw.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18)),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                    isNl
-                                        ? 'Totaal incl BTW'
-                                        : 'Total incl VAT',
-                                    style: const TextStyle(
-                                        color: Colors.white70, fontSize: 12)),
-                                Text(
-                                    '€${(totalExBtw + totalBtw).toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18)),
-                              ],
-                            ),
-                          ),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(isNl ? 'Totaal ex BTW' : 'Total ex VAT', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                            Text('\u20ac${totalExBtw.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                          ])),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            const Text('BTW / VAT', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                            Text('\u20ac${totalBtw.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                          ])),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(isNl ? 'Totaal incl BTW' : 'Total incl VAT', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                            Text('\u20ac${(totalExBtw + totalBtw).toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                          ])),
                         ],
                       ),
                     ),
                   Expanded(
                     child: _expenses.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.receipt,
-                                    size: 64,
-                                    color: BigDoggTheme.lightTextHint),
-                                const SizedBox(height: 16),
-                                Text(
-                                    isNl
-                                        ? 'Nog geen kosten'
-                                        : 'No expenses yet',
-                                    style: const TextStyle(
-                                        fontSize: 18,
-                                        color:
-                                            BigDoggTheme.lightTextSecondary)),
-                                const SizedBox(height: 8),
-                                Text(
-                                    isNl
-                                        ? 'Tik + om een uitgave toe te voegen'
-                                        : 'Tap + to add an expense',
-                                    style: const TextStyle(
-                                        color: BigDoggTheme.lightTextHint)),
-                              ],
-                            ),
-                          )
+                        ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            const Icon(Icons.receipt, size: 64, color: BigDoggTheme.lightTextHint),
+                            const SizedBox(height: 16),
+                            Text(isNl ? 'Nog geen kosten' : 'No expenses yet',
+                                style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
+                            const SizedBox(height: 8),
+                            Text(isNl ? 'Tik + om een uitgave toe te voegen' : 'Tap + to add an expense',
+                                style: const TextStyle(color: BigDoggTheme.lightTextHint)),
+                          ]))
                         : ListView.builder(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
                             itemCount: _expenses.length,
-                            itemBuilder: (context, index) {
-                              final exp = _expenses[index];
-                              final hasReceipt = exp['receipt_url'] != null &&
-                                  exp['receipt_url'].toString().isNotEmpty;
+                            itemBuilder: (_, i) {
+                              final exp = _expenses[i];
+                              final hasReceipt = (exp['receipt_url'] ?? '').toString().isNotEmpty;
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 10),
-                                decoration: BoxDecoration(
-                                  color: BigDoggTheme.lightSurface,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: BigDoggTheme.lightBorder),
-                                ),
+                                decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
                                 child: ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                   leading: CircleAvatar(
                                     backgroundColor: BigDoggTheme.teal100,
-                                    child: Icon(
-                                        _categoryIcon(
-                                            exp['category'] ?? 'general'),
-                                        color: BigDoggTheme.teal800,
-                                        size: 20),
+                                    child: Icon(_categoryIcon(exp['category'] ?? 'general'), color: BigDoggTheme.teal800, size: 20),
                                   ),
-                                  title: Text(exp['description'],
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          color:
-                                              BigDoggTheme.lightTextPrimary)),
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${exp['expense_date']} · ${_categoryLabel(exp['category'] ?? 'general', isNl)} · ${exp['btw_rate']}% BTW',
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            color: BigDoggTheme
-                                                .lightTextSecondary),
+                                  title: Text(exp['description'], style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.lightTextPrimary)),
+                                  subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Text('${exp['expense_date']} \u00b7 ${_categoryLabel(exp['category'] ?? 'general', isNl)} \u00b7 ${exp['btw_rate']}% BTW',
+                                        style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
+                                    if (hasReceipt)
+                                      GestureDetector(
+                                        onTap: () => _showReceiptDialog(exp['receipt_url'], isNl),
+                                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                          const Icon(Icons.attach_file, size: 12, color: BigDoggTheme.teal700),
+                                          const SizedBox(width: 2),
+                                          Text(isNl ? 'Bon bekijken' : 'View receipt',
+                                              style: const TextStyle(fontSize: 11, color: BigDoggTheme.teal700, fontWeight: FontWeight.w500)),
+                                        ]),
                                       ),
-                                      if (hasReceipt)
-                                        GestureDetector(
-                                          onTap: () => _showReceiptDialog(
-                                              exp['receipt_url'], isNl),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(Icons.attach_file,
-                                                  size: 12,
-                                                  color: BigDoggTheme.teal700),
-                                              const SizedBox(width: 2),
-                                              Text(
-                                                isNl
-                                                    ? 'Bon bekijken'
-                                                    : 'View receipt',
-                                                style: const TextStyle(
-                                                    fontSize: 11,
-                                                    color: BigDoggTheme.teal700,
-                                                    fontWeight:
-                                                        FontWeight.w500),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: [
-                                          Text('€${exp['amount_ex_btw']}',
-                                              style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  color: BigDoggTheme.teal800)),
-                                          Text('+ €${exp['btw_amount']} BTW',
-                                              style: const TextStyle(
-                                                  fontSize: 11,
-                                                  color: BigDoggTheme
-                                                      .lightTextSecondary)),
-                                        ],
-                                      ),
-                                      const SizedBox(width: 4),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete,
-                                            color: BigDoggTheme.error),
-                                        onPressed: () =>
-                                            _deleteExpense(exp['id']),
-                                      ),
-                                    ],
-                                  ),
+                                  ]),
+                                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
+                                      Text('\u20ac${exp['amount_ex_btw']}', style: const TextStyle(fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
+                                      Text('+ \u20ac${exp['btw_amount']} BTW', style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+                                    ]),
+                                    const SizedBox(width: 4),
+                                    IconButton(icon: const Icon(Icons.delete, color: BigDoggTheme.error), onPressed: () => _deleteExpense(exp['id'])),
+                                  ]),
                                 ),
                               );
                             },
@@ -635,66 +555,199 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ],
               ),
 
-        // Parsing overlay
         if (_parsing)
           Container(
             color: Colors.black45,
             child: Center(
               child: Container(
                 padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 16),
-                    Text(
-                      isNl ? 'Bon analyseren...' : 'Analysing receipt...',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(isNl ? 'Bon analyseren...' : 'Analysing receipt...', style: const TextStyle(fontWeight: FontWeight.w600)),
+                ]),
               ),
             ),
           ),
 
-        // FABs — camera only on mobile
         Positioned(
-          bottom: 16,
-          right: 16,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isMobile) ...[
-                FloatingActionButton(
-                  heroTag: 'camera_fab',
-                  onPressed: _parsing
-                      ? null
-                      : () => _pickAndParseReceipt(isNl, camera: true),
-                  backgroundColor: BigDoggTheme.teal800,
-                  child: const Icon(Icons.camera_alt,
-                      color: Colors.white, size: 24),
-                ),
-                const SizedBox(height: 12),
-              ],
+          bottom: 16, right: 16,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (isMobile) ...[
               FloatingActionButton(
-                heroTag: 'upload_fab',
-                onPressed: _parsing
-                    ? null
-                    : () => _pickAndParseReceipt(isNl, camera: false),
+                heroTag: 'camera_fab',
+                onPressed: _parsing ? null : () => _pickAndParseReceipt(isNl, camera: true),
                 backgroundColor: BigDoggTheme.teal800,
-                child: const Icon(Icons.folder_open,
-                    color: Colors.white, size: 24),
+                child: const Icon(Icons.camera_alt, color: Colors.white, size: 24),
               ),
               const SizedBox(height: 12),
-              FloatingActionButton(
-                heroTag: 'add_fab',
-                onPressed: () => _showAddExpense(isNl),
-                child: const Icon(Icons.add, color: Colors.white, size: 24),
+            ],
+            FloatingActionButton(
+              heroTag: 'upload_fab',
+              onPressed: _parsing ? null : () => _pickAndParseReceipt(isNl, camera: false),
+              backgroundColor: BigDoggTheme.teal800,
+              child: const Icon(Icons.folder_open, color: Colors.white, size: 24),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton(
+              heroTag: 'add_fab',
+              onPressed: () => _showAddExpense(isNl),
+              child: const Icon(Icons.add, color: Colors.white, size: 24),
+            ),
+          ]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInvestmentsTab(bool isNl) {
+    final currentYear = DateTime.now().year;
+    double totalThisYear = 0;
+    for (final inv in _investments) {
+      totalThisYear += (inv['current_year_depreciation'] as num? ?? 0).toDouble();
+    }
+
+    return Stack(
+      children: [
+        _loadingInvestments
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  if (_investments.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(color: BigDoggTheme.teal800, borderRadius: BorderRadius.circular(12)),
+                      child: Row(
+                        children: [
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(isNl ? 'Investeringen' : 'Investments', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                            Text('${_investments.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                          ])),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(isNl ? 'Afschrijving $currentYear' : 'Depreciation $currentYear', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                            Text('\u20ac${totalThisYear.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                          ])),
+                        ],
+                      ),
+                    ),
+                  Expanded(
+                    child: _investments.isEmpty
+                        ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            const Icon(Icons.trending_up_outlined, size: 64, color: BigDoggTheme.lightTextHint),
+                            const SizedBox(height: 16),
+                            Text(isNl ? 'Nog geen investeringen' : 'No investments yet',
+                                style: const TextStyle(fontSize: 18, color: BigDoggTheme.lightTextSecondary)),
+                            const SizedBox(height: 8),
+                            Text(isNl ? 'Tik + om een investering toe te voegen' : 'Tap + to add an investment',
+                                style: const TextStyle(color: BigDoggTheme.lightTextHint)),
+                          ]))
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: _investments.length,
+                            itemBuilder: (_, i) {
+                              final inv = _investments[i];
+                              final schedule = (inv['depreciation_schedule'] as List? ?? []);
+                              final yearDep = inv['current_year_depreciation'] ?? 0;
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
+                                child: ExpansionTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: BigDoggTheme.teal100,
+                                    child: Icon(_categoryIcon(inv['category'] ?? 'general'), color: BigDoggTheme.teal800, size: 20),
+                                  ),
+                                  title: Text(inv['description'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, color: BigDoggTheme.teal800)),
+                                  subtitle: Text(
+                                    '${inv['purchase_date']} \u00b7 \u20ac${inv['amount']} \u00b7 ${inv['depreciation_years']}j',
+                                    style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary),
+                                  ),
+                                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
+                                      Text(isNl ? 'Dit jaar' : 'This year', style: const TextStyle(fontSize: 10, color: BigDoggTheme.lightTextSecondary)),
+                                      Text('\u20ac${(yearDep as num).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: BigDoggTheme.teal800, fontSize: 13)),
+                                    ]),
+                                    const SizedBox(width: 4),
+                                    IconButton(icon: const Icon(Icons.delete, color: BigDoggTheme.error, size: 18), onPressed: () => _deleteInvestment(inv['id'])),
+                                  ]),
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(isNl ? 'Afschrijvingsschema' : 'Depreciation schedule',
+                                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: BigDoggTheme.teal800)),
+                                          const SizedBox(height: 8),
+                                          ...schedule.map((s) => Padding(
+                                            padding: const EdgeInsets.symmetric(vertical: 3),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Text('${s['year']}',
+                                                    style: TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight: s['year'] == currentYear ? FontWeight.bold : FontWeight.normal,
+                                                        color: s['year'] == currentYear ? BigDoggTheme.teal800 : BigDoggTheme.lightTextSecondary)),
+                                                Text('\u20ac${(s['amount'] as num).toStringAsFixed(2)}',
+                                                    style: TextStyle(fontSize: 12, fontWeight: s['year'] == currentYear ? FontWeight.bold : FontWeight.normal, color: BigDoggTheme.teal800)),
+                                                Text(isNl ? 'Restwaarde: \u20ac${(s['remaining'] as num).toStringAsFixed(2)}' : 'Remaining: \u20ac${(s['remaining'] as num).toStringAsFixed(2)}',
+                                                    style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+                                              ],
+                                            ),
+                                          )).toList(),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
               ),
+        Positioned(
+          bottom: 16, right: 16,
+          child: FloatingActionButton(
+            heroTag: 'inv_add_fab',
+            onPressed: () => _showAddInvestment(isNl),
+            child: const Icon(Icons.add, color: Colors.white, size: 24),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isNl = context.watch<AppProvider>().language == 'nl';
+    final isMobile = _isMobile();
+
+    return Column(
+      children: [
+        Container(
+          color: BigDoggTheme.teal800,
+          child: TabBar(
+            controller: _tabController,
+            indicatorColor: BigDoggTheme.gold500,
+            indicatorWeight: 3,
+            labelColor: Colors.white,
+            unselectedLabelColor: BigDoggTheme.teal400,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'PlusJakartaSans'),
+            tabs: [
+              Tab(text: isNl ? 'Kosten' : 'Expenses'),
+              Tab(text: isNl ? 'Investeringen' : 'Investments'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildExpensesTab(isNl, isMobile),
+              _buildInvestmentsTab(isNl),
             ],
           ),
         ),
