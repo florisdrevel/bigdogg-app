@@ -33806,7 +33806,7 @@ $S:2}
 A.aLr.prototype={
 $1(a){var s=A.ea().b
 s=s==null?null:s.canvasKitBaseUrl
-return(s==null?"https://www.gstatic.com/flutter-canvaskit/425cfb54d01a9472b3e81d9e76fd63a4a44cfbcb/":s)+a},
+return(s==null?"https://www.gstatic.com/flutter-canvaskit/59aa584fdf100e6c78c785d8a5b565d1de4b48ab/":s)+a},
 $S:90}
 A.S6.prototype={
 gB(a){var s=this.a
@@ -54600,7 +54600,7 @@ case 5:p=c
 n=J.a1(p)
 if(n.h(p,"success")&&q.c!=null){n=q.c
 n.toString
-A.fk(n).f9(0,"/login",null)}else{o=q.c
+A.fk(n).f9(0,"/",null)}else{o=q.c
 if(o!=null){o=o.a8(t.l).f
 n=n.h(p,"message")
 if(n==null)n=a?"Verwijderen mislukt":"Delete failed"

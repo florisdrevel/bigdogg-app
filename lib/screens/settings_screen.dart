@@ -180,7 +180,7 @@ Future<void> _connectStripe(bool isNl) async {
     if (confirm == true && mounted) {
       final result = await AuthService.deleteAccount();
       if (result['success'] && mounted) {
-        context.go('/login');
+        context.go('/');
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(result['message'] ??
