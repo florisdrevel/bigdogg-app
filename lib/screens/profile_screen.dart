@@ -30,6 +30,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loading = true;
   bool _saving = false;
 
+  // Logo
+  String? _logoUrl;
+  bool _uploadingLogo = false;
+
   // Invoice import
   bool _importingInvoices = false;
   List<String> _invoiceFileNames = [];
@@ -80,6 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _kvkController.text = p['kvk_number'] ?? '';
         _btwController.text = p['btw_number'] ?? '';
         _ibanController.text = p['iban'] ?? '';
+        _logoUrl = p['logo_url'];
       }
     });
   }
@@ -118,6 +123,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await InvoicesService.deleteImportedInvoice(id);
       _loadImportedInvoices();
     }
+  }
+
+  Future<void> _pickAndUploadLogo(bool isNl) async {
+    final completer = Completer<void>();
+    final input = html.FileUploadInputElement();
+    input.accept = 'image/png,image/jpeg,image/jpg,image/webp';
+    input.click();
+    input.onChange.listen((event) async {
+      final files = input.files;
+      if (files != null && files.isNotEmpty) {
+        final file = files[0];
+        final reader = html.FileReader();
+        reader.readAsArrayBuffer(file);
+        await reader.onLoad.first;
+        final bytes = Uint8List.fromList(reader.result as List<int>);
+        setState(() => _uploadingLogo = true);
+        final result = await ProfileService.uploadLogo(
+          bytes: bytes,
+          fileName: file.name,
+        );
+        setState(() {
+          _uploadingLogo = false;
+          if (result['success']) {
+            _logoUrl = result['logo_url'];
+            _success = isNl ? 'Logo opgeslagen' : 'Logo saved';
+          } else {
+            _error = result['message'];
+          }
+        });
+      }
+      completer.complete();
+    });
+    await completer.future;
   }
 
   Future<void> _saveProfile(bool isNl) async {
@@ -204,7 +242,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       fileNames: _invoiceFileNames,
     );
 
-    // Paywall check — intercept before showing any error
     if (!result['success'] && result['message'] == 'paid_tier_required') {
       setState(() => _importingInvoices = false);
       if (mounted) _showPaywallDialog(isNl);
@@ -237,7 +274,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       fileNames: _expenseFileNames,
     );
 
-    // Paywall check — intercept before showing any error
     if (!result['success'] && result['message'] == 'paid_tier_required') {
       setState(() => _importingExpenses = false);
       if (mounted) _showPaywallDialog(isNl);
@@ -270,7 +306,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
             Container(
               width: 40,
               height: 4,
@@ -280,7 +315,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            // Lock icon
             Container(
               width: 72,
               height: 72,
@@ -288,11 +322,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: BigDoggTheme.teal800.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.lock_outline_rounded,
-                size: 36,
-                color: BigDoggTheme.teal800,
-              ),
+              child: const Icon(Icons.lock_outline_rounded,
+                  size: 36, color: BigDoggTheme.teal800),
             ),
             const SizedBox(height: 20),
             Text(
@@ -307,67 +338,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 12),
             Text(
               isNl
-                  ? 'Facturen en kosten importeren is alleen beschikbaar voor gebruikers met een betaald abonnement. Upgrade je account om toegang te krijgen tot alle functies.'
-                  : 'Importing invoices and expenses is only available on a paid plan. Upgrade your account to unlock all features.',
+                  ? 'Facturen en kosten importeren is alleen beschikbaar voor gebruikers met een betaald abonnement.'
+                  : 'Importing invoices and expenses is only available on a paid plan.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-                height: 1.5,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
             ),
             const SizedBox(height: 16),
-            // Feature list
-            _paywallFeatureRow(
-              Icons.upload_file_outlined,
-              isNl ? 'Facturen importeren' : 'Import invoices',
-            ),
-            _paywallFeatureRow(
-              Icons.receipt_long_outlined,
-              isNl ? 'Kosten importeren' : 'Import expenses',
-            ),
-            _paywallFeatureRow(
-              Icons.analytics_outlined,
-              isNl ? 'Jaarlijkse financiële rapporten' : 'Annual financial reports',
-            ),
-            _paywallFeatureRow(
-              Icons.picture_as_pdf_outlined,
-              isNl ? 'PDF exports voor alle kwartalen' : 'PDF exports for all quarters',
-            ),
+            _paywallFeatureRow(Icons.upload_file_outlined,
+                isNl ? 'Facturen importeren' : 'Import invoices'),
+            _paywallFeatureRow(Icons.receipt_long_outlined,
+                isNl ? 'Kosten importeren' : 'Import expenses'),
+            _paywallFeatureRow(Icons.analytics_outlined,
+                isNl ? 'Jaarlijkse financiële rapporten' : 'Annual financial reports'),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  // TODO: Navigate to subscription/upgrade screen
-                  // Navigator.pushNamed(context, '/upgrade');
-                },
+                onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: BigDoggTheme.gold500,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 child: Text(
                   isNl ? 'Upgraden naar betaald' : 'Upgrade to paid',
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'PlusJakartaSans',
-                  ),
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'PlusJakartaSans'),
                 ),
               ),
             ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                isNl ? 'Niet nu' : 'Not now',
-                style: TextStyle(color: Colors.grey[500], fontSize: 14),
-              ),
+              child: Text(isNl ? 'Niet nu' : 'Not now',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 14)),
             ),
           ],
         ),
@@ -390,10 +398,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Icon(icon, size: 18, color: BigDoggTheme.teal800),
           ),
           const SizedBox(width: 12),
-          Text(
-            text,
-            style: const TextStyle(fontSize: 14, color: BigDoggTheme.lightTextPrimary),
-          ),
+          Text(text,
+              style: const TextStyle(
+                  fontSize: 14, color: BigDoggTheme.lightTextPrimary)),
         ],
       ),
     );
@@ -429,13 +436,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontSize: 16,
                         color: BigDoggTheme.teal800)),
               ),
-              // Paid tier badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: BigDoggTheme.gold500.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
+                  border:
+                      Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -654,7 +662,117 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style: const TextStyle(color: BigDoggTheme.success)),
             ),
 
-          // Business details
+          // ── Logo upload ──────────────────────────────────────────
+          Container(
+            decoration: BoxDecoration(
+              color: BigDoggTheme.lightSurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: BigDoggTheme.lightBorder),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isNl ? 'Bedrijfslogo' : 'Company logo',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: BigDoggTheme.teal800),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isNl
+                      ? 'Je logo verschijnt linksboven op al je facturen.'
+                      : 'Your logo appears top-left on all your invoices.',
+                  style: const TextStyle(
+                      fontSize: 13, color: BigDoggTheme.lightTextSecondary),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    // Logo preview
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: BigDoggTheme.lightBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: BigDoggTheme.lightBorder),
+                      ),
+                      child: _logoUrl != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(9),
+                              child: Image.network(
+                                _logoUrl!,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.broken_image_outlined,
+                                    color: BigDoggTheme.lightTextHint),
+                              ),
+                            )
+                          : const Icon(Icons.business_outlined,
+                              size: 36, color: BigDoggTheme.lightTextHint),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _uploadingLogo
+                                  ? null
+                                  : () => _pickAndUploadLogo(isNl),
+                              icon: _uploadingLogo
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white))
+                                  : const Icon(Icons.upload_outlined,
+                                      size: 18),
+                              label: Text(
+                                _uploadingLogo
+                                    ? (isNl ? 'Uploaden...' : 'Uploading...')
+                                    : _logoUrl != null
+                                        ? (isNl
+                                            ? 'Logo wijzigen'
+                                            : 'Change logo')
+                                        : (isNl
+                                            ? 'Logo uploaden'
+                                            : 'Upload logo'),
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: BigDoggTheme.teal800,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 14),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            isNl
+                                ? 'PNG, JPG of WEBP · max 2MB'
+                                : 'PNG, JPG or WEBP · max 2MB',
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: BigDoggTheme.lightTextHint),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ── Business details ─────────────────────────────────────
           Container(
             decoration: BoxDecoration(
               color: BigDoggTheme.lightSurface,
@@ -696,7 +814,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Tax & Payment
+          // ── Tax & Payment ────────────────────────────────────────
           Container(
             decoration: BoxDecoration(
               color: BigDoggTheme.lightSurface,
@@ -725,13 +843,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Import invoices
+          // ── Import invoices ──────────────────────────────────────
           _importSection(
             isNl: isNl,
             title: isNl ? 'Oude facturen importeren' : 'Import old invoices',
             description: isNl
-                ? 'Upload PDF facturen of screenshots van je vorige boekhoudprogramma. Ze worden toegevoegd aan je jaaroverzicht.'
-                : 'Upload PDF invoices or screenshots from your previous accounting tool. They will be added to your annual overview.',
+                ? 'Upload PDF facturen of screenshots van je vorige boekhoudprogramma.'
+                : 'Upload PDF invoices or screenshots from your previous accounting tool.',
             isMobile: isMobile,
             importing: _importingInvoices,
             fileNames: _invoiceFileNames,
@@ -741,13 +859,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Import expenses
+          // ── Import expenses ──────────────────────────────────────
           _importSection(
             isNl: isNl,
             title: isNl ? 'Oude kosten importeren' : 'Import old expenses',
             description: isNl
-                ? 'Upload PDF bonnen of screenshots van oude zakelijke kosten. Ze worden toegevoegd aan je kostenregistratie.'
-                : 'Upload PDF receipts or screenshots of old business expenses. They will be added to your expense records.',
+                ? 'Upload PDF bonnen of screenshots van oude zakelijke kosten.'
+                : 'Upload PDF receipts or screenshots of old business expenses.',
             isMobile: isMobile,
             importing: _importingExpenses,
             fileNames: _expenseFileNames,
@@ -757,7 +875,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 12),
 
-          // View/delete imported invoices
+          // ── Imported invoices list ───────────────────────────────
           Container(
             decoration: BoxDecoration(
               color: BigDoggTheme.lightSurface,
@@ -780,7 +898,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.refresh, color: BigDoggTheme.teal700),
+                      icon: const Icon(Icons.refresh,
+                          color: BigDoggTheme.teal700),
                       onPressed: _loadImportedInvoices,
                     ),
                   ],
@@ -804,7 +923,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         decoration: BoxDecoration(
                           color: BigDoggTheme.lightBg,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: BigDoggTheme.lightBorder),
+                          border:
+                              Border.all(color: BigDoggTheme.lightBorder),
                         ),
                         child: Row(
                           children: [
@@ -823,7 +943,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     '${inv['client_name'] ?? ''} · ${inv['invoice_date'] ?? ''}',
                                     style: const TextStyle(
                                         fontSize: 11,
-                                        color: BigDoggTheme.lightTextSecondary),
+                                        color:
+                                            BigDoggTheme.lightTextSecondary),
                                   ),
                                 ],
                               ),
