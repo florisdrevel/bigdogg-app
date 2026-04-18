@@ -8,6 +8,174 @@ import '../providers/app_provider.dart';
 import '../theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Invoice Detail Sheet — shows invoice data inline when no PDF is available
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _InvoiceDetailSheet extends StatelessWidget {
+  final Map<String, dynamic> invoice;
+  final bool isNl;
+
+  const _InvoiceDetailSheet({required this.invoice, required this.isNl});
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'paid': return isNl ? 'Betaald' : 'Paid';
+      case 'sent': return isNl ? 'Verstuurd' : 'Sent';
+      case 'overdue': return isNl ? 'Verlopen' : 'Overdue';
+      default: return isNl ? 'Concept' : 'Draft';
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'paid': return BigDoggTheme.success;
+      case 'sent': return BigDoggTheme.info;
+      case 'overdue': return BigDoggTheme.error;
+      default: return BigDoggTheme.lightTextSecondary;
+    }
+  }
+
+  Widget _row(String label, String value, {bool bold = false, Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 13, color: BigDoggTheme.lightTextSecondary)),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+                  color: color ?? BigDoggTheme.lightTextPrimary)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = invoice['status'] ?? 'draft';
+    final clientName = invoice['clients']?['contact_name'] ??
+        invoice['client_name'] ??
+        (isNl ? 'Verwijderde klant' : 'Deleted client');
+    final subtotal = invoice['subtotal_ex_btw'] ?? 0.0;
+    final btw = invoice['btw_amount'] ?? 0.0;
+    final total = invoice['total_incl_btw'] ?? 0.0;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Container(
+            width: 40, height: 4,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2)),
+          ),
+          // Header
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  invoice['invoice_number'] ?? '',
+                  style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: BigDoggTheme.teal800,
+                      fontFamily: 'PlusJakartaSans'),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _statusColor(status).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _statusLabel(status),
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _statusColor(status)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Divider(color: Colors.grey[200]),
+          const SizedBox(height: 8),
+          // Details
+          _row(isNl ? 'Klant' : 'Client', clientName),
+          _row(isNl ? 'Datum' : 'Date', invoice['invoice_date'] ?? ''),
+          const Divider(height: 24),
+          _row(isNl ? 'Subtotaal ex BTW' : 'Subtotal ex VAT',
+              '\u20ac${subtotal is num ? subtotal.toStringAsFixed(2) : subtotal}'),
+          _row(isNl ? 'BTW' : 'VAT',
+              '\u20ac${btw is num ? btw.toStringAsFixed(2) : btw}'),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            decoration: BoxDecoration(
+              color: BigDoggTheme.teal800.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: BigDoggTheme.teal800.withOpacity(0.15)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  isNl ? 'Totaal incl BTW' : 'Total incl VAT',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: BigDoggTheme.teal800),
+                ),
+                Text(
+                  '\u20ac${total is num ? total.toStringAsFixed(2) : total}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: BigDoggTheme.teal800),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: BigDoggTheme.teal800),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text(isNl ? 'Sluiten' : 'Close',
+                  style: const TextStyle(color: BigDoggTheme.teal800)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Quarter Detail Sheet — shows invoices + expenses that make up a quarter
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -64,27 +232,19 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'paid':
-        return BigDoggTheme.success;
-      case 'sent':
-        return BigDoggTheme.info;
-      case 'overdue':
-        return BigDoggTheme.error;
-      default:
-        return BigDoggTheme.lightTextSecondary;
+      case 'paid': return BigDoggTheme.success;
+      case 'sent': return BigDoggTheme.info;
+      case 'overdue': return BigDoggTheme.error;
+      default: return BigDoggTheme.lightTextSecondary;
     }
   }
 
   String _statusLabel(String status) {
     switch (status) {
-      case 'paid':
-        return widget.isNl ? 'Betaald' : 'Paid';
-      case 'sent':
-        return widget.isNl ? 'Verstuurd' : 'Sent';
-      case 'overdue':
-        return widget.isNl ? 'Verlopen' : 'Overdue';
-      default:
-        return widget.isNl ? 'Concept' : 'Draft';
+      case 'paid': return widget.isNl ? 'Betaald' : 'Paid';
+      case 'sent': return widget.isNl ? 'Verstuurd' : 'Sent';
+      case 'overdue': return widget.isNl ? 'Verlopen' : 'Overdue';
+      default: return widget.isNl ? 'Concept' : 'Draft';
     }
   }
 
@@ -93,6 +253,18 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
+  }
+
+  void _showInvoiceDetail(Map<String, dynamic> inv) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _InvoiceDetailSheet(
+        invoice: inv,
+        isNl: widget.isNl,
+      ),
+    );
   }
 
   @override
@@ -189,13 +361,11 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                             ? 'Verwijderde klant'
                                             : 'Deleted client');
                                 return Container(
-                                  margin:
-                                      const EdgeInsets.only(bottom: 10),
+                                  margin: const EdgeInsets.only(bottom: 10),
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
                                     color: BigDoggTheme.lightSurface,
-                                    borderRadius:
-                                        BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                         color: BigDoggTheme.lightBorder),
                                   ),
@@ -209,8 +379,7 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                             Row(
                                               children: [
                                                 Text(
-                                                  inv['invoice_number'] ??
-                                                      '',
+                                                  inv['invoice_number'] ?? '',
                                                   style: const TextStyle(
                                                       fontWeight:
                                                           FontWeight.w600),
@@ -222,22 +391,19 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                                       horizontal: 6,
                                                       vertical: 2),
                                                   decoration: BoxDecoration(
-                                                    color: _statusColor(
-                                                            status)
+                                                    color: _statusColor(status)
                                                         .withOpacity(0.1),
                                                     borderRadius:
-                                                        BorderRadius
-                                                            .circular(5),
+                                                        BorderRadius.circular(5),
                                                   ),
                                                   child: Text(
                                                     _statusLabel(status),
                                                     style: TextStyle(
                                                         fontSize: 10,
-                                                        color: _statusColor(
-                                                            status),
+                                                        color:
+                                                            _statusColor(status),
                                                         fontWeight:
-                                                            FontWeight
-                                                                .w600),
+                                                            FontWeight.w600),
                                                   ),
                                                 ),
                                               ],
@@ -248,8 +414,7 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                                     fontSize: 12,
                                                     color: BigDoggTheme
                                                         .lightTextSecondary)),
-                                            Text(
-                                                inv['invoice_date'] ?? '',
+                                            Text(inv['invoice_date'] ?? '',
                                                 style: const TextStyle(
                                                     fontSize: 11,
                                                     color: BigDoggTheme
@@ -268,23 +433,35 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                                 fontSize: 15,
                                                 color: BigDoggTheme.teal800),
                                           ),
+                                          // Show "See file" for pdf_url, "View" for imported
                                           if (inv['pdf_url'] != null)
                                             TextButton(
                                               style: TextButton.styleFrom(
                                                 padding: EdgeInsets.zero,
-                                                minimumSize:
-                                                    const Size(0, 28),
+                                                minimumSize: const Size(0, 28),
                                               ),
                                               onPressed: () => _openUrl(
                                                   inv['pdf_url'] as String),
                                               child: Text(
-                                                isNl
-                                                    ? 'Zie bestand'
-                                                    : 'See file',
+                                                isNl ? 'Zie bestand' : 'See file',
                                                 style: const TextStyle(
                                                     fontSize: 11,
-                                                    color: BigDoggTheme
-                                                        .teal700),
+                                                    color: BigDoggTheme.teal700),
+                                              ),
+                                            )
+                                          else
+                                            TextButton(
+                                              style: TextButton.styleFrom(
+                                                padding: EdgeInsets.zero,
+                                                minimumSize: const Size(0, 28),
+                                              ),
+                                              onPressed: () =>
+                                                  _showInvoiceDetail(inv),
+                                              child: Text(
+                                                isNl ? 'Bekijk' : 'View',
+                                                style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: BigDoggTheme.teal700),
                                               ),
                                             ),
                                         ],
@@ -308,13 +485,11 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                               itemBuilder: (context, i) {
                                 final exp = _expenses[i];
                                 return Container(
-                                  margin:
-                                      const EdgeInsets.only(bottom: 10),
+                                  margin: const EdgeInsets.only(bottom: 10),
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
                                     color: BigDoggTheme.lightSurface,
-                                    borderRadius:
-                                        BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                         color: BigDoggTheme.lightBorder),
                                   ),
@@ -331,8 +506,7 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                                       ? 'Geen omschrijving'
                                                       : 'No description'),
                                               style: const TextStyle(
-                                                  fontWeight:
-                                                      FontWeight.w600),
+                                                  fontWeight: FontWeight.w600),
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
@@ -346,8 +520,8 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                               exp['expense_date'] ?? '',
                                               style: const TextStyle(
                                                   fontSize: 11,
-                                                  color: BigDoggTheme
-                                                      .lightTextHint),
+                                                  color:
+                                                      BigDoggTheme.lightTextHint),
                                             ),
                                           ],
                                         ),
@@ -367,19 +541,15 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                             TextButton(
                                               style: TextButton.styleFrom(
                                                 padding: EdgeInsets.zero,
-                                                minimumSize:
-                                                    const Size(0, 28),
+                                                minimumSize: const Size(0, 28),
                                               ),
                                               onPressed: () => _openUrl(
                                                   exp['receipt_url'] as String),
                                               child: Text(
-                                                isNl
-                                                    ? 'Zie bestand'
-                                                    : 'See file',
+                                                isNl ? 'Zie bestand' : 'See file',
                                                 style: const TextStyle(
                                                     fontSize: 11,
-                                                    color: BigDoggTheme
-                                                        .teal700),
+                                                    color: BigDoggTheme.teal700),
                                               ),
                                             ),
                                         ],
@@ -406,8 +576,7 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
           const SizedBox(height: 12),
           Text(message,
               style: const TextStyle(
-                  fontSize: 15,
-                  color: BigDoggTheme.lightTextSecondary)),
+                  fontSize: 15, color: BigDoggTheme.lightTextSecondary)),
         ],
       ),
     );
@@ -461,8 +630,7 @@ class _OverviewScreenState extends State<OverviewScreen>
 
   Future<void> _loadAnnual() async {
     setState(() => _loadingAnnual = true);
-    final result =
-        await OverviewService.getAnnualOverview(year: _selectedYear);
+    final result = await OverviewService.getAnnualOverview(year: _selectedYear);
     setState(() {
       _loadingAnnual = false;
       if (result['success']) _annual = result['overview'];
@@ -553,8 +721,7 @@ class _OverviewScreenState extends State<OverviewScreen>
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: BigDoggTheme.teal800,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 13),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
@@ -574,7 +741,6 @@ class _OverviewScreenState extends State<OverviewScreen>
       ),
     );
 
-    // Launch PDF directly — server handles auth/paywall
     final token = await InvoicesService.getToken();
     final lang = isNl ? 'nl' : 'en';
     final url =
@@ -619,9 +785,7 @@ class _OverviewScreenState extends State<OverviewScreen>
             ),
             const SizedBox(height: 20),
             Text(
-              isNl
-                  ? 'Betaald abonnement vereist'
-                  : 'Paid plan required',
+              isNl ? 'Betaald abonnement vereist' : 'Paid plan required',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -649,9 +813,7 @@ class _OverviewScreenState extends State<OverviewScreen>
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+                onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: BigDoggTheme.gold500,
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -697,8 +859,7 @@ class _OverviewScreenState extends State<OverviewScreen>
           const SizedBox(width: 12),
           Text(text,
               style: const TextStyle(
-                  fontSize: 14,
-                  color: BigDoggTheme.lightTextPrimary)),
+                  fontSize: 14, color: BigDoggTheme.lightTextPrimary)),
         ],
       ),
     );
@@ -714,9 +875,7 @@ class _OverviewScreenState extends State<OverviewScreen>
       children: [
         IconButton(
           icon: Icon(Icons.chevron_left,
-              color: _selectedYear > _minYear
-                  ? Colors.white
-                  : Colors.white30),
+              color: _selectedYear > _minYear ? Colors.white : Colors.white30),
           onPressed: _selectedYear > _minYear
               ? () {
                   setState(() => _selectedYear--);
@@ -736,10 +895,7 @@ class _OverviewScreenState extends State<OverviewScreen>
             fontFamily: 'PlusJakartaSans',
           ),
           items: years
-              .map((y) => DropdownMenuItem(
-                    value: y,
-                    child: Text('$y'),
-                  ))
+              .map((y) => DropdownMenuItem(value: y, child: Text('$y')))
               .toList(),
           onChanged: (y) {
             if (y != null) {
@@ -750,9 +906,8 @@ class _OverviewScreenState extends State<OverviewScreen>
         ),
         IconButton(
           icon: Icon(Icons.chevron_right,
-              color: _selectedYear < currentYear
-                  ? Colors.white
-                  : Colors.white30),
+              color:
+                  _selectedYear < currentYear ? Colors.white : Colors.white30),
           onPressed: _selectedYear < currentYear
               ? () {
                   setState(() => _selectedYear++);
@@ -798,8 +953,7 @@ class _OverviewScreenState extends State<OverviewScreen>
             labelColor: Colors.white,
             unselectedLabelColor: BigDoggTheme.teal400,
             labelStyle: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontFamily: 'PlusJakartaSans'),
+                fontWeight: FontWeight.w600, fontFamily: 'PlusJakartaSans'),
             tabs: [
               Tab(text: isNl ? 'Dit kwartaal' : 'This Quarter'),
               Tab(text: isNl ? 'Dit jaar' : 'This Year'),
@@ -823,8 +977,7 @@ class _OverviewScreenState extends State<OverviewScreen>
     if (_loadingQuarterly)
       return const Center(child: CircularProgressIndicator());
     if (_quarterly == null)
-      return Center(
-          child: Text(isNl ? 'Laden mislukt' : 'Failed to load'));
+      return Center(child: Text(isNl ? 'Laden mislukt' : 'Failed to load'));
 
     final q = _quarterly!;
 
@@ -843,12 +996,12 @@ class _OverviewScreenState extends State<OverviewScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(q['period'],
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 14)),
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 14)),
                 const SizedBox(height: 4),
                 Text('${q['start_date']} \u2014 ${q['end_date']}',
-                    style: const TextStyle(
-                        color: Colors.white54, fontSize: 12)),
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 12)),
               ],
             ),
           ),
@@ -863,12 +1016,10 @@ class _OverviewScreenState extends State<OverviewScreen>
                 '\u20ac${q['revenue_total']}',
                 bold: true),
             const Divider(),
-            _overviewRow(
-                isNl ? 'Betaald ontvangen' : 'Received',
+            _overviewRow(isNl ? 'Betaald ontvangen' : 'Received',
                 '\u20ac${q['paid_revenue']}',
                 color: BigDoggTheme.success),
-            _overviewRow(
-                isNl ? 'Nog openstaand' : 'Outstanding',
+            _overviewRow(isNl ? 'Nog openstaand' : 'Outstanding',
                 '\u20ac${q['outstanding']}',
                 color: BigDoggTheme.warning),
           ]),
@@ -877,8 +1028,8 @@ class _OverviewScreenState extends State<OverviewScreen>
           _overviewCard([
             _overviewRow(isNl ? 'Kosten ex BTW' : 'Expenses ex VAT',
                 '\u20ac${q['expenses_ex_btw']}'),
-            _overviewRow(isNl ? 'BTW betaald' : 'VAT paid',
-                '\u20ac${q['expenses_btw']}'),
+            _overviewRow(
+                isNl ? 'BTW betaald' : 'VAT paid', '\u20ac${q['expenses_btw']}'),
             _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT',
                 '\u20ac${q['expenses_total']}',
                 bold: true),
@@ -907,14 +1058,10 @@ class _OverviewScreenState extends State<OverviewScreen>
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => _downloadBtwReport(isNl),
-              icon: const Icon(Icons.download_outlined,
-                  color: Colors.white),
+              icon: const Icon(Icons.download_outlined, color: Colors.white),
               label: Text(
-                isNl
-                    ? 'Download BTW Aangifte PDF'
-                    : 'Download VAT Report PDF',
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 15),
+                isNl ? 'Download BTW Aangifte PDF' : 'Download VAT Report PDF',
+                style: const TextStyle(color: Colors.white, fontSize: 15),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: BigDoggTheme.teal800,
@@ -930,13 +1077,12 @@ class _OverviewScreenState extends State<OverviewScreen>
             decoration: BoxDecoration(
               color: BigDoggTheme.warningBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: BigDoggTheme.warning.withOpacity(0.3)),
+              border:
+                  Border.all(color: BigDoggTheme.warning.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline,
-                    color: BigDoggTheme.warning),
+                const Icon(Icons.info_outline, color: BigDoggTheme.warning),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -959,8 +1105,7 @@ class _OverviewScreenState extends State<OverviewScreen>
     if (_loadingAnnual)
       return const Center(child: CircularProgressIndicator());
     if (_annual == null)
-      return Center(
-          child: Text(isNl ? 'Laden mislukt' : 'Failed to load'));
+      return Center(child: Text(isNl ? 'Laden mislukt' : 'Failed to load'));
 
     final a = _annual!;
     final quarters = a['quarters'] as List;
@@ -971,8 +1116,8 @@ class _OverviewScreenState extends State<OverviewScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 16, vertical: 12),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: BigDoggTheme.teal800,
               borderRadius: BorderRadius.circular(12),
@@ -1012,9 +1157,8 @@ class _OverviewScreenState extends State<OverviewScreen>
           _sectionTitle(isNl ? 'Per kwartaal' : 'Per quarter'),
           ...quarters.map((q) => _quarterCard(q, isNl, _selectedYear)),
           const SizedBox(height: 16),
-          _sectionTitle(isNl
-              ? 'Totaal $_selectedYear'
-              : 'Total $_selectedYear'),
+          _sectionTitle(
+              isNl ? 'Totaal $_selectedYear' : 'Total $_selectedYear'),
           _overviewCard([
             _overviewRow(
                 isNl ? 'Totale omzet ex BTW' : 'Total revenue ex VAT',
@@ -1024,11 +1168,9 @@ class _OverviewScreenState extends State<OverviewScreen>
                 isNl ? 'Totale kosten ex BTW' : 'Total expenses ex VAT',
                 '\u20ac${a['total_expenses_ex_btw']}'),
             const Divider(),
-            _overviewRow(
-                isNl ? 'Netto winst' : 'Net profit',
+            _overviewRow(isNl ? 'Netto winst' : 'Net profit',
                 '\u20ac${a['net_profit_indicative']}',
-                bold: true,
-                large: true),
+                bold: true, large: true),
             _overviewRow(
                 isNl ? 'Totale BTW te betalen' : 'Total VAT to pay',
                 '\u20ac${a['total_btw_to_pay']}',
@@ -1046,8 +1188,7 @@ class _OverviewScreenState extends State<OverviewScreen>
                 isNl
                     ? 'Download Jaarrapport $_selectedYear'
                     : 'Download Annual Report $_selectedYear',
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 15),
+                style: const TextStyle(color: Colors.white, fontSize: 15),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: BigDoggTheme.gold500,
@@ -1103,8 +1244,8 @@ class _OverviewScreenState extends State<OverviewScreen>
                 ),
                 const Spacer(),
                 GestureDetector(
-                  onTap: () => _downloadBtwReport(isNl,
-                      quarter: quarterNum, year: year),
+                  onTap: () =>
+                      _downloadBtwReport(isNl, quarter: quarterNum, year: year),
                   behavior: HitTestBehavior.opaque,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -1132,8 +1273,7 @@ class _OverviewScreenState extends State<OverviewScreen>
                 ),
                 const SizedBox(width: 8),
                 const Icon(Icons.chevron_right,
-                    size: 18,
-                    color: BigDoggTheme.lightTextSecondary),
+                    size: 18, color: BigDoggTheme.lightTextSecondary),
               ],
             ),
             const SizedBox(height: 10),
@@ -1170,12 +1310,10 @@ class _OverviewScreenState extends State<OverviewScreen>
       children: [
         Text(label,
             style: const TextStyle(
-                fontSize: 11,
-                color: BigDoggTheme.lightTextSecondary)),
+                fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
         Text(value,
             style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: BigDoggTheme.teal800)),
+                fontWeight: FontWeight.w600, color: BigDoggTheme.teal800)),
       ],
     );
   }
@@ -1216,8 +1354,7 @@ class _OverviewScreenState extends State<OverviewScreen>
                   fontSize: large ? 15 : 14)),
           Text(value,
               style: TextStyle(
-                fontWeight:
-                    bold ? FontWeight.bold : FontWeight.normal,
+                fontWeight: bold ? FontWeight.bold : FontWeight.normal,
                 fontSize: large ? 15 : 14,
                 color: color ?? BigDoggTheme.lightTextPrimary,
               )),
