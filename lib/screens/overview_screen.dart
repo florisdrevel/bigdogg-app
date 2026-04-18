@@ -500,87 +500,72 @@ class _OverviewScreenState extends State<OverviewScreen>
   }
 
   void _onDownloadAnnualReportTapped(bool isNl, int year) async {
-    final checkResult =
-        await OverviewService.checkAnnualReportAccess(year: year);
-    if (checkResult == 'paid_tier_required') {
-      if (mounted) _showPaywallDialog(isNl);
-      return;
-    }
+  if (!mounted) return;
 
-    if (!mounted) return;
-
-    // Show modal first, then trigger download
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 68,
-                height: 68,
-                decoration: BoxDecoration(
-                  color: BigDoggTheme.teal800.withOpacity(0.08),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.picture_as_pdf_outlined,
-                    size: 34, color: BigDoggTheme.teal800),
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (context) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 68, height: 68,
+              decoration: BoxDecoration(
+                color: BigDoggTheme.teal800.withOpacity(0.08),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 20),
-              Text(
-                isNl ? 'Rapport wordt geopend' : 'Opening report',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: BigDoggTheme.teal800,
-                  fontFamily: 'PlusJakartaSans',
+              child: const Icon(Icons.picture_as_pdf_outlined,
+                  size: 34, color: BigDoggTheme.teal800),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              isNl ? 'Rapport wordt geopend' : 'Opening report',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
+                  color: BigDoggTheme.teal800, fontFamily: 'PlusJakartaSans'),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              isNl
+                  ? 'Je jaarrapport $year wordt geopend als PDF in een nieuw tabblad.'
+                  : 'Your $year annual report is opening as a PDF in a new tab.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: BigDoggTheme.teal800,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
+                child: Text(isNl ? 'Sluiten' : 'Close',
+                    style: const TextStyle(color: Colors.white, fontSize: 15,
+                        fontWeight: FontWeight.w600, fontFamily: 'PlusJakartaSans')),
               ),
-              const SizedBox(height: 10),
-              Text(
-                isNl
-                    ? 'Je jaarrapport $year wordt geopend als PDF in een nieuw tabblad.'
-                    : 'Your $year annual report is opening as a PDF in a new tab.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: BigDoggTheme.teal800,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text(
-                    isNl ? 'Sluiten' : 'Close',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'PlusJakartaSans'),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
+    ),
+  );
+
+  // Launch immediately — no HEAD check, server handles auth/paywall
+  final token = await InvoicesService.getToken();
+  final lang = isNl ? 'nl' : 'en';
+  final url = '${ApiConfig.baseUrl}/api/v1/reports/annual/pdf?token=$token&year=$year&lang=$lang';
+  final uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
 
     // Trigger actual PDF download
     final token = await InvoicesService.getToken();
