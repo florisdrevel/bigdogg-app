@@ -42,6 +42,7 @@ class InvoicesService {
     required String clientId,
     required List<Map<String, dynamic>> lines,
     String? notes,
+    String? projectId,
   }) async {
     final token = await _getToken();
     try {
@@ -55,6 +56,7 @@ class InvoicesService {
           'client_id': clientId,
           'lines': lines,
           'notes': notes,
+          if (projectId != null) 'project_id': projectId,
         }),
       );
       final data = jsonDecode(response.body);

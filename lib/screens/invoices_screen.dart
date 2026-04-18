@@ -1,10 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../services/invoices_service.dart';
 import '../services/clients_service.dart';
 import '../services/products_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
+import '../services/api_config.dart';
 import 'invoice_detail_screen.dart';
 import 'prompt_invoice_screen.dart';
 
@@ -390,15 +394,31 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     );
   }
 
+
+  Future<List<dynamic>> _fetchProjects() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      final r = await http.get(
+        Uri.parse('\/api/v1/projects/'),
+        headers: {'Authorization': 'Bearer '},
+      );
+      if (r.statusCode == 200) return jsonDecode(r.body)['projects'] ?? [];
+    } catch (_) {}
+    return [];
+  }
+
   void _showCreateInvoice(bool isNl) async {
     final clientsResult = await ClientsService.getClients();
     final productsResult = await ProductsService.getProducts();
+    final projects = await _fetchProjects();
     if (!clientsResult['success'] || !productsResult['success']) return;
     final clients = clientsResult['clients'] as List;
     final products = productsResult['products'] as List;
     if (!mounted) return;
 
     String? selectedClientId;
+    String? selectedProjectId;
     List<Map<String, dynamic>> lines = [];
 
     showDialog(
@@ -425,6 +445,34 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   onChanged: (val) =>
                       setDialogState(() => selectedClientId = val),
                 ),
+                if (projects.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String?>(
+                    value: selectedProjectId,
+                    decoration: InputDecoration(
+                        labelText: isNl ? 'Project (optioneel)' : 'Project (optional)'),
+                    items: [
+                      DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text(isNl ? 'Geen project' : 'No project')),
+                      ...projects.map((p) => DropdownMenuItem<String?>(
+                            value: p['id'] as String,
+                            child: Row(children: [
+                              Container(
+                                width: 10, height: 10,
+                                decoration: BoxDecoration(
+                                  color: Color(int.parse((p['color'] ?? '#1B3A4B').replaceFirst('#', '0xFF'))),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(p['name'] ?? ''),
+                            ]),
+                          )),
+                    ],
+                    onChanged: (val) => setDialogState(() => selectedProjectId = val),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Text(isNl ? 'Regels' : 'Lines',
                     style:
@@ -489,7 +537,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   : () async {
                       Navigator.pop(context);
                       final result = await InvoicesService.createInvoice(
-                          clientId: selectedClientId!, lines: lines);
+                          clientId: selectedClientId!, lines: lines,
+                          projectId: selectedProjectId);
                       if (result['success'] && mounted) {
                         await _loadInvoices();
                         final invoiceId = result['invoice']['id'];

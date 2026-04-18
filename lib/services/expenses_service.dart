@@ -39,22 +39,26 @@ class ExpensesService {
     required int btwRate,
     required String category,
     String? expenseDate,
+    String? projectId,
   }) async {
     final token = await _getToken();
     try {
+      final body = {
+        'description': description,
+        'amount_ex_btw': amountExBtw,
+        'btw_rate': btwRate,
+        'category': category,
+        'expense_date': expenseDate,
+      };
+      if (projectId != null) body['project_id'] = projectId;
+
       final response = await http.post(
         Uri.parse('$baseUrl/api/v1/expenses/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'description': description,
-          'amount_ex_btw': amountExBtw,
-          'btw_rate': btwRate,
-          'category': category,
-          'expense_date': expenseDate,
-        }),
+        body: jsonEncode(body),
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
