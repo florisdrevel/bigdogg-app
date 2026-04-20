@@ -670,8 +670,11 @@ class _OverviewScreenState extends State<OverviewScreen>
     final totalYear = (_hoursData?['total_year'] as num? ?? 0).toDouble();
     final totalQuarter = (_hoursData?['total_quarter'] as num? ?? 0).toDouble();
     final progress = (_hoursData?['urencriterium_progress'] as num? ?? 0).toDouble();
+    final manualYear = (_hoursData?['manual_year'] as num? ?? 0).toDouble();
+    final invoiceYear = (_hoursData?['invoice_year'] as num? ?? 0).toDouble();
     final target = 1225;
     final entries = (_hoursData?['entries'] as List? ?? []).take(5).toList();
+    final invEntries = (_hoursData?['invoice_hours_breakdown'] as List? ?? []).take(5).toList();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -746,6 +749,24 @@ class _OverviewScreenState extends State<OverviewScreen>
                     ])),
                   ],
                 ),
+                const SizedBox(height: 8),
+                if (invoiceYear > 0 || manualYear > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: BigDoggTheme.lightBg,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: BigDoggTheme.lightBorder),
+                    ),
+                    child: Row(children: [
+                      const Icon(Icons.info_outline, size: 12, color: BigDoggTheme.lightTextSecondary),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text(
+                        '${isNl ? 'Handmatig' : 'Manual'}: ${manualYear.toStringAsFixed(1)}u  ·  ${isNl ? 'Facturen' : 'Invoices'}: ${invoiceYear.toStringAsFixed(1)}u',
+                        style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary),
+                      )),
+                    ]),
+                  ),
                 const SizedBox(height: 12),
 
                 // Progress bar
@@ -778,7 +799,7 @@ class _OverviewScreenState extends State<OverviewScreen>
                 ]),
 
                 // Recent entries
-                if (entries.isNotEmpty) ...[
+                if (entries.isNotEmpty || invEntries.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Divider(height: 1),
                   const SizedBox(height: 8),
@@ -806,6 +827,28 @@ class _OverviewScreenState extends State<OverviewScreen>
                       ],
                     ),
                   )).toList(),
+                  if (invEntries.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(isNl ? 'Vanuit facturen' : 'From invoices',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: BigDoggTheme.lightTextSecondary)),
+                    const SizedBox(height: 6),
+                    ...invEntries.map((e) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(children: [
+                        Text(e['date'] ?? '', style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint)),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.receipt_long_outlined, size: 11, color: BigDoggTheme.teal700),
+                        const SizedBox(width: 4),
+                        Expanded(child: Text(
+                          '${e["invoice_number"] ?? ""} · ${e["description"] ?? ""}',
+                          style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextPrimary),
+                          overflow: TextOverflow.ellipsis,
+                        )),
+                        Text('${(e['hours'] as num).toStringAsFixed(1)} u',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: BigDoggTheme.teal800)),
+                      ]),
+                    )).toList(),
+                  ],
                 ],
               ],
             ),
