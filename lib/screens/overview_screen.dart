@@ -368,6 +368,7 @@ class _OverviewScreenState extends State<OverviewScreen>
   // Hours
   Map<String, dynamic>? _hoursData;
   bool _loadingHours = true;
+  bool _hoursExpanded = false;
 
   int get _minYear => DateTime.now().year - 25;
 
@@ -693,7 +694,9 @@ class _OverviewScreenState extends State<OverviewScreen>
               color: BigDoggTheme.teal800,
               borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
             ),
-            child: Row(
+            child: GestureDetector(
+              onTap: () => setState(() => _hoursExpanded = !_hoursExpanded),
+              child: Row(
               children: [
                 const Icon(Icons.access_time, color: Colors.white70, size: 16),
                 const SizedBox(width: 8),
@@ -701,8 +704,10 @@ class _OverviewScreenState extends State<OverviewScreen>
                   child: Text(isNl ? 'Urenregistratie' : 'Hours tracker',
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
                 ),
+                Icon(_hoursExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.white70, size: 20),
+                const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: () => _showAddHoursDialog(isNl),
+                  onTap: () { setState(() => _hoursExpanded = true); _showAddHoursDialog(isNl); },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -720,8 +725,30 @@ class _OverviewScreenState extends State<OverviewScreen>
                 ),
               ],
             ),
+            ),
           ),
 
+          // Collapsed: just show totals summary
+          if (!_hoursExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(isNl ? 'Dit kwartaal' : 'This quarter', style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+                  Text('${totalQuarter.toStringAsFixed(1)} u', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
+                ])),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(isNl ? 'Dit jaar' : 'This year', style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+                  Text('${totalYear.toStringAsFixed(1)} u', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
+                ])),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(isNl ? 'Criterium' : 'Criterion', style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+                  Text('${progress.toStringAsFixed(0)}%', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: progress >= 100 ? BigDoggTheme.success : BigDoggTheme.teal800)),
+                ])),
+              ]),
+            ),
+
+          if (_hoursExpanded)
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
