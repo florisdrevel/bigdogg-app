@@ -36,6 +36,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final priceController = TextEditingController(text: existing?['unit_price']?.toString() ?? '');
     int btwRate = existing?['btw_rate'] ?? 21;
     String unit = existing?['unit'] ?? 'hour';
+    bool vatIncluded = existing?['vat_included'] ?? false;
 
     showDialog(
       context: context,
@@ -60,7 +61,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: priceController,
-                  decoration: InputDecoration(labelText: isNl ? 'Prijs ex BTW *' : 'Price ex BTW *'),
+                  decoration: InputDecoration(
+                    labelText: vatIncluded
+                        ? (isNl ? 'Prijs incl BTW *' : 'Price incl VAT *')
+                        : (isNl ? 'Prijs ex BTW *' : 'Price ex BTW *'),
+                  ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
                 const SizedBox(height: 12),
@@ -87,6 +92,96 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   ],
                   onChanged: (val) => setDialogState(() => unit = val!),
                 ),
+                const SizedBox(height: 12),
+                // VAT included checkbox
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: vatIncluded
+                        ? BigDoggTheme.teal800.withOpacity(0.06)
+                        : BigDoggTheme.lightBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: vatIncluded
+                          ? BigDoggTheme.teal800.withOpacity(0.3)
+                          : BigDoggTheme.lightBorder,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: vatIncluded,
+                        activeColor: BigDoggTheme.teal800,
+                        onChanged: (val) => setDialogState(() => vatIncluded = val ?? false),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isNl ? 'BTW inbegrepen' : 'VAT included',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: BigDoggTheme.lightTextPrimary,
+                              ),
+                            ),
+                            Text(
+                              isNl
+                                  ? 'De ingevoerde prijs is inclusief BTW'
+                                  : 'The entered price already includes VAT',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: BigDoggTheme.lightTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Preview back-calculation
+                if (vatIncluded && priceController.text.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Builder(builder: (_) {
+                    final price = double.tryParse(priceController.text) ?? 0;
+                    final exBtw = btwRate > 0
+                        ? price / (1 + btwRate / 100)
+                        : price;
+                    final btwAmt = price - exBtw;
+                    return Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: BigDoggTheme.teal100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isNl ? 'Berekening:' : 'Calculation:',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: BigDoggTheme.teal800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isNl
+                                ? '\u20ac${price.toStringAsFixed(2)} incl = \u20ac${exBtw.toStringAsFixed(2)} ex BTW + \u20ac${btwAmt.toStringAsFixed(2)} BTW'
+                                : '\u20ac${price.toStringAsFixed(2)} incl = \u20ac${exBtw.toStringAsFixed(2)} ex VAT + \u20ac${btwAmt.toStringAsFixed(2)} VAT',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: BigDoggTheme.teal800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
               ],
             ),
           ),
@@ -107,6 +202,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     unitPrice: double.parse(priceController.text),
                     btwRate: btwRate,
                     unit: unit,
+                    vatIncluded: vatIncluded,
                   );
                 } else {
                   await ProductsService.createProduct(
@@ -115,6 +211,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     unitPrice: double.parse(priceController.text),
                     btwRate: btwRate,
                     unit: unit,
+                    vatIncluded: vatIncluded,
                   );
                 }
                 _loadProducts();
@@ -168,6 +265,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     itemBuilder: (context, index) {
                       final product = _products[index];
                       final isActive = product['is_active'] ?? true;
+                      final vatInc = product['vat_included'] ?? false;
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         decoration: BoxDecoration(
@@ -197,10 +295,24 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                   child: Text(isNl ? 'Inactief' : 'Inactive',
                                       style: const TextStyle(fontSize: 10, color: BigDoggTheme.lightTextHint)),
                                 ),
+                              if (vatInc) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: BigDoggTheme.teal800.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    isNl ? 'incl BTW' : 'incl VAT',
+                                    style: const TextStyle(fontSize: 10, color: BigDoggTheme.teal800, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                           subtitle: Text(
-                            '€${product['unit_price']} / ${_unitLabel(product['unit'] ?? 'hour', isNl)} · ${product['btw_rate']}% BTW',
+                            '\u20ac${product['unit_price']} / ${_unitLabel(product['unit'] ?? 'hour', isNl)} \u00b7 ${product['btw_rate']}% BTW',
                             style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13),
                           ),
                           trailing: Row(
