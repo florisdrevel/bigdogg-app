@@ -560,6 +560,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     final priceController = TextEditingController();
     final descController = TextEditingController();
     int btwRate = 21;
+    String unit = 'fixed';
+    String unit = 'fixed';
+    String unit = 'fixed';
 
     showDialog(
       context: context,
@@ -596,6 +599,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                         priceController.text =
                             p['unit_price'].toString();
                         btwRate = p['btw_rate'];
+                        unit = p['unit'] ?? 'fixed';
+                        unit = p['unit'] ?? 'fixed';
+                        unit = p['unit'] ?? 'fixed';
                       }
                     });
                   },
@@ -656,6 +662,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 onAdd({
                   'description': descController.text,
                   'quantity': double.parse(qtyController.text),
+                  'unit': unit,
+                  'unit': unit,
+                  'unit': unit,
                   'unit_price_ex_btw':
                       double.parse(priceController.text),
                   'btw_rate': btwRate,
