@@ -37,6 +37,7 @@ class ProductsService {
     String? description,
     int btwRate = 21,
     String unit = 'hour',
+    bool vatIncluded = false,
   }) async {
     final token = await _getToken();
     try {
@@ -52,6 +53,7 @@ class ProductsService {
           'unit_price': unitPrice,
           'btw_rate': btwRate,
           'unit': unit,
+          'vat_included': vatIncluded,
         }),
       );
       final data = jsonDecode(response.body);
@@ -71,6 +73,7 @@ class ProductsService {
     String? description,
     int? btwRate,
     String? unit,
+    bool vatIncluded = false,
   }) async {
     final token = await _getToken();
     try {
@@ -86,6 +89,7 @@ class ProductsService {
           'unit_price': unitPrice,
           'btw_rate': btwRate,
           'unit': unit,
+          'vat_included': vatIncluded,
         }),
       );
       final data = jsonDecode(response.body);
