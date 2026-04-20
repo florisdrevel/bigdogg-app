@@ -659,10 +659,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 Navigator.pop(context);
                 onAdd({
                   'description': descController.text,
-                  'quantity': double.parse(qtyController.text),
-                  'unit': unit,
-                  'unit': unit,
-                  'unit': unit,
+                  'quantity': double.parse(qtyController.text),                  'unit': unit,
                   'unit_price_ex_btw':
                       double.parse(priceController.text),
                   'btw_rate': btwRate,

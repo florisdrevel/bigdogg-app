@@ -48,6 +48,7 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
       'quantity': l['quantity'],
       'unit_price_ex_btw': l['unit_price_ex_btw'],
       'btw_rate': l['btw_rate'],
+      'unit': l['unit'] ?? 'fixed',
     }).toList();
 
     final result = await InvoicesService.createInvoice(

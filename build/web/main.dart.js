@@ -54324,14 +54324,11 @@ $0(){A.bB(this.a,!1).bq(null)
 return null},
 $S:0}
 A.aEr.prototype={
-$0(){var s,r,q,p=this,o=p.b
-if(o.a.a.length===0||p.c.a.a.length===0)return
-A.bB(p.d,!1).bq(null)
-o=o.a.a
-s=A.Bi(p.f.a.a)
-r=p.a
-q=r.c
-p.e.$1(A.y(["description",o,"quantity",s,"unit",q,"unit",q,"unit",q,"unit_price_ex_btw",A.Bi(p.c.a.a),"btw_rate",r.b],t.N,t.z))},
+$0(){var s,r=this,q=r.b
+if(q.a.a.length===0||r.c.a.a.length===0)return
+A.bB(r.d,!1).bq(null)
+s=r.a
+r.e.$1(A.y(["description",q.a.a,"quantity",A.Bi(r.f.a.a),"unit",s.c,"unit_price_ex_btw",A.Bi(r.c.a.a),"btw_rate",s.b],t.N,t.z))},
 $S:0}
 A.aFu.prototype={
 $0(){var s=this.a
@@ -56529,8 +56526,9 @@ A.aJF.prototype={
 $0(){return this.a.r=!0},
 $S:0}
 A.aJG.prototype={
-$1(a){var s="unit_price_ex_btw",r=J.a0(a)
-return A.y(["description",r.h(a,"description"),"quantity",r.h(a,"quantity"),s,r.h(a,s),"btw_rate",r.h(a,"btw_rate")],t.N,t.z)},
+$1(a){var s="unit_price_ex_btw",r=J.a0(a),q=r.h(a,"description"),p=r.h(a,"quantity"),o=r.h(a,s),n=r.h(a,"btw_rate")
+r=r.h(a,"unit")
+return A.y(["description",q,"quantity",p,s,o,"btw_rate",n,"unit",r==null?"fixed":r],t.N,t.z)},
 $S:393}
 A.aJH.prototype={
 $0(){return this.a.r=!1},
