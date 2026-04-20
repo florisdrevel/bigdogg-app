@@ -561,8 +561,6 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     final descController = TextEditingController();
     int btwRate = 21;
     String unit = 'fixed';
-    String unit = 'fixed';
-    String unit = 'fixed';
 
     showDialog(
       context: context,

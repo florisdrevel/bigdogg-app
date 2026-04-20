@@ -53903,6 +53903,7 @@ aub(a,b,c,d){var s,r=null,q={}
 q.a=null
 s=$.ag()
 q.b=21
+q.c="fixed"
 A.ew(r,r,!0,r,new A.aEt(q,c,b,new A.bW(B.ad,s),new A.bW(B.ad,s),new A.bW(new A.cf("1",B.b3,B.at),s),d),a,r,!0,!0,t.z)},
 I(a){var s,r,q,p,o,n=this,m=null,l=A.jR(a,t.gl).b==="nl",k=n.gaiZ(),j=t.p,i=A.b([B.N8,B.ce,A.i(n.arR(l),m,m,m,m,B.a3Z,m,m,m),B.cf],j)
 if(n.r!=null||n.w!=null)i.push(A.dT(m,A.i(l?"Zie alle":"See all",m,m,m,m,B.a4V,m,m,m),B.r,!1,m,m,m,m,m,m,m,m,m,m,m,m,m,m,new A.aFu(n),m,m,m,m,m,m))
@@ -54294,12 +54295,18 @@ $1(a){var s=this
 s.b.$1(new A.aEm(s.a,a,s.c,s.d,s.e))},
 $S:39}
 A.aEm.prototype={
-$0(){var s,r,q=this,p=q.a,o=p.a=q.b
-if(o!=null){s=J.b6f(q.c,new A.aEk(o))
+$0(){var s,r,q,p=this,o="unit",n="fixed",m=p.a,l=m.a=p.b
+if(l!=null){s=J.b6f(p.c,new A.aEk(l))
 r=J.a0(s)
-q.d.sco(0,r.h(s,"name"))
-q.e.sco(0,J.cV(r.h(s,"unit_price")))
-p.b=r.h(s,"btw_rate")}},
+p.d.sco(0,r.h(s,"name"))
+p.e.sco(0,J.cV(r.h(s,"unit_price")))
+m.b=r.h(s,"btw_rate")
+q=r.h(s,o)
+m.c=q==null?n:q
+q=r.h(s,o)
+m.c=q==null?n:q
+q=r.h(s,o)
+m.c=q==null?n:q}},
 $S:0}
 A.aEk.prototype={
 $1(a){return J.d(J.B(a,"id"),this.a)},
@@ -54317,10 +54324,14 @@ $0(){A.bB(this.a,!1).bq(null)
 return null},
 $S:0}
 A.aEr.prototype={
-$0(){var s=this,r=s.b
-if(r.a.a.length===0||s.c.a.a.length===0)return
-A.bB(s.d,!1).bq(null)
-s.e.$1(A.y(["description",r.a.a,"quantity",A.Bi(s.f.a.a),"unit_price_ex_btw",A.Bi(s.c.a.a),"btw_rate",s.a.b],t.N,t.z))},
+$0(){var s,r,q,p=this,o=p.b
+if(o.a.a.length===0||p.c.a.a.length===0)return
+A.bB(p.d,!1).bq(null)
+o=o.a.a
+s=A.Bi(p.f.a.a)
+r=p.a
+q=r.c
+p.e.$1(A.y(["description",o,"quantity",s,"unit",q,"unit",q,"unit",q,"unit_price_ex_btw",A.Bi(p.c.a.a),"btw_rate",r.b],t.N,t.z))},
 $S:0}
 A.aFu.prototype={
 $0(){var s=this.a
