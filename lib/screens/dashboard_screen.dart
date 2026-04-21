@@ -22,25 +22,9 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
-  bool _showWalkthrough = false;
-  bool _walkthroughChecked = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_walkthroughChecked) {
-      _walkthroughChecked = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !context.read<AppProvider>().hasSeenWalkthrough) {
-          setState(() => _showWalkthrough = true);
-        }
-      });
-    }
-  }
 
   void _completeWalkthrough() {
     context.read<AppProvider>().markWalkthroughSeen();
-    setState(() => _showWalkthrough = false);
   }
 
   List<Widget> _getScreens(bool projectsEnabled) {
@@ -88,6 +72,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final appProvider = context.watch<AppProvider>();
     final isNl = appProvider.language == 'nl';
     final projectsEnabled = appProvider.projectsEnabled;
+
+    // Walkthrough is active whenever hasSeenWalkthrough is false.
+    // This reacts both on first login AND when "Start tour" resets the flag.
+    final showWalkthrough = !appProvider.hasSeenWalkthrough;
+
     final screens = _getScreens(projectsEnabled);
     final titles = isNl ? _getTitlesNl(projectsEnabled) : _getTitlesEn(projectsEnabled);
     final safeIndex = _currentIndex.clamp(0, screens.length - 1);
@@ -154,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: BottomNavigationBar(
           currentIndex: safeIndex,
           onTap: (index) {
-            if (!_showWalkthrough) setState(() => _currentIndex = index);
+            if (!showWalkthrough) setState(() => _currentIndex = index);
           },
           backgroundColor: Colors.transparent,
           selectedItemColor: BigDoggTheme.gold500,
@@ -172,7 +161,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return WalkthroughOverlay(
       isNl: isNl,
-      active: _showWalkthrough,
+      active: showWalkthrough,
       onComplete: _completeWalkthrough,
       onTabChange: (idx) => setState(() => _currentIndex = idx),
       currentTabIndex: safeIndex,
