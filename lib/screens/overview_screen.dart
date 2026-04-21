@@ -10,7 +10,6 @@ import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/subscription_service.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Invoice Detail Sheet
@@ -519,8 +518,25 @@ class _OverviewScreenState extends State<OverviewScreen>
     }
   }
 
+  // ── THE FIX: check subscription before launching annual report ─────────────
   void _onDownloadAnnualReportTapped(bool isNl, int year) async {
     if (!mounted) return;
+
+    // Check subscription status first
+    final subResult = await SubscriptionService.getSubscriptionStatus();
+    final isPaid = subResult['success'] == true &&
+        (subResult['subscription_status'] == 'active' ||
+            subResult['subscription_status'] == 'trialing' &&
+                (subResult['is_paid'] == true));
+
+    if (!mounted) return;
+
+    if (!isPaid) {
+      _showPaywallDialog(isNl);
+      return;
+    }
+
+    // Paid user — show confirmation dialog and open PDF
     showDialog(
       context: context,
       barrierDismissible: true,
