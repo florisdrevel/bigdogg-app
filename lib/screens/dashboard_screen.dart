@@ -30,10 +30,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.didChangeDependencies();
     if (!_walkthroughChecked) {
       _walkthroughChecked = true;
-      final appProvider = context.read<AppProvider>();
-      // Wait for preferences to load — AppProvider notifies after load
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !appProvider.hasSeenWalkthrough) {
+        if (mounted && !context.read<AppProvider>().hasSeenWalkthrough) {
           setState(() => _showWalkthrough = true);
         }
       });
@@ -94,98 +92,92 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final titles = isNl ? _getTitlesNl(projectsEnabled) : _getTitlesEn(projectsEnabled);
     final safeIndex = _currentIndex.clamp(0, screens.length - 1);
 
-    // Check walkthrough after provider loads preferences
-    if (!_showWalkthrough && !appProvider.hasSeenWalkthrough && _walkthroughChecked) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _showWalkthrough = true);
-      });
-    }
-
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: BigDoggTheme.lightBg,
-          appBar: AppBar(
-            backgroundColor: BigDoggTheme.lightSurface,
-            elevation: 0,
-            shadowColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(1),
-              child: Container(color: BigDoggTheme.lightBorder, height: 1),
-            ),
-            title: Row(
-              children: [
-                Image.asset('assets/images/logo.png', width: 56, height: 56),
-                const SizedBox(width: 10),
-                Text(
-                  titles[safeIndex],
-                  style: const TextStyle(
-                    color: BigDoggTheme.lightTextPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 17,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              GestureDetector(
-                onTap: () => appProvider.setLanguage(isNl ? 'en' : 'nl'),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: BigDoggTheme.gold500.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
-                  ),
-                  child: Text(
-                    isNl ? 'EN' : 'NL',
-                    style: const TextStyle(
-                      color: BigDoggTheme.gold600,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.logout, color: BigDoggTheme.lightTextSecondary),
-                onPressed: () => context.go('/login'),
-                tooltip: isNl ? 'Uitloggen' : 'Log out',
-              ),
-            ],
-          ),
-          body: screens[safeIndex],
-          bottomNavigationBar: Container(
-            decoration: BoxDecoration(
-              color: BigDoggTheme.teal800,
-              border: const Border(top: BorderSide(color: BigDoggTheme.teal900, width: 1)),
-            ),
-            child: BottomNavigationBar(
-              currentIndex: safeIndex,
-              onTap: (index) => setState(() => _currentIndex = index),
-              backgroundColor: Colors.transparent,
-              selectedItemColor: BigDoggTheme.gold500,
-              unselectedItemColor: BigDoggTheme.teal400,
-              selectedLabelStyle: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 11, fontFamily: 'PlusJakartaSans'),
-              unselectedLabelStyle: const TextStyle(
-                  fontSize: 11, fontFamily: 'PlusJakartaSans'),
-              type: BottomNavigationBarType.fixed,
-              elevation: 0,
-              items: _getNavItems(isNl, projectsEnabled),
-            ),
-          ),
+    final scaffold = Scaffold(
+      backgroundColor: BigDoggTheme.lightBg,
+      appBar: AppBar(
+        backgroundColor: BigDoggTheme.lightSurface,
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: BigDoggTheme.lightBorder, height: 1),
         ),
-
-        // Walkthrough overlay
-        if (_showWalkthrough)
-          WalkthroughScreen(
-            isNl: isNl,
-            onComplete: _completeWalkthrough,
+        title: Row(
+          children: [
+            Image.asset('assets/images/logo.png', width: 56, height: 56),
+            const SizedBox(width: 10),
+            Text(
+              titles[safeIndex],
+              style: const TextStyle(
+                color: BigDoggTheme.lightTextPrimary,
+                fontWeight: FontWeight.w600,
+                fontSize: 17,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          GestureDetector(
+            onTap: () => appProvider.setLanguage(isNl ? 'en' : 'nl'),
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: BigDoggTheme.gold500.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
+              ),
+              child: Text(
+                isNl ? 'EN' : 'NL',
+                style: const TextStyle(
+                  color: BigDoggTheme.gold600,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ),
           ),
-      ],
+          IconButton(
+            icon: const Icon(Icons.logout, color: BigDoggTheme.lightTextSecondary),
+            onPressed: () => context.go('/login'),
+            tooltip: isNl ? 'Uitloggen' : 'Log out',
+          ),
+        ],
+      ),
+      body: screens[safeIndex],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: BigDoggTheme.teal800,
+          border: const Border(top: BorderSide(color: BigDoggTheme.teal900, width: 1)),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: safeIndex,
+          onTap: (index) {
+            if (!_showWalkthrough) setState(() => _currentIndex = index);
+          },
+          backgroundColor: Colors.transparent,
+          selectedItemColor: BigDoggTheme.gold500,
+          unselectedItemColor: BigDoggTheme.teal400,
+          selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w600, fontSize: 11, fontFamily: 'PlusJakartaSans'),
+          unselectedLabelStyle: const TextStyle(
+              fontSize: 11, fontFamily: 'PlusJakartaSans'),
+          type: BottomNavigationBarType.fixed,
+          elevation: 0,
+          items: _getNavItems(isNl, projectsEnabled),
+        ),
+      ),
+    );
+
+    return WalkthroughOverlay(
+      isNl: isNl,
+      active: _showWalkthrough,
+      onComplete: _completeWalkthrough,
+      onTabChange: (idx) => setState(() => _currentIndex = idx),
+      currentTabIndex: safeIndex,
+      projectsEnabled: projectsEnabled,
+      child: scaffold,
     );
   }
 }

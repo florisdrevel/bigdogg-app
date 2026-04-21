@@ -1,521 +1,562 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 
-class WalkthroughScreen extends StatefulWidget {
-  final bool isNl;
-  final VoidCallback onComplete;
+// ─────────────────────────────────────────────────────────────────────────────
+// Public entry point — wraps the dashboard Scaffold
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const WalkthroughScreen({
+class WalkthroughOverlay extends StatefulWidget {
+  final Widget child;
+  final bool isNl;
+  final bool active;
+  final VoidCallback onComplete;
+  final ValueChanged<int> onTabChange;
+  final int currentTabIndex;
+  final bool projectsEnabled;
+
+  const WalkthroughOverlay({
     super.key,
+    required this.child,
     required this.isNl,
+    required this.active,
     required this.onComplete,
+    required this.onTabChange,
+    required this.currentTabIndex,
+    required this.projectsEnabled,
   });
 
   @override
-  State<WalkthroughScreen> createState() => _WalkthroughScreenState();
+  State<WalkthroughOverlay> createState() => _WalkthroughOverlayState();
 }
 
-class _WalkthroughScreenState extends State<WalkthroughScreen>
+class _WalkthroughOverlayState extends State<WalkthroughOverlay>
     with SingleTickerProviderStateMixin {
-  int _currentPage = 0;
-  late final PageController _pageController;
-  late final AnimationController _animController;
-  late final Animation<double> _fadeAnim;
+  int _stepIndex = 0;
+  late AnimationController _anim;
+  late Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeInOut);
-    _animController.forward();
+    _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeInOut);
+    if (widget.active) _anim.forward();
   }
 
   @override
-  void dispose() {
-    _pageController.dispose();
-    _animController.dispose();
-    super.dispose();
+  void didUpdateWidget(WalkthroughOverlay old) {
+    super.didUpdateWidget(old);
+    if (widget.active && !old.active) {
+      _stepIndex = 0;
+      _anim.forward(from: 0);
+      final steps = _steps(widget.isNl, widget.projectsEnabled);
+      _applyTab(steps[0]);
+    }
+    if (!widget.active && old.active) {
+      _anim.reverse();
+    }
   }
 
-  List<_WalkthroughStep> get _steps => [
-        _WalkthroughStep(
-          icon: Icons.waving_hand_rounded,
-          iconColor: BigDoggTheme.gold500,
-          titleNl: 'Welkom bij BigDogg!',
-          titleEn: 'Welcome to BigDogg!',
-          bodyNl:
-              'Slim boekhouden voor ZZP\'ers. We laten je in een paar stappen zien hoe alles werkt. Je kunt deze rondleiding altijd opnieuw starten vanuit de instellingen.',
-          bodyEn:
-              'Smart accounting for freelancers. We\'ll walk you through the app in a few steps. You can always restart this tour from settings.',
-          highlight: null,
+  List<_Step> _steps(bool isNl, bool projectsEnabled) {
+    return <_Step>[
+      _Step(
+        tabIndex: 5,
+        spotType: _SpotType.topContent,
+        titleNl: 'Profiel — Bedrijfsgegevens',
+        titleEn: 'Profile — Business details',
+        bodyNl: 'Vul je naam, adres, KVK-nummer, BTW-nummer en IBAN in. Deze gegevens verschijnen automatisch op al je facturen.',
+        bodyEn: 'Fill in your name, address, KVK, VAT number and IBAN. These appear automatically on all your invoices.',
+        cardPosition: _CardPos.bottom,
+      ),
+      _Step(
+        tabIndex: 5,
+        spotType: _SpotType.logoArea,
+        titleNl: 'Profiel — Logo',
+        titleEn: 'Profile — Logo',
+        bodyNl: 'Upload je bedrijfslogo. Het wordt automatisch linksboven op elke factuur geplaatst.',
+        bodyEn: 'Upload your company logo. It appears automatically top-left on every invoice.',
+        cardPosition: _CardPos.bottom,
+      ),
+      _Step(
+        tabIndex: 5,
+        spotType: _SpotType.bottomContent,
+        titleNl: 'Profiel — Historische import',
+        titleEn: 'Profile — Historical import',
+        bodyNl: 'Facturen of kosten van vóór BigDogg? Importeer ze als PDF. BigDogg leest ze uit met AI en voegt ze toe aan je administratie.',
+        bodyEn: 'Invoices or expenses from before BigDogg? Import them as PDF. BigDogg reads them with AI and adds them to your records.',
+        cardPosition: _CardPos.top,
+      ),
+      _Step(
+        tabIndex: 2,
+        spotType: _SpotType.fab,
+        titleNl: 'Producten',
+        titleEn: 'Products',
+        bodyNl: 'Voeg je diensten of producten toe met prijs en BTW-tarief. Zet ze daarna met één tik op elke factuur — geen handmatig invoeren meer.',
+        bodyEn: 'Add your services or products with price and VAT rate. Then add them to any invoice with one tap.',
+        cardPosition: _CardPos.top,
+      ),
+      _Step(
+        tabIndex: 1,
+        spotType: _SpotType.fab,
+        titleNl: 'Klanten',
+        titleEn: 'Clients',
+        bodyNl: 'Voeg klanten handmatig toe, of stuur een uitnodigingslink. De klant vult zelf zijn gegevens in — jij hoeft niets over te typen.',
+        bodyEn: 'Add clients manually, or send an invite link. The client fills in their own details — no typing needed.',
+        cardPosition: _CardPos.top,
+      ),
+      _Step(
+        tabIndex: 0,
+        spotType: _SpotType.doubleFab,
+        titleNl: 'Facturen — Aanmaken',
+        titleEn: 'Invoices — Create',
+        bodyNl: 'Robot-knop: AI genereert de factuur vanuit een beschrijving in gewone taal. Plus-knop: bouw de factuur zelf stap voor stap op.',
+        bodyEn: 'Robot button: AI generates the invoice from a plain-language description. Plus button: build the invoice yourself step by step.',
+        cardPosition: _CardPos.top,
+      ),
+      _Step(
+        tabIndex: 3,
+        spotType: _SpotType.fab,
+        titleNl: 'Kosten',
+        titleEn: 'Expenses',
+        bodyNl: 'Voeg kosten toe via de camera (foto van je bon), handmatig, of als afschrijving voor investeringen. BTW wordt automatisch berekend.',
+        bodyEn: 'Add expenses via camera (photo of your receipt), manually, or as depreciation for investments. VAT is calculated automatically.',
+        cardPosition: _CardPos.top,
+      ),
+      _Step(
+        tabIndex: 4,
+        spotType: _SpotType.topContent,
+        titleNl: 'Overzicht — BTW aangifte',
+        titleEn: 'Overview — VAT return',
+        bodyNl: 'Bekijk per kwartaal je omzet, kosten en te betalen BTW. Download de aangifte als PDF en dien hem in bij de Belastingdienst.',
+        bodyEn: 'See revenue, expenses and VAT due per quarter. Download the return as PDF and submit it to the Tax Authority.',
+        cardPosition: _CardPos.bottom,
+      ),
+      _Step(
+        tabIndex: 4,
+        spotType: _SpotType.midContent,
+        titleNl: 'Overzicht — Jaarrapport',
+        titleEn: 'Overview — Annual report',
+        bodyNl: 'Schakel naar "Dit jaar" voor een volledig jaaroverzicht. Download het jaarrapport als PDF — inclusief persoonlijke belastingtips van AI.',
+        bodyEn: 'Switch to "This year" for a full annual overview. Download the annual report as PDF — with personalised AI tax tips.',
+        cardPosition: _CardPos.bottom,
+      ),
+      _Step(
+        tabIndex: 4,
+        spotType: _SpotType.bottomContent,
+        titleNl: 'Overzicht — Urenregistratie',
+        titleEn: 'Overview — Hours tracker',
+        bodyNl: 'Registreer je gewerkte uren. BigDogg houdt bij of je het urencriterium van 1.225 uur haalt — belangrijk voor de zelfstandigenaftrek.',
+        bodyEn: 'Log your worked hours. BigDogg tracks whether you meet the 1,225-hour criterion — key for the self-employed tax deduction.',
+        cardPosition: _CardPos.top,
+      ),
+      if (projectsEnabled)
+        _Step(
+          tabIndex: -1, // resolved separately
+          spotType: _SpotType.topContent,
+          titleNl: 'Projecten',
+          titleEn: 'Projects',
+          bodyNl: 'Maak projecten aan en koppel facturen en kosten eraan. Zo zie je per opdracht precies wat je hebt verdiend en uitgegeven.',
+          bodyEn: 'Create projects and link invoices and expenses to them. See exactly what each job earned and cost.',
+          cardPosition: _CardPos.bottom,
+          isProjectsTab: true,
         ),
-        _WalkthroughStep(
-          icon: Icons.receipt_long_outlined,
-          iconColor: BigDoggTheme.teal700,
-          titleNl: 'Facturen',
-          titleEn: 'Invoices',
-          bodyNl:
-              'Maak professionele facturen in seconden. Gebruik de AI-assistent om facturen te genereren vanuit een beschrijving, of importeer historische facturen via PDF.',
-          bodyEn:
-              'Create professional invoices in seconds. Use the AI assistant to generate invoices from a description, or import historical invoices via PDF.',
-          highlight: _HighlightTab.invoices,
-          featureTagNl: 'AI-assistent inbegrepen',
-          featureTagEn: 'AI assistant included',
-        ),
-        _WalkthroughStep(
-          icon: Icons.account_balance_wallet_outlined,
-          iconColor: BigDoggTheme.teal700,
-          titleNl: 'Kosten',
-          titleEn: 'Expenses',
-          bodyNl:
-              'Houd al je zakelijke uitgaven bij. Scan bonnetjes, voeg kosten handmatig toe of importeer meerdere uitgaven tegelijk. BTW wordt automatisch berekend.',
-          bodyEn:
-              'Track all your business expenses. Scan receipts, add costs manually, or bulk-import expenses. VAT is calculated automatically.',
-          highlight: _HighlightTab.expenses,
-          featureTagNl: 'BTW automatisch berekend',
-          featureTagEn: 'VAT auto-calculated',
-        ),
-        _WalkthroughStep(
-          icon: Icons.bar_chart_rounded,
-          iconColor: BigDoggTheme.teal700,
-          titleNl: 'Overzicht',
-          titleEn: 'Overview',
-          bodyNl:
-              'Bekijk per kwartaal je omzet, kosten en te betalen BTW. Download je BTW-aangifte als PDF of genereer je volledige jaarrapport — inclusief AI-belastingtips.',
-          bodyEn:
-              'See your revenue, expenses and VAT per quarter. Download your VAT report as PDF or generate your full annual report — including AI tax tips.',
-          highlight: _HighlightTab.overview,
-          featureTagNl: 'Jaarrapport met AI-tips',
-          featureTagEn: 'Annual report with AI tips',
-        ),
-        _WalkthroughStep(
-          icon: Icons.people_outline_rounded,
-          iconColor: BigDoggTheme.teal700,
-          titleNl: 'Klanten',
-          titleEn: 'Clients',
-          bodyNl:
-              'Beheer al je klanten op één plek. Stuur een uitnodigingslink waarmee klanten hun eigen gegevens invullen — jij hoeft niets handmatig over te typen.',
-          bodyEn:
-              'Manage all your clients in one place. Send an invite link so clients fill in their own details — no manual data entry for you.',
-          highlight: _HighlightTab.clients,
-          featureTagNl: 'Klant vult zelf in',
-          featureTagEn: 'Client self-onboarding',
-        ),
-        _WalkthroughStep(
-          icon: Icons.person_outline_rounded,
-          iconColor: BigDoggTheme.teal700,
-          titleNl: 'Profiel',
-          titleEn: 'Profile',
-          bodyNl:
-              'Vul je bedrijfsgegevens in: naam, adres, KVK, BTW-nummer en IBAN. Upload je logo zodat het automatisch op al je facturen verschijnt.',
-          bodyEn:
-              'Fill in your business details: name, address, KVK, VAT number and IBAN. Upload your logo so it appears automatically on all your invoices.',
-          highlight: _HighlightTab.profile,
-          featureTagNl: 'Logo op facturen',
-          featureTagEn: 'Logo on invoices',
-        ),
-        _WalkthroughStep(
-          icon: Icons.rocket_launch_rounded,
-          iconColor: BigDoggTheme.gold500,
-          titleNl: 'Je bent er klaar voor!',
-          titleEn: 'You\'re all set!',
-          bodyNl:
-              'BigDogg staat klaar. Begin met het aanmaken van je eerste factuur, of vul eerst je profiel in. Succes als ondernemer!',
-          bodyEn:
-              'BigDogg is ready for you. Start by creating your first invoice, or fill in your profile first. Good luck as a freelancer!',
-          highlight: null,
-        ),
-      ];
+      _Step(
+        tabIndex: -2, // settings — resolved separately
+        spotType: _SpotType.midContent,
+        titleNl: 'Instellingen — Stripe',
+        titleEn: 'Settings — Stripe',
+        bodyNl: 'Koppel je Stripe account om betaallinks op facturen te zetten. Klanten betalen direct via iDEAL of creditcard. Handig voor betaling op locatie via QR-code.',
+        bodyEn: 'Connect Stripe to add payment links to invoices. Clients pay directly via iDEAL or credit card — great for on-the-spot payment via QR code.',
+        cardPosition: _CardPos.bottom,
+      ),
+    ];
+  }
+
+  int _resolvedTabIndex(_Step step, bool projectsEnabled) {
+    if (step.isProjectsTab) return 4; // projects tab is index 4 when enabled
+    if (step.tabIndex == -2) return projectsEnabled ? 7 : 6; // settings
+    return step.tabIndex;
+  }
+
+  void _applyTab(_Step step) {
+    final idx = _resolvedTabIndex(step, widget.projectsEnabled);
+    if (widget.currentTabIndex != idx) {
+      widget.onTabChange(idx);
+    }
+  }
 
   void _next() {
-    if (_currentPage < _steps.length - 1) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeInOut,
-      );
+    final steps = _steps(widget.isNl, widget.projectsEnabled);
+    if (_stepIndex < steps.length - 1) {
+      setState(() => _stepIndex++);
+      _applyTab(steps[_stepIndex]);
     } else {
       widget.onComplete();
     }
   }
 
   void _prev() {
-    if (_currentPage > 0) {
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeInOut,
-      );
+    if (_stepIndex > 0) {
+      final steps = _steps(widget.isNl, widget.projectsEnabled);
+      setState(() => _stepIndex--);
+      _applyTab(steps[_stepIndex]);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final isNl = widget.isNl;
-    final steps = _steps;
-    final isLast = _currentPage == steps.length - 1;
-
-    return FadeTransition(
-      opacity: _fadeAnim,
-      child: Scaffold(
-        backgroundColor: BigDoggTheme.teal800,
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
-                child: Row(
-                  children: [
-                    const Text(
-                      'BigDogg.',
-                      style: TextStyle(
-                        color: BigDoggTheme.gold500,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        fontFamily: 'PlusJakartaSans',
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: widget.onComplete,
-                      child: Text(
-                        isNl ? 'Overslaan' : 'Skip',
-                        style: const TextStyle(color: Colors.white54, fontSize: 14),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Page indicator
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(steps.length, (i) {
-                    final active = i == _currentPage;
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: active ? 24 : 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: active ? BigDoggTheme.gold500 : Colors.white24,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-
-              // Page content
-              Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  onPageChanged: (i) => setState(() => _currentPage = i),
-                  itemCount: steps.length,
-                  itemBuilder: (_, i) => _StepPage(
-                    step: steps[i],
-                    isNl: isNl,
-                  ),
-                ),
-              ),
-
-              // Bottom nav mockup + buttons
-              _BottomArea(
-                step: steps[_currentPage],
-                isNl: isNl,
-                isLast: isLast,
-                isFirst: _currentPage == 0,
-                onNext: _next,
-                onPrev: _prev,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
   }
-}
-
-// ── Step data ─────────────────────────────────────────────────────────────────
-
-enum _HighlightTab { invoices, expenses, overview, clients, profile }
-
-class _WalkthroughStep {
-  final IconData icon;
-  final Color iconColor;
-  final String titleNl;
-  final String titleEn;
-  final String bodyNl;
-  final String bodyEn;
-  final _HighlightTab? highlight;
-  final String? featureTagNl;
-  final String? featureTagEn;
-
-  const _WalkthroughStep({
-    required this.icon,
-    required this.iconColor,
-    required this.titleNl,
-    required this.titleEn,
-    required this.bodyNl,
-    required this.bodyEn,
-    required this.highlight,
-    this.featureTagNl,
-    this.featureTagEn,
-  });
-}
-
-// ── Step page ─────────────────────────────────────────────────────────────────
-
-class _StepPage extends StatelessWidget {
-  final _WalkthroughStep step;
-  final bool isNl;
-
-  const _StepPage({required this.step, required this.isNl});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Icon circle
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white12, width: 1.5),
-            ),
-            child: Icon(step.icon, size: 48, color: step.iconColor),
-          ),
-          const SizedBox(height: 32),
+    if (!widget.active) return widget.child;
 
-          // Title
-          Text(
-            isNl ? step.titleNl : step.titleEn,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'PlusJakartaSans',
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 16),
+    final steps = _steps(widget.isNl, widget.projectsEnabled);
+    final step = steps[_stepIndex];
+    final size = MediaQuery.of(context).size;
+    final topPad = MediaQuery.of(context).padding.top;
+    final appBarH = kToolbarHeight + topPad + 1;
+    const bottomNavH = 70.0;
+    final contentH = size.height - appBarH - bottomNavH;
 
-          // Body
-          Text(
-            isNl ? step.bodyNl : step.bodyEn,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.75),
-              fontSize: 15,
-              height: 1.6,
-            ),
-          ),
+    final spotlight = _spotRect(step.spotType, size, appBarH, contentH, bottomNavH);
 
-          // Feature tag
-          if (step.featureTagNl != null) ...[
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: BigDoggTheme.gold500.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.star_rounded, size: 14, color: BigDoggTheme.gold500),
-                  const SizedBox(width: 6),
-                  Text(
-                    isNl ? step.featureTagNl! : step.featureTagEn!,
-                    style: const TextStyle(
-                      color: BigDoggTheme.gold500,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ── Bottom area with nav mockup ───────────────────────────────────────────────
-
-class _BottomArea extends StatelessWidget {
-  final _WalkthroughStep step;
-  final bool isNl;
-  final bool isLast;
-  final bool isFirst;
-  final VoidCallback onNext;
-  final VoidCallback onPrev;
-
-  const _BottomArea({
-    required this.step,
-    required this.isNl,
-    required this.isLast,
-    required this.isFirst,
-    required this.onNext,
-    required this.onPrev,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return Stack(
       children: [
-        // Nav mockup — only shown when highlighting a tab
-        if (step.highlight != null) ...[
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _NavItem(
-                  icon: Icons.receipt_long_outlined,
-                  label: isNl ? 'Facturen' : 'Invoices',
-                  active: step.highlight == _HighlightTab.invoices,
-                ),
-                _NavItem(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: isNl ? 'Kosten' : 'Expenses',
-                  active: step.highlight == _HighlightTab.expenses,
-                ),
-                _NavItem(
-                  icon: Icons.bar_chart_rounded,
-                  label: isNl ? 'Overzicht' : 'Overview',
-                  active: step.highlight == _HighlightTab.overview,
-                ),
-                _NavItem(
-                  icon: Icons.people_outline_rounded,
-                  label: isNl ? 'Klanten' : 'Clients',
-                  active: step.highlight == _HighlightTab.clients,
-                ),
-                _NavItem(
-                  icon: Icons.person_outline_rounded,
-                  label: isNl ? 'Profiel' : 'Profile',
-                  active: step.highlight == _HighlightTab.profile,
-                ),
-              ],
-            ),
-          ),
-          // Arrow pointing up at the active tab
-          if (step.highlight != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Icon(
-                Icons.keyboard_arrow_up_rounded,
-                color: BigDoggTheme.gold500,
-                size: 28,
-              ),
-            ),
-        ],
-
-        // Buttons
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          child: Row(
-            children: [
-              if (!isFirst)
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: onPrev,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white24),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: Text(isNl ? 'Vorige' : 'Previous'),
-                  ),
-                ),
-              if (!isFirst) const SizedBox(width: 12),
-              Expanded(
-                flex: isFirst ? 1 : 1,
-                child: ElevatedButton(
-                  onPressed: onNext,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: BigDoggTheme.gold500,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    isLast
-                        ? (isNl ? 'Aan de slag!' : 'Let\'s go!')
-                        : (isNl ? 'Volgende' : 'Next'),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                ),
-              ),
-            ],
+        widget.child,
+        FadeTransition(
+          opacity: _fade,
+          child: _CoachMarkLayer(
+            spotlight: spotlight,
+            step: step,
+            isNl: widget.isNl,
+            stepIndex: _stepIndex,
+            totalSteps: steps.length,
+            isLast: _stepIndex == steps.length - 1,
+            isFirst: _stepIndex == 0,
+            onNext: _next,
+            onPrev: _prev,
+            onSkip: widget.onComplete,
+            screenSize: size,
+            appBarH: appBarH,
+            bottomNavH: bottomNavH,
           ),
         ),
       ],
     );
   }
+
+  Rect _spotRect(_SpotType type, Size size, double appBarH, double contentH, double bottomNavH) {
+    final w = size.width;
+    final h = size.height;
+    const pad = 12.0;
+
+    switch (type) {
+      case _SpotType.topContent:
+        return Rect.fromLTWH(pad, appBarH + pad, w - pad * 2, contentH * 0.42);
+      case _SpotType.logoArea:
+        return Rect.fromLTWH(w * 0.25, appBarH + pad, w * 0.5, contentH * 0.20);
+      case _SpotType.midContent:
+        return Rect.fromLTWH(pad, appBarH + contentH * 0.28, w - pad * 2, contentH * 0.38);
+      case _SpotType.bottomContent:
+        return Rect.fromLTWH(pad, appBarH + contentH * 0.52, w - pad * 2, contentH * 0.40);
+      case _SpotType.fab:
+        return Rect.fromLTWH(w - 80, h - bottomNavH - 76, 64, 64);
+      case _SpotType.doubleFab:
+        return Rect.fromLTWH(w - 80, h - bottomNavH - 152, 64, 140);
+    }
+  }
 }
 
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
+// ─────────────────────────────────────────────────────────────────────────────
+// Coach mark layer
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const _NavItem({required this.icon, required this.label, required this.active});
+class _CoachMarkLayer extends StatelessWidget {
+  final Rect spotlight;
+  final _Step step;
+  final bool isNl;
+  final int stepIndex;
+  final int totalSteps;
+  final bool isLast;
+  final bool isFirst;
+  final VoidCallback onNext;
+  final VoidCallback onPrev;
+  final VoidCallback onSkip;
+  final Size screenSize;
+  final double appBarH;
+  final double bottomNavH;
+
+  const _CoachMarkLayer({
+    required this.spotlight,
+    required this.step,
+    required this.isNl,
+    required this.stepIndex,
+    required this.totalSteps,
+    required this.isLast,
+    required this.isFirst,
+    required this.onNext,
+    required this.onPrev,
+    required this.onSkip,
+    required this.screenSize,
+    required this.appBarH,
+    required this.bottomNavH,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: active
-          ? BoxDecoration(
-              color: BigDoggTheme.gold500.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.6)),
-            )
-          : null,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 22,
-            color: active ? BigDoggTheme.gold500 : Colors.white38,
-          ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: active ? BigDoggTheme.gold500 : Colors.white38,
-              fontWeight: active ? FontWeight.w700 : FontWeight.normal,
+    return Stack(
+      children: [
+        // Dark backdrop with hole
+        CustomPaint(
+          size: screenSize,
+          painter: _SpotlightPainter(spotlight: spotlight),
+        ),
+
+        // Gold border around spotlight
+        Positioned(
+          left: spotlight.left - 3,
+          top: spotlight.top - 3,
+          child: IgnorePointer(
+            child: Container(
+              width: spotlight.width + 6,
+              height: spotlight.height + 6,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(17),
+                border: Border.all(color: BigDoggTheme.gold500, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: BigDoggTheme.gold500.withOpacity(0.4),
+                    blurRadius: 14,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
+        ),
+
+        // Step counter
+        Positioned(
+          top: appBarH + 10,
+          left: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '${stepIndex + 1} / $totalSteps',
+              style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+
+        // Skip
+        Positioned(
+          top: appBarH + 10,
+          right: 16,
+          child: GestureDetector(
+            onTap: onSkip,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                isNl ? 'Overslaan' : 'Skip',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ),
+          ),
+        ),
+
+        // Info card
+        _buildCard(),
+      ],
+    );
+  }
+
+  Widget _buildCard() {
+    final cardW = screenSize.width - 32;
+    double cardTop;
+    if (step.cardPosition == _CardPos.bottom) {
+      cardTop = spotlight.bottom + 14;
+    } else {
+      cardTop = spotlight.top - 190;
+    }
+
+    // Clamp so card never leaves visible area
+    final safeTop = cardTop.clamp(
+      appBarH + 50.0,
+      screenSize.height - bottomNavH - 200.0,
+    );
+
+    return Positioned(
+      left: 16,
+      top: safeTop,
+      child: SizedBox(
+        width: cardW,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+            decoration: BoxDecoration(
+              color: BigDoggTheme.teal800,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.4),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isNl ? step.titleNl : step.titleEn,
+                  style: const TextStyle(
+                    color: BigDoggTheme.gold500,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'PlusJakartaSans',
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  isNl ? step.bodyNl : step.bodyEn,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.88),
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    // Progress dots
+                    Expanded(
+                      child: Wrap(
+                        spacing: 4,
+                        children: List.generate(totalSteps, (i) {
+                          final active = i == stepIndex;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: active ? 14 : 5,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: active ? BigDoggTheme.gold500 : Colors.white24,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (!isFirst) ...[
+                      GestureDetector(
+                        onTap: onPrev,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: Colors.white12,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            isNl ? 'Vorige' : 'Prev',
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    GestureDetector(
+                      onTap: onNext,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: BigDoggTheme.gold500,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          isLast
+                              ? (isNl ? 'Klaar!' : 'Done!')
+                              : (isNl ? 'Volgende' : 'Next'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Spotlight backdrop painter
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SpotlightPainter extends CustomPainter {
+  final Rect spotlight;
+  const _SpotlightPainter({required this.spotlight});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.black.withOpacity(0.65);
+    final full = Rect.fromLTWH(0, 0, size.width, size.height);
+    final hole = RRect.fromRectAndRadius(spotlight, const Radius.circular(14));
+    final path = Path()
+      ..addRect(full)
+      ..addRRect(hole)
+      ..fillType = PathFillType.evenOdd;
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_SpotlightPainter old) => old.spotlight != spotlight;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Data
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum _SpotType { topContent, logoArea, midContent, bottomContent, fab, doubleFab }
+enum _CardPos { top, bottom }
+
+class _Step {
+  final int tabIndex;
+  final _SpotType spotType;
+  final String titleNl;
+  final String titleEn;
+  final String bodyNl;
+  final String bodyEn;
+  final _CardPos cardPosition;
+  final bool isProjectsTab;
+
+  const _Step({
+    required this.tabIndex,
+    required this.spotType,
+    required this.titleNl,
+    required this.titleEn,
+    required this.bodyNl,
+    required this.bodyEn,
+    required this.cardPosition,
+    this.isProjectsTab = false,
+  });
 }
