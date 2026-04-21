@@ -9,6 +9,8 @@ import '../services/invoices_service.dart';
 import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
+import '../services/subscription_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Invoice Detail Sheet
@@ -599,13 +601,22 @@ class _OverviewScreenState extends State<OverviewScreen>
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () async {
+                  Navigator.pop(context);
+                  final result = await SubscriptionService.createCheckout();
+                  if (result['success']) {
+                    final url = Uri.parse(result['checkout_url']);
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    }
+                  }
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: BigDoggTheme.gold500,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: Text(isNl ? 'Upgraden naar betaald' : 'Upgrade to paid',
+                child: Text(isNl ? 'Upgraden' : 'Upgrade',
                     style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'PlusJakartaSans')),
               ),
             ),
