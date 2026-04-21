@@ -5,11 +5,13 @@ class AppProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   String _language = 'en';
   bool _projectsEnabled = false;
+  bool _hasSeenWalkthrough = false;
 
   ThemeMode get themeMode => _themeMode;
   String get language => _language;
   bool get isDark => _themeMode == ThemeMode.dark;
   bool get projectsEnabled => _projectsEnabled;
+  bool get hasSeenWalkthrough => _hasSeenWalkthrough;
 
   AppProvider() {
     _loadPreferences();
@@ -20,9 +22,11 @@ class AppProvider extends ChangeNotifier {
     final theme = prefs.getString('theme') ?? 'light';
     final lang = prefs.getString('language') ?? 'en';
     final projects = prefs.getBool('projects_enabled') ?? false;
+    final seen = prefs.getBool('has_seen_walkthrough') ?? false;
     _themeMode = theme == 'dark' ? ThemeMode.dark : ThemeMode.light;
     _language = lang;
     _projectsEnabled = projects;
+    _hasSeenWalkthrough = seen;
     notifyListeners();
   }
 
@@ -44,6 +48,20 @@ class AppProvider extends ChangeNotifier {
     _projectsEnabled = enabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('projects_enabled', enabled);
+    notifyListeners();
+  }
+
+  Future<void> markWalkthroughSeen() async {
+    _hasSeenWalkthrough = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_walkthrough', true);
+    notifyListeners();
+  }
+
+  Future<void> resetWalkthrough() async {
+    _hasSeenWalkthrough = false;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_walkthrough', false);
     notifyListeners();
   }
 }

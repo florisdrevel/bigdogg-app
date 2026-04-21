@@ -190,6 +190,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _restartWalkthrough(bool isNl) async {
+    await context.read<AppProvider>().resetWalkthrough();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isNl ? 'Rondleiding wordt gestart...' : 'Starting tour...'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: BigDoggTheme.teal800,
+      ));
+    }
+  }
+
   void _showTerms(BuildContext context, bool isNl) {
     showDialog(
       context: context,
@@ -663,7 +674,6 @@ For questions: info@bigdogg.nl''';
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Password requirements checklist
                 if (_newPasswordController.text.isNotEmpty) ...[
                   Container(
                     padding: const EdgeInsets.all(10),
@@ -716,7 +726,48 @@ For questions: info@bigdogg.nl''';
 
           const SizedBox(height: 16),
 
-          // ── 5. DELETE ACCOUNT ─────────────────────────────────────
+          // ── 5. RESTART WALKTHROUGH ────────────────────────────────
+          Container(
+            decoration: BoxDecoration(
+              color: BigDoggTheme.lightSurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: BigDoggTheme.lightBorder),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(isNl ? 'Rondleiding' : 'App tour',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 15, color: BigDoggTheme.lightTextPrimary)),
+                    const SizedBox(height: 2),
+                    Text(
+                      isNl
+                          ? 'Bekijk de rondleiding van alle functies opnieuw.'
+                          : 'Watch the walkthrough of all features again.',
+                      style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary),
+                    ),
+                  ]),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: () => _restartWalkthrough(isNl),
+                  icon: const Icon(Icons.play_circle_outline, size: 16),
+                  label: Text(isNl ? 'Starten' : 'Start'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: BigDoggTheme.teal800,
+                    side: const BorderSide(color: BigDoggTheme.teal800),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── 6. DELETE ACCOUNT ─────────────────────────────────────
           Container(
             decoration: BoxDecoration(
               color: BigDoggTheme.lightSurface,
@@ -755,7 +806,7 @@ For questions: info@bigdogg.nl''';
 
           const SizedBox(height: 24),
 
-          // ── 6. TERMS & CONDITIONS ─────────────────────────────────
+          // ── 7. TERMS & CONDITIONS ─────────────────────────────────
           Center(
             child: TextButton.icon(
               onPressed: () => _showTerms(context, isNl),
