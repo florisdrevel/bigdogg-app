@@ -518,25 +518,21 @@ class _OverviewScreenState extends State<OverviewScreen>
     }
   }
 
-  // ── THE FIX: check subscription before launching annual report ─────────────
   void _onDownloadAnnualReportTapped(bool isNl, int year) async {
     if (!mounted) return;
 
-    // Check subscription status first
-    final subResult = await SubscriptionService.getSubscriptionStatus();
-    final isPaid = subResult['success'] == true &&
-        (subResult['subscription_status'] == 'active' ||
-            subResult['subscription_status'] == 'trialing' &&
-                (subResult['is_paid'] == true));
+    final subResult = await SubscriptionService.getStatus();
+    final status = subResult['success'] == true
+        ? (subResult['subscription']?['status'] ?? 'expired')
+        : 'expired';
+    final isPaid = status == 'active';
 
     if (!mounted) return;
-
     if (!isPaid) {
       _showPaywallDialog(isNl);
       return;
     }
 
-    // Paid user — show confirmation dialog and open PDF
     showDialog(
       context: context,
       barrierDismissible: true,
