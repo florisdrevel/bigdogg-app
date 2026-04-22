@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// WalkthroughOverlay — sits on top of the dashboard, shows a banner at the
-// top of the content area. No backdrop, no spotlight. Clean and simple.
-// ─────────────────────────────────────────────────────────────────────────────
-
 class WalkthroughOverlay extends StatefulWidget {
   final Widget child;
   final bool isNl;
@@ -65,10 +60,7 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
     super.dispose();
   }
 
-  // ── Steps ─────────────────────────────────────────────────────────────────
-
   List<_Step> get _steps {
-    final nl = widget.isNl;
     final proj = widget.projectsEnabled;
     return [
       _Step(
@@ -142,7 +134,7 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
           titleNl: 'Projecten',
           titleEn: 'Projects',
           bodyNl: 'Activeer projecten in Instellingen. Maak projecten aan en koppel facturen en kosten eraan. Zo zie je per opdracht precies wat je hebt verdiend en uitgegeven.',
-          bodyEn: 'Enable projects in Settings. Create projects and link invoices and expenses to them. See exactly what each job earned and cost.',
+          bodyEn: 'Enable projects in Settings. Create projects and link invoices and expenses. See exactly what each job earned and cost.',
           isProjectsTab: true,
         ),
       _Step(
@@ -202,16 +194,12 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
 
     final steps = _steps;
     final step = steps[_stepIndex];
-    final isNl = widget.isNl;
-    final isLast = _stepIndex == steps.length - 1;
-    final isFirst = _stepIndex == 0;
     final topPad = MediaQuery.of(context).padding.top;
     final appBarH = kToolbarHeight + topPad + 1;
 
     return Stack(
       children: [
         widget.child,
-        // Banner positioned just below the AppBar
         Positioned(
           top: appBarH,
           left: 0,
@@ -220,15 +208,16 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
             animation: _anim,
             builder: (context, child) => FractionalTranslation(
               translation: Offset(0, _slide.value),
-              child: Opacity(opacity: _fade.value.clamp(0.0, 1.0), child: child),
+              child: Opacity(
+                  opacity: _fade.value.clamp(0.0, 1.0), child: child),
             ),
             child: _Banner(
               step: step,
-              isNl: isNl,
+              isNl: widget.isNl,
               stepIndex: _stepIndex,
               total: steps.length,
-              isFirst: isFirst,
-              isLast: isLast,
+              isFirst: _stepIndex == 0,
+              isLast: _stepIndex == steps.length - 1,
               onNext: _next,
               onPrev: _prev,
               onSkip: widget.onComplete,
@@ -241,7 +230,7 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Banner widget
+// Banner
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _Banner extends StatelessWidget {
@@ -263,6 +252,9 @@ class _Banner extends StatelessWidget {
     required this.onSkip,
   });
 
+  // Shared style that explicitly kills any underline or decoration
+  static const _noDecoration = TextDecoration.none;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -280,8 +272,9 @@ class _Banner extends StatelessWidget {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: icon + title + skip
+          // ── Top row: icon + title + skip ────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 8, 0),
             child: Row(
@@ -304,6 +297,8 @@ class _Banner extends StatelessWidget {
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'PlusJakartaSans',
+                      decoration: _noDecoration,
+                      decorationColor: Colors.transparent,
                     ),
                   ),
                 ),
@@ -316,32 +311,39 @@ class _Banner extends StatelessWidget {
                   ),
                   child: Text(
                     isNl ? 'Overslaan' : 'Skip',
-                    style: const TextStyle(color: Colors.white38, fontSize: 12),
+                    style: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 12,
+                      decoration: _noDecoration,
+                      decorationColor: Colors.transparent,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
 
-          // Body text
+          // ── Body text ────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
             child: Text(
               isNl ? step.bodyNl : step.bodyEn,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.85),
-                fontSize: 13,
-                height: 1.5,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                height: 1.55,
+                fontWeight: FontWeight.w400,
+                decoration: _noDecoration,
+                decorationColor: Colors.transparent,
               ),
             ),
           ),
 
-          // Bottom row: dots + prev + next
+          // ── Bottom row: dots + prev + next ───────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
             child: Row(
               children: [
-                // Progress dots
                 Expanded(
                   child: Wrap(
                     spacing: 4,
@@ -353,7 +355,9 @@ class _Banner extends StatelessWidget {
                         width: active ? 16 : 5,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: active ? BigDoggTheme.gold500 : Colors.white24,
+                          color: active
+                              ? BigDoggTheme.gold500
+                              : Colors.white24,
                           borderRadius: BorderRadius.circular(3),
                         ),
                       );
@@ -408,6 +412,8 @@ class _Banner extends StatelessWidget {
               color: fg,
               fontSize: 13,
               fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+              decoration: TextDecoration.none,
+              decorationColor: Colors.transparent,
             ),
           ),
         ),
