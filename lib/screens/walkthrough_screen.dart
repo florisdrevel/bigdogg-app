@@ -84,8 +84,8 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
         icon: Icons.inventory_2_outlined,
         titleNl: 'Producten',
         titleEn: 'Products',
-        bodyNl: 'Voeg je diensten of producten toe met een prijs en BTW-tarief. Daarna kun je ze met één tik op elke factuur zetten — geen handmatig invoeren meer.',
-        bodyEn: 'Add your services or products with a price and VAT rate. Then add them to any invoice with one tap — no more manual entry.',
+        bodyNl: 'Voeg je diensten of producten toe met een prijs, Unit-type en BTW-tarief. Een dag-unit voegt automatisch 9 uren toe aan je urenregistratie.  Daarna kun je ze met één tik op elke factuur zetten — geen handmatig invoeren meer.',
+        bodyEn: 'Add your services or products with a price, Unit-type and VAT rate. A day-unit automatically counts 9 hours towards your hour registration.  Then add them to any invoice with one tap — no more manual entry.',
       ),
       _Step(
         tabIndex: 1,
@@ -124,8 +124,8 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
         icon: Icons.access_time_rounded,
         titleNl: 'Overzicht — Urenregistratie',
         titleEn: 'Overview — Hours tracker',
-        bodyNl: 'Scroll naar beneden in het kwartaaloverzicht om je uren te registreren. BigDogg houdt bij of je het urencriterium van 1.225 uur haalt — belangrijk voor de zelfstandigenaftrek.',
-        bodyEn: 'Scroll down in the quarterly overview to log your hours. BigDogg tracks whether you meet the 1,225-hour criterion — key for the self-employed tax deduction.',
+        bodyNl: 'Bovenin in het kwartaaloverzicht kun je handmatig je uren te registreren. BigDogg houdt bij of je het urencriterium van 1.225 uur haalt — belangrijk voor de zelfstandigenaftrek.',
+        bodyEn: 'At the top of the quarterly overview you are able to manually log your hours. BigDogg tracks whether you meet the 1,225-hour criterion — key for the self-employed tax deduction.',
       ),
       if (proj)
         _Step(
