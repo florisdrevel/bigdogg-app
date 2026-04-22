@@ -20,6 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loading = true;
   bool _checkingOut = false;
   bool _subscriptionExpanded = false;
+  bool _stripeFeeExpanded = false;
 
   Map<String, dynamic>? _stripeStatus;
   bool _loadingStripe = false;
@@ -111,35 +112,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _confirmPasswordController.text.isNotEmpty;
 
   Future<void> _changePassword(bool isNl) async {
-    setState(() {
-      _passwordError = null;
-      _passwordSuccess = null;
-    });
-
+    setState(() { _passwordError = null; _passwordSuccess = null; });
     final newPw = _newPasswordController.text;
     final confirmPw = _confirmPasswordController.text;
-
-    if (newPw.isEmpty) {
-      setState(() => _passwordError = isNl ? 'Vul een nieuw wachtwoord in' : 'Enter a new password');
-      return;
-    }
-    if (!_pwHasLength) {
-      setState(() => _passwordError = isNl ? 'Minimaal 8 tekens' : 'At least 8 characters');
-      return;
-    }
-    if (!_pwHasUpper) {
-      setState(() => _passwordError = isNl ? 'Minimaal één hoofdletter' : 'At least one uppercase letter');
-      return;
-    }
-    if (!_pwHasNumber) {
-      setState(() => _passwordError = isNl ? 'Minimaal één cijfer' : 'At least one number');
-      return;
-    }
-    if (newPw != confirmPw) {
-      setState(() => _passwordError = isNl ? 'Wachtwoorden komen niet overeen' : 'Passwords do not match');
-      return;
-    }
-
+    if (newPw.isEmpty) { setState(() => _passwordError = isNl ? 'Vul een nieuw wachtwoord in' : 'Enter a new password'); return; }
+    if (!_pwHasLength) { setState(() => _passwordError = isNl ? 'Minimaal 8 tekens' : 'At least 8 characters'); return; }
+    if (!_pwHasUpper) { setState(() => _passwordError = isNl ? 'Minimaal één hoofdletter' : 'At least one uppercase letter'); return; }
+    if (!_pwHasNumber) { setState(() => _passwordError = isNl ? 'Minimaal één cijfer' : 'At least one number'); return; }
+    if (newPw != confirmPw) { setState(() => _passwordError = isNl ? 'Wachtwoorden komen niet overeen' : 'Passwords do not match'); return; }
     setState(() => _changingPassword = true);
     final result = await AuthService.changePassword(newPw);
     setState(() {
@@ -163,20 +143,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ? 'Weet je zeker dat je je account wilt verwijderen? Al je gegevens worden permanent verwijderd. Dit kan niet ongedaan worden gemaakt.'
             : 'Are you sure you want to delete your account? All your data will be permanently deleted. This cannot be undone.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(isNl ? 'Annuleren' : 'Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(isNl ? 'Annuleren' : 'Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.error),
-            child: Text(isNl ? 'Verwijderen' : 'Delete',
-                style: const TextStyle(color: Colors.white)),
+            child: Text(isNl ? 'Verwijderen' : 'Delete', style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
-
     if (confirm == true && mounted) {
       final result = await AuthService.deleteAccount();
       if (result['success'] && mounted) {
@@ -192,13 +167,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _restartWalkthrough(bool isNl) async {
     await context.read<AppProvider>().resetWalkthrough();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(isNl ? 'Rondleiding wordt gestart...' : 'Starting tour...'),
-        duration: const Duration(seconds: 1),
-        backgroundColor: BigDoggTheme.teal800,
-      ));
-    }
   }
 
   void _showTerms(BuildContext context, bool isNl) {
@@ -218,41 +186,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: Text(
-                        isNl ? 'Algemene Voorwaarden' : 'Terms & Conditions',
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
+                    Expanded(child: Text(isNl ? 'Algemene Voorwaarden' : 'Terms & Conditions',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18))),
+                    IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
                   ],
                 ),
               ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    _termsText(isNl),
-                    style: const TextStyle(
-                        fontSize: 13, color: BigDoggTheme.lightTextPrimary, height: 1.7),
-                  ),
-                ),
-              ),
+              Expanded(child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Text(_termsText(isNl),
+                    style: const TextStyle(fontSize: 13, color: BigDoggTheme.lightTextPrimary, height: 1.7)),
+              )),
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                    border: Border(top: BorderSide(color: BigDoggTheme.lightBorder))),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(isNl ? 'Sluiten' : 'Close'),
-                  ),
-                ),
+                decoration: BoxDecoration(border: Border(top: BorderSide(color: BigDoggTheme.lightBorder))),
+                child: SizedBox(width: double.infinity,
+                    child: ElevatedButton(onPressed: () => Navigator.pop(context), child: Text(isNl ? 'Sluiten' : 'Close'))),
               ),
             ],
           ),
@@ -333,23 +282,37 @@ For questions: info@bigdogg.nl''';
     }
   }
 
-  Widget _reqRow(bool met, String label) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(children: [
-        Icon(
-          met ? Icons.check_circle : Icons.radio_button_unchecked,
-          size: 14,
-          color: met ? BigDoggTheme.success : BigDoggTheme.lightTextHint,
+  Widget _reqRow(bool met, String label) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(children: [
+      Icon(met ? Icons.check_circle : Icons.radio_button_unchecked,
+          size: 14, color: met ? BigDoggTheme.success : BigDoggTheme.lightTextHint),
+      const SizedBox(width: 6),
+      Text(label, style: TextStyle(fontSize: 12, color: met ? BigDoggTheme.success : BigDoggTheme.lightTextSecondary)),
+    ]),
+  );
+
+  Widget _feeRow(IconData icon, String method, String fee, String note, {Color? feeColor}) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(
+      children: [
+        Container(
+          width: 32, height: 32,
+          decoration: BoxDecoration(
+            color: BigDoggTheme.teal800.withOpacity(0.07),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: BigDoggTheme.teal700),
         ),
-        const SizedBox(width: 6),
-        Text(label,
-            style: TextStyle(
-                fontSize: 12,
-                color: met ? BigDoggTheme.success : BigDoggTheme.lightTextSecondary)),
-      ]),
-    );
-  }
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(method, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: BigDoggTheme.lightTextPrimary)),
+          Text(note, style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+        ])),
+        Text(fee, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: feeColor ?? BigDoggTheme.teal800)),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -388,51 +351,35 @@ For questions: info@bigdogg.nl''';
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
 
-          // ── 1. SUBSCRIPTION (collapsible) ─────────────────────────
+          // ── 1. SUBSCRIPTION ───────────────────────────────────────
           GestureDetector(
             onTap: () => setState(() => _subscriptionExpanded = !_subscriptionExpanded),
             child: Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: BigDoggTheme.teal800,
-                borderRadius: BorderRadius.circular(12),
-              ),
+              decoration: BoxDecoration(color: BigDoggTheme.teal800, borderRadius: BorderRadius.circular(12)),
               child: Row(
                 children: [
-                  Container(
-                    width: 10, height: 10,
-                    decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
-                  ),
+                  Container(width: 10, height: 10, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(statusText,
-                          style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(statusDetail,
-                          style: TextStyle(color: statusColor, fontSize: 13)),
-                    ]),
-                  ),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(statusText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(statusDetail, style: TextStyle(color: statusColor, fontSize: 13)),
+                  ])),
                   if (!isActive || status == 'trial')
                     ElevatedButton(
                       onPressed: _checkingOut ? null : _startCheckout,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: BigDoggTheme.teal800,
+                        backgroundColor: Colors.white, foregroundColor: BigDoggTheme.teal800,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       ),
                       child: _checkingOut
-                          ? const SizedBox(width: 16, height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                           : Text(isNl ? 'Abonneren' : 'Subscribe',
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                   const SizedBox(width: 8),
-                  Icon(
-                    _subscriptionExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.white70, size: 20,
-                  ),
+                  Icon(_subscriptionExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.white70, size: 20),
                 ],
               ),
             ),
@@ -441,78 +388,55 @@ For questions: info@bigdogg.nl''';
           if (_subscriptionExpanded) ...[
             const SizedBox(height: 8),
             Container(
-              decoration: BoxDecoration(
-                color: BigDoggTheme.lightSurface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: BigDoggTheme.lightBorder),
-              ),
+              decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
               padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('BigDogg Pro',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: BigDoggTheme.teal800)),
-                          Text('Alles voor de moderne ZZP\'er',
-                              style: TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13)),
-                        ]),
-                      ),
-                      Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                        const Text('\u20ac9,99',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 26, color: BigDoggTheme.teal800)),
-                        Text(isNl ? 'per maand' : 'per month',
-                            style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 12)),
-                      ]),
-                    ],
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('BigDogg Pro', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: BigDoggTheme.teal800)),
+                    Text('Alles voor de moderne ZZP\'er', style: TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13)),
+                  ])),
+                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    const Text('\u20ac9,99', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 26, color: BigDoggTheme.teal800)),
+                    Text(isNl ? 'per maand' : 'per month', style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 12)),
+                  ]),
+                ]),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: BigDoggTheme.gold500.withOpacity(0.12), borderRadius: BorderRadius.circular(6)),
+                  child: Text(isNl ? '30 dagen gratis proberen' : '30-day free trial',
+                      style: const TextStyle(color: BigDoggTheme.gold600, fontWeight: FontWeight.w600, fontSize: 12)),
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                _feature('\u2713 ${isNl ? 'Onbeperkt facturen' : 'Unlimited invoices'}'),
+                _feature('\u2713 ${isNl ? 'AI factuur assistent' : 'AI invoice assistant'}'),
+                _feature('\u2713 ${isNl ? 'Historische factuurimport' : 'Historical invoice import'}'),
+                _feature('\u2713 ${isNl ? 'Klantenbeheer' : 'Client management'}'),
+                _feature('\u2713 ${isNl ? 'Uitgaven bijhouden' : 'Expense tracking'}'),
+                _feature('\u2713 ${isNl ? 'Kwartaal BTW overzicht' : 'Quarterly VAT overview'}'),
+                _feature('\u2713 ${isNl ? 'Jaaroverzicht financiën' : 'Annual financial overview'}'),
+                _feature('\u2713 ${isNl ? 'Bonnen scannen' : 'Receipt scanning'}'),
+                _feature('\u2713 ${isNl ? 'Betalen via Stripe (iDEAL, creditcard)' : 'Pay via Stripe (iDEAL, credit card)'}'),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity, height: 46,
+                  child: ElevatedButton(
+                    onPressed: _checkingOut ? null : _startCheckout,
+                    child: _checkingOut
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : Text(isNl ? 'Start abonnement — \u20ac9,99/maand' : 'Start subscription — \u20ac9.99/month',
+                            style: const TextStyle(fontSize: 15)),
                   ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: BigDoggTheme.gold500.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      isNl ? '30 dagen gratis proberen' : '30-day free trial',
-                      style: const TextStyle(color: BigDoggTheme.gold600, fontWeight: FontWeight.w600, fontSize: 12),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  _feature('\u2713 ${isNl ? 'Onbeperkt facturen' : 'Unlimited invoices'}'),
-                  _feature('\u2713 ${isNl ? 'AI factuur assistent' : 'AI invoice assistant'}'),
-                  _feature('\u2713 ${isNl ? 'Historische factuurimport' : 'Historical invoice import'}'),
-                  _feature('\u2713 ${isNl ? 'Klantenbeheer' : 'Client management'}'),
-                  _feature('\u2713 ${isNl ? 'Uitgaven bijhouden' : 'Expense tracking'}'),
-                  _feature('\u2713 ${isNl ? 'Kwartaal BTW overzicht' : 'Quarterly VAT overview'}'),
-                  _feature('\u2713 ${isNl ? 'Jaaroverzicht financiën' : 'Annual financial overview'}'),
-                  _feature('\u2713 ${isNl ? 'Bonnen scannen' : 'Receipt scanning'}'),
-                  _feature('\u2713 ${isNl ? 'Betalen via Stripe (iDEAL, creditcard)' : 'Pay via Stripe (iDEAL, credit card)'}'),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: ElevatedButton(
-                      onPressed: _checkingOut ? null : _startCheckout,
-                      child: _checkingOut
-                          ? const SizedBox(width: 20, height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : Text(isNl ? 'Start abonnement — \u20ac9,99/maand' : 'Start subscription — \u20ac9.99/month',
-                              style: const TextStyle(fontSize: 15)),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(child: Text(
-                    isNl ? 'Altijd opzegbaar \u00b7 iDEAL en creditcard via Stripe'
-                        : 'Cancel anytime \u00b7 iDEAL and credit card via Stripe',
-                    style: const TextStyle(color: BigDoggTheme.lightTextHint, fontSize: 12),
-                  )),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                Center(child: Text(
+                  isNl ? 'Altijd opzegbaar \u00b7 iDEAL en creditcard via Stripe' : 'Cancel anytime \u00b7 iDEAL and credit card via Stripe',
+                  style: const TextStyle(color: BigDoggTheme.lightTextHint, fontSize: 12),
+                )),
+              ]),
             ),
           ],
 
@@ -520,33 +444,18 @@ For questions: info@bigdogg.nl''';
 
           // ── 2. PROJECTS TOGGLE ────────────────────────────────────
           Container(
-            decoration: BoxDecoration(
-              color: BigDoggTheme.lightSurface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: BigDoggTheme.lightBorder),
-            ),
+            decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(isNl ? 'Projecten' : 'Projects',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 15, color: BigDoggTheme.lightTextPrimary)),
-                    const SizedBox(height: 2),
-                    Text(
-                      isNl
-                          ? 'Koppel facturen en kosten aan projecten.'
-                          : 'Link invoices and expenses to projects.',
-                      style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary),
-                    ),
-                  ]),
-                ),
-                Switch(
-                  value: appProvider.projectsEnabled,
-                  onChanged: (val) => appProvider.setProjectsEnabled(val),
-                  activeColor: BigDoggTheme.teal800,
-                ),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(isNl ? 'Projecten' : 'Projects',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: BigDoggTheme.lightTextPrimary)),
+                  const SizedBox(height: 2),
+                  Text(isNl ? 'Koppel facturen en kosten aan projecten.' : 'Link invoices and expenses to projects.',
+                      style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
+                ])),
+                Switch(value: appProvider.projectsEnabled, onChanged: (val) => appProvider.setProjectsEnabled(val), activeColor: BigDoggTheme.teal800),
               ],
             ),
           ),
@@ -555,22 +464,17 @@ For questions: info@bigdogg.nl''';
 
           // ── 3. STRIPE CONNECT ─────────────────────────────────────
           Container(
-            decoration: BoxDecoration(
-              color: BigDoggTheme.lightSurface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: BigDoggTheme.lightBorder),
-            ),
+            decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(isNl ? 'Stripe betaalaccount' : 'Stripe payment account',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15, color: BigDoggTheme.teal800)),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: BigDoggTheme.teal800)),
                 const SizedBox(height: 4),
                 Text(
                   isNl
-                      ? 'Koppel je Stripe account om betaallinks en QR codes te genereren op je facturen.'
+                      ? 'Koppel je Stripe account om betaallinks en QR-codes te genereren op je facturen.'
                       : 'Connect your Stripe account to generate payment links and QR codes on your invoices.',
                   style: const TextStyle(fontSize: 13, color: BigDoggTheme.lightTextSecondary),
                 ),
@@ -581,10 +485,8 @@ For questions: info@bigdogg.nl''';
                   Row(children: [
                     const Icon(Icons.check_circle, color: BigDoggTheme.success, size: 18),
                     const SizedBox(width: 8),
-                    Text(
-                      isNl ? 'Stripe account gekoppeld en actief' : 'Stripe account connected and active',
-                      style: const TextStyle(color: BigDoggTheme.success, fontWeight: FontWeight.w600),
-                    ),
+                    Text(isNl ? 'Stripe account gekoppeld en actief' : 'Stripe account connected and active',
+                        style: const TextStyle(color: BigDoggTheme.success, fontWeight: FontWeight.w600)),
                   ])
                 else if (_stripeStatus?['connected'] == true && _stripeStatus?['enabled'] == false)
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -592,34 +494,101 @@ For questions: info@bigdogg.nl''';
                       const Icon(Icons.warning_amber, color: BigDoggTheme.warning, size: 18),
                       const SizedBox(width: 8),
                       Expanded(child: Text(
-                        isNl ? 'Account gekoppeld maar onboarding nog niet voltooid.'
-                            : 'Account connected but onboarding not complete.',
+                        isNl ? 'Account gekoppeld maar onboarding nog niet voltooid.' : 'Account connected but onboarding not complete.',
                         style: const TextStyle(color: BigDoggTheme.warning, fontSize: 13),
                       )),
                     ]),
                     const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: _connectingStripe ? null : () => _connectStripe(isNl),
-                        child: Text(isNl ? 'Onboarding afronden' : 'Complete onboarding'),
-                      ),
-                    ),
+                    SizedBox(width: double.infinity, child: OutlinedButton(
+                      onPressed: _connectingStripe ? null : () => _connectStripe(isNl),
+                      child: Text(isNl ? 'Onboarding afronden' : 'Complete onboarding'),
+                    )),
                   ])
                 else
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _connectingStripe ? null : () => _connectStripe(isNl),
-                      icon: _connectingStripe
-                          ? const SizedBox(width: 16, height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.link, color: Colors.white),
-                      label: Text(isNl ? 'Koppel Stripe account' : 'Connect Stripe account',
-                          style: const TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.teal800),
+                  SizedBox(width: double.infinity, child: ElevatedButton.icon(
+                    onPressed: _connectingStripe ? null : () => _connectStripe(isNl),
+                    icon: _connectingStripe
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.link, color: Colors.white),
+                    label: Text(isNl ? 'Koppel Stripe account' : 'Connect Stripe account',
+                        style: const TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.teal800),
+                  )),
+
+                const SizedBox(height: 12),
+
+                // ── Stripe fees dropdown ───────────────────────────
+                GestureDetector(
+                  onTap: () => setState(() => _stripeFeeExpanded = !_stripeFeeExpanded),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: BigDoggTheme.lightBg,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: BigDoggTheme.lightBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, size: 15, color: BigDoggTheme.lightTextSecondary),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(
+                          isNl ? 'Stripe transactiekosten — tik om te bekijken' : 'Stripe transaction fees — tap to view',
+                          style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary, fontWeight: FontWeight.w500),
+                        )),
+                        Icon(_stripeFeeExpanded ? Icons.expand_less : Icons.expand_more,
+                            size: 16, color: BigDoggTheme.lightTextSecondary),
+                      ],
                     ),
                   ),
+                ),
+
+                if (_stripeFeeExpanded) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: BigDoggTheme.lightBg,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: BigDoggTheme.lightBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isNl ? 'Kosten per betaalmethode (Stripe NL)' : 'Fees per payment method (Stripe NL)',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: BigDoggTheme.teal800),
+                        ),
+                        const SizedBox(height: 10),
+                        _feeRow(Icons.account_balance_outlined, 'iDEAL', '€0,29', isNl ? 'Vaste vergoeding per transactie' : 'Fixed fee per transaction', feeColor: BigDoggTheme.success),
+                        const Divider(height: 12),
+                        _feeRow(Icons.credit_card_outlined, isNl ? 'Creditcard (NL/EU)' : 'Credit card (NL/EU)', '1,5% + €0,25', isNl ? 'Visa, Mastercard, AmEx' : 'Visa, Mastercard, AmEx'),
+                        const Divider(height: 12),
+                        _feeRow(Icons.credit_card_outlined, isNl ? 'Creditcard (internationaal)' : 'Credit card (international)', '1,5% + 3,25% + €0,25', isNl ? 'Kaart van buiten NL/EU' : 'Card issued outside NL/EU', feeColor: BigDoggTheme.warning),
+                        const Divider(height: 12),
+                        _feeRow(Icons.phone_iphone_outlined, 'Apple Pay / Google Pay', isNl ? 'Zelfde als creditcard' : 'Same as credit card', isNl ? 'Tarief hangt af van onderliggende kaart' : 'Rate depends on the underlying card'),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: BigDoggTheme.warningBg,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: BigDoggTheme.warning.withOpacity(0.3)),
+                          ),
+                          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            const Icon(Icons.info_outline, size: 14, color: BigDoggTheme.warning),
+                            const SizedBox(width: 6),
+                            Expanded(child: Text(
+                              isNl
+                                  ? 'Deze kosten zijn van Stripe, niet van BigDogg. Je ontvangt het factuurbedrag minus de transactiekosten op je Stripe account. Tarieven kunnen wijzigen — check stripe.com/pricing voor de meest actuele informatie.'
+                                  : 'These fees are charged by Stripe, not BigDogg. You receive the invoice amount minus transaction fees in your Stripe account. Rates may change — check stripe.com/pricing for the most up-to-date information.',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF92400E), height: 1.5),
+                            )),
+                          ]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -628,201 +597,126 @@ For questions: info@bigdogg.nl''';
 
           // ── 4. CHANGE PASSWORD ────────────────────────────────────
           Container(
-            decoration: BoxDecoration(
-              color: BigDoggTheme.lightSurface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: BigDoggTheme.lightBorder),
-            ),
+            decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(isNl ? 'Wachtwoord wijzigen' : 'Change password',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15, color: BigDoggTheme.teal800)),
-                const SizedBox(height: 12),
-                if (_passwordError != null)
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                        color: BigDoggTheme.errorBg, borderRadius: BorderRadius.circular(8)),
-                    child: Text(_passwordError!,
-                        style: const TextStyle(color: BigDoggTheme.error, fontSize: 13)),
-                  ),
-                if (_passwordSuccess != null)
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                        color: BigDoggTheme.successBg, borderRadius: BorderRadius.circular(8)),
-                    child: Text(_passwordSuccess!,
-                        style: const TextStyle(color: BigDoggTheme.success, fontSize: 13)),
-                  ),
-                TextField(
-                  controller: _newPasswordController,
-                  obscureText: _obscureNew,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: isNl ? 'Nieuw wachtwoord' : 'New password',
-                    suffixIcon: ExcludeFocus(
-                      child: IconButton(
-                        icon: Icon(_obscureNew ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                        onPressed: () => setState(() => _obscureNew = !_obscureNew),
-                      ),
-                    ),
-                  ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(isNl ? 'Wachtwoord wijzigen' : 'Change password',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: BigDoggTheme.teal800)),
+              const SizedBox(height: 12),
+              if (_passwordError != null)
+                Container(padding: const EdgeInsets.all(10), margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(color: BigDoggTheme.errorBg, borderRadius: BorderRadius.circular(8)),
+                    child: Text(_passwordError!, style: const TextStyle(color: BigDoggTheme.error, fontSize: 13))),
+              if (_passwordSuccess != null)
+                Container(padding: const EdgeInsets.all(10), margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(color: BigDoggTheme.successBg, borderRadius: BorderRadius.circular(8)),
+                    child: Text(_passwordSuccess!, style: const TextStyle(color: BigDoggTheme.success, fontSize: 13))),
+              TextField(
+                controller: _newPasswordController, obscureText: _obscureNew, onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: isNl ? 'Nieuw wachtwoord' : 'New password',
+                  suffixIcon: ExcludeFocus(child: IconButton(
+                    icon: Icon(_obscureNew ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                    onPressed: () => setState(() => _obscureNew = !_obscureNew),
+                  )),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (_newPasswordController.text.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: BigDoggTheme.lightBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: BigDoggTheme.lightBorder)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    _reqRow(_pwHasLength, isNl ? 'Minimaal 8 tekens' : 'At least 8 characters'),
+                    _reqRow(_pwHasUpper, isNl ? 'Minimaal één hoofdletter' : 'At least one uppercase letter'),
+                    _reqRow(_pwHasNumber, isNl ? 'Minimaal één cijfer' : 'At least one number'),
+                    if (_confirmPasswordController.text.isNotEmpty)
+                      _reqRow(_pwMatches, isNl ? 'Wachtwoorden komen overeen' : 'Passwords match'),
+                  ]),
                 ),
                 const SizedBox(height: 12),
-                if (_newPasswordController.text.isNotEmpty) ...[
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: BigDoggTheme.lightBg,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: BigDoggTheme.lightBorder),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _reqRow(_pwHasLength, isNl ? 'Minimaal 8 tekens' : 'At least 8 characters'),
-                        _reqRow(_pwHasUpper, isNl ? 'Minimaal één hoofdletter' : 'At least one uppercase letter'),
-                        _reqRow(_pwHasNumber, isNl ? 'Minimaal één cijfer' : 'At least one number'),
-                        if (_confirmPasswordController.text.isNotEmpty)
-                          _reqRow(_pwMatches, isNl ? 'Wachtwoorden komen overeen' : 'Passwords match'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                TextField(
-                  controller: _confirmPasswordController,
-                  obscureText: _obscureConfirm,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: isNl ? 'Wachtwoord bevestigen' : 'Confirm password',
-                    suffixIcon: ExcludeFocus(
-                      child: IconButton(
-                        icon: Icon(_obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                        onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _changingPassword ? null : () => _changePassword(isNl),
-                    child: _changingPassword
-                        ? const SizedBox(width: 18, height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(isNl ? 'Wachtwoord opslaan' : 'Save password'),
-                  ),
-                ),
               ],
-            ),
+              TextField(
+                controller: _confirmPasswordController, obscureText: _obscureConfirm, onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: isNl ? 'Wachtwoord bevestigen' : 'Confirm password',
+                  suffixIcon: ExcludeFocus(child: IconButton(
+                    icon: Icon(_obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                    onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                  )),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(width: double.infinity, child: ElevatedButton(
+                onPressed: _changingPassword ? null : () => _changePassword(isNl),
+                child: _changingPassword
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text(isNl ? 'Wachtwoord opslaan' : 'Save password'),
+              )),
+            ]),
           ),
 
           const SizedBox(height: 16),
 
           // ── 5. RESTART WALKTHROUGH ────────────────────────────────
           Container(
-            decoration: BoxDecoration(
-              color: BigDoggTheme.lightSurface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: BigDoggTheme.lightBorder),
-            ),
+            decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
             padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(isNl ? 'Rondleiding' : 'App tour',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 15, color: BigDoggTheme.lightTextPrimary)),
-                    const SizedBox(height: 2),
-                    Text(
-                      isNl
-                          ? 'Bekijk de rondleiding van alle functies opnieuw.'
-                          : 'Watch the walkthrough of all features again.',
-                      style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary),
-                    ),
-                  ]),
+            child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(isNl ? 'Rondleiding' : 'App tour',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: BigDoggTheme.lightTextPrimary)),
+                const SizedBox(height: 2),
+                Text(isNl ? 'Bekijk de rondleiding van alle functies opnieuw.' : 'Watch the walkthrough of all features again.',
+                    style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
+              ])),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: () => _restartWalkthrough(isNl),
+                icon: const Icon(Icons.play_circle_outline, size: 16),
+                label: Text(isNl ? 'Starten' : 'Start'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: BigDoggTheme.teal800,
+                  side: const BorderSide(color: BigDoggTheme.teal800),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: () => _restartWalkthrough(isNl),
-                  icon: const Icon(Icons.play_circle_outline, size: 16),
-                  label: Text(isNl ? 'Starten' : 'Start'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: BigDoggTheme.teal800,
-                    side: const BorderSide(color: BigDoggTheme.teal800),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ]),
           ),
 
           const SizedBox(height: 16),
 
           // ── 6. DELETE ACCOUNT ─────────────────────────────────────
           Container(
-            decoration: BoxDecoration(
-              color: BigDoggTheme.lightSurface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: BigDoggTheme.error.withOpacity(0.3)),
-            ),
+            decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.error.withOpacity(0.3))),
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(isNl ? 'Account verwijderen' : 'Delete account',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15, color: BigDoggTheme.error)),
-                const SizedBox(height: 6),
-                Text(
-                  isNl
-                      ? 'Verwijder je account en alle bijbehorende gegevens permanent.'
-                      : 'Permanently delete your account and all associated data.',
-                  style: const TextStyle(fontSize: 13, color: BigDoggTheme.lightTextSecondary),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () => _deleteAccount(isNl),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: BigDoggTheme.error,
-                      side: const BorderSide(color: BigDoggTheme.error),
-                    ),
-                    child: Text(isNl ? 'Account verwijderen' : 'Delete my account'),
-                  ),
-                ),
-              ],
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(isNl ? 'Account verwijderen' : 'Delete account',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: BigDoggTheme.error)),
+              const SizedBox(height: 6),
+              Text(isNl ? 'Verwijder je account en alle bijbehorende gegevens permanent.' : 'Permanently delete your account and all associated data.',
+                  style: const TextStyle(fontSize: 13, color: BigDoggTheme.lightTextSecondary)),
+              const SizedBox(height: 12),
+              SizedBox(width: double.infinity, child: OutlinedButton(
+                onPressed: () => _deleteAccount(isNl),
+                style: OutlinedButton.styleFrom(foregroundColor: BigDoggTheme.error, side: const BorderSide(color: BigDoggTheme.error)),
+                child: Text(isNl ? 'Account verwijderen' : 'Delete my account'),
+              )),
+            ]),
           ),
 
           const SizedBox(height: 24),
 
-          // ── 7. TERMS & CONDITIONS ─────────────────────────────────
-          Center(
-            child: TextButton.icon(
-              onPressed: () => _showTerms(context, isNl),
-              icon: const Icon(Icons.description_outlined,
-                  size: 16, color: BigDoggTheme.lightTextSecondary),
-              label: Text(
-                isNl ? 'Algemene Voorwaarden' : 'Terms & Conditions',
-                style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13),
-              ),
-            ),
-          ),
+          // ── 7. TERMS ──────────────────────────────────────────────
+          Center(child: TextButton.icon(
+            onPressed: () => _showTerms(context, isNl),
+            icon: const Icon(Icons.description_outlined, size: 16, color: BigDoggTheme.lightTextSecondary),
+            label: Text(isNl ? 'Algemene Voorwaarden' : 'Terms & Conditions',
+                style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13)),
+          )),
           const SizedBox(height: 8),
-          Center(
-            child: Text('BigDogg v1.0 \u00b7 info@bigdogg.nl',
-                style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextHint)),
-          ),
+          Center(child: Text('BigDogg v1.0 \u00b7 info@bigdogg.nl',
+              style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextHint))),
           const SizedBox(height: 32),
         ],
       ),
@@ -831,7 +725,6 @@ For questions: info@bigdogg.nl''';
 
   Widget _feature(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text,
-        style: const TextStyle(fontSize: 14, color: BigDoggTheme.lightTextPrimary)),
+    child: Text(text, style: const TextStyle(fontSize: 14, color: BigDoggTheme.lightTextPrimary)),
   );
 }
