@@ -5,13 +5,15 @@ class AppProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   String _language = 'en';
   bool _projectsEnabled = false;
-  bool _hasSeenWalkthrough = false;
+  bool _hasSeenWalkthrough = true; // default true — only false once prefs confirm it
+  bool _prefsLoaded = false;
 
   ThemeMode get themeMode => _themeMode;
   String get language => _language;
   bool get isDark => _themeMode == ThemeMode.dark;
   bool get projectsEnabled => _projectsEnabled;
   bool get hasSeenWalkthrough => _hasSeenWalkthrough;
+  bool get prefsLoaded => _prefsLoaded;
 
   AppProvider() {
     _loadPreferences();
@@ -27,6 +29,7 @@ class AppProvider extends ChangeNotifier {
     _language = lang;
     _projectsEnabled = projects;
     _hasSeenWalkthrough = seen;
+    _prefsLoaded = true;
     notifyListeners();
   }
 

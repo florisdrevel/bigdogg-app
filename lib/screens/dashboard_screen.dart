@@ -22,10 +22,16 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
+  bool _walkthroughStarted = false;
 
   void _completeWalkthrough() {
     context.read<AppProvider>().markWalkthroughSeen();
+    // Return to invoices after tour completes
+    setState(() => _currentIndex = 0);
   }
+
+  // Profile tab index — shifts by 1 when projects enabled
+  int _profileTabIndex(bool projectsEnabled) => projectsEnabled ? 6 : 5;
 
   List<Widget> _getScreens(bool projectsEnabled) {
     final base = [
@@ -73,9 +79,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isNl = appProvider.language == 'nl';
     final projectsEnabled = appProvider.projectsEnabled;
 
-    // Walkthrough is active whenever hasSeenWalkthrough is false.
-    // This reacts both on first login AND when "Start tour" resets the flag.
-    final showWalkthrough = !appProvider.hasSeenWalkthrough;
+    // Wait until SharedPreferences have loaded before deciding on walkthrough.
+    // Default is hasSeenWalkthrough=true so nothing shows until prefs confirm otherwise.
+    final showWalkthrough = appProvider.prefsLoaded && !appProvider.hasSeenWalkthrough;
+
+    // When walkthrough becomes active for the first time this session,
+    // jump to the Profile tab so step 1 makes sense.
+    if (showWalkthrough && !_walkthroughStarted) {
+      _walkthroughStarted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _currentIndex = _profileTabIndex(projectsEnabled));
+      });
+    }
+    // Reset the flag when walkthrough is dismissed so it can re-trigger on restart
+    if (!showWalkthrough && _walkthroughStarted) {
+      _walkthroughStarted = false;
+    }
 
     final screens = _getScreens(projectsEnabled);
     final titles = isNl ? _getTitlesNl(projectsEnabled) : _getTitlesEn(projectsEnabled);
