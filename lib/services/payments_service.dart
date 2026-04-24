@@ -41,6 +41,21 @@ class PaymentsService {
     }
   }
 
+  static Future<Map<String, dynamic>> getDashboardLink() async {
+    final token = await _getToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/v1/payments/connect/dashboard'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) return {'success': true, ...data};
+      return {'success': false, 'message': data['detail']};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error'};
+    }
+  }
+
   static Future<Map<String, dynamic>> createPaymentLink(String invoiceId) async {
     final token = await _getToken();
     try {

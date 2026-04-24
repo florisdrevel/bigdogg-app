@@ -25,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, dynamic>? _stripeStatus;
   bool _loadingStripe = false;
   bool _connectingStripe = false;
+  bool _openingDashboard = false;
 
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -72,13 +73,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _connectingStripe = false);
     if (result['success']) {
       final url = Uri.parse(result['url']);
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      }
+      if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(result['message'] ?? 'Error'),
+          backgroundColor: BigDoggTheme.error,
+        ));
+      }
+    }
+  }
+
+  Future<void> _openStripeDashboard(bool isNl) async {
+    setState(() => _openingDashboard = true);
+    final result = await PaymentsService.getDashboardLink();
+    setState(() => _openingDashboard = false);
+    if (result['success']) {
+      final url = Uri.parse(result['url']);
+      if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(isNl ? 'Kan Stripe dashboard niet openen' : 'Could not open Stripe dashboard'),
           backgroundColor: BigDoggTheme.error,
         ));
       }
@@ -91,9 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _checkingOut = false);
     if (result['success']) {
       final url = Uri.parse(result['checkout_url']);
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      }
+      if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -294,24 +308,17 @@ For questions: info@bigdogg.nl''';
 
   Widget _feeRow(IconData icon, String method, String fee, String note, {Color? feeColor}) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),
-    child: Row(
-      children: [
-        Container(
-          width: 32, height: 32,
-          decoration: BoxDecoration(
-            color: BigDoggTheme.teal800.withOpacity(0.07),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 16, color: BigDoggTheme.teal700),
-        ),
-        const SizedBox(width: 10),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(method, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: BigDoggTheme.lightTextPrimary)),
-          Text(note, style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
-        ])),
-        Text(fee, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: feeColor ?? BigDoggTheme.teal800)),
-      ],
-    ),
+    child: Row(children: [
+      Container(width: 32, height: 32,
+          decoration: BoxDecoration(color: BigDoggTheme.teal800.withOpacity(0.07), borderRadius: BorderRadius.circular(8)),
+          child: Icon(icon, size: 16, color: BigDoggTheme.teal700)),
+      const SizedBox(width: 10),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(method, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: BigDoggTheme.lightTextPrimary)),
+        Text(note, style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+      ])),
+      Text(fee, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: feeColor ?? BigDoggTheme.teal800)),
+    ]),
   );
 
   @override
@@ -345,6 +352,9 @@ For questions: info@bigdogg.nl''';
       statusDetail = isNl ? 'Verleng je abonnement' : 'Please renew your subscription';
     }
 
+    final stripeConnected = _stripeStatus?['connected'] == true && _stripeStatus?['enabled'] == true;
+    final stripeConnectedNotEnabled = _stripeStatus?['connected'] == true && _stripeStatus?['enabled'] == false;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -357,31 +367,29 @@ For questions: info@bigdogg.nl''';
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(color: BigDoggTheme.teal800, borderRadius: BorderRadius.circular(12)),
-              child: Row(
-                children: [
-                  Container(width: 10, height: 10, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
-                  const SizedBox(width: 12),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(statusText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text(statusDetail, style: TextStyle(color: statusColor, fontSize: 13)),
-                  ])),
-                  if (!isActive || status == 'trial')
-                    ElevatedButton(
-                      onPressed: _checkingOut ? null : _startCheckout,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white, foregroundColor: BigDoggTheme.teal800,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      ),
-                      child: _checkingOut
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(isNl ? 'Abonneren' : 'Subscribe',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              child: Row(children: [
+                Container(width: 10, height: 10, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(statusText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(statusDetail, style: TextStyle(color: statusColor, fontSize: 13)),
+                ])),
+                if (!isActive || status == 'trial')
+                  ElevatedButton(
+                    onPressed: _checkingOut ? null : _startCheckout,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white, foregroundColor: BigDoggTheme.teal800,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     ),
-                  const SizedBox(width: 8),
-                  Icon(_subscriptionExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.white70, size: 20),
-                ],
-              ),
+                    child: _checkingOut
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(isNl ? 'Abonneren' : 'Subscribe',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  ),
+                const SizedBox(width: 8),
+                Icon(_subscriptionExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.white70, size: 20),
+              ]),
             ),
           ),
 
@@ -421,8 +429,7 @@ For questions: info@bigdogg.nl''';
                 _feature('\u2713 ${isNl ? 'Bonnen scannen' : 'Receipt scanning'}'),
                 _feature('\u2713 ${isNl ? 'Betalen via Stripe (iDEAL, creditcard)' : 'Pay via Stripe (iDEAL, credit card)'}'),
                 const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity, height: 46,
+                SizedBox(width: double.infinity, height: 46,
                   child: ElevatedButton(
                     onPressed: _checkingOut ? null : _startCheckout,
                     child: _checkingOut
@@ -446,18 +453,16 @@ For questions: info@bigdogg.nl''';
           Container(
             decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
             padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(isNl ? 'Projecten' : 'Projects',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: BigDoggTheme.lightTextPrimary)),
-                  const SizedBox(height: 2),
-                  Text(isNl ? 'Koppel facturen en kosten aan projecten.' : 'Link invoices and expenses to projects.',
-                      style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
-                ])),
-                Switch(value: appProvider.projectsEnabled, onChanged: (val) => appProvider.setProjectsEnabled(val), activeColor: BigDoggTheme.teal800),
-              ],
-            ),
+            child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(isNl ? 'Projecten' : 'Projects',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: BigDoggTheme.lightTextPrimary)),
+                const SizedBox(height: 2),
+                Text(isNl ? 'Koppel facturen en kosten aan projecten.' : 'Link invoices and expenses to projects.',
+                    style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
+              ])),
+              Switch(value: appProvider.projectsEnabled, onChanged: (val) => appProvider.setProjectsEnabled(val), activeColor: BigDoggTheme.teal800),
+            ]),
           ),
 
           const SizedBox(height: 16),
@@ -466,131 +471,133 @@ For questions: info@bigdogg.nl''';
           Container(
             decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(isNl ? 'Stripe betaalaccount' : 'Stripe payment account',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: BigDoggTheme.teal800)),
-                const SizedBox(height: 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(isNl ? 'Stripe betaalaccount' : 'Stripe payment account',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: BigDoggTheme.teal800)),
+              const SizedBox(height: 4),
+              Text(
+                isNl
+                    ? 'Koppel je Stripe account om betaallinks en QR-codes te genereren op je facturen.'
+                    : 'Connect your Stripe account to generate payment links and QR codes on your invoices.',
+                style: const TextStyle(fontSize: 13, color: BigDoggTheme.lightTextSecondary),
+              ),
+              const SizedBox(height: 12),
+              if (_loadingStripe)
+                const Center(child: CircularProgressIndicator())
+              else if (stripeConnected) ...[
+                // Connected & active — show status + dashboard button
+                Row(children: [
+                  const Icon(Icons.check_circle, color: BigDoggTheme.success, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(
+                    isNl ? 'Stripe account gekoppeld en actief' : 'Stripe account connected and active',
+                    style: const TextStyle(color: BigDoggTheme.success, fontWeight: FontWeight.w600),
+                  )),
+                ]),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _openingDashboard ? null : () => _openStripeDashboard(isNl),
+                    icon: _openingDashboard
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.open_in_new, size: 16),
+                    label: Text(isNl ? 'Stripe instellingen openen' : 'Open Stripe settings'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: BigDoggTheme.teal800,
+                      side: const BorderSide(color: BigDoggTheme.teal800),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
                 Text(
                   isNl
-                      ? 'Koppel je Stripe account om betaallinks en QR-codes te genereren op je facturen.'
-                      : 'Connect your Stripe account to generate payment links and QR codes on your invoices.',
-                  style: const TextStyle(fontSize: 13, color: BigDoggTheme.lightTextSecondary),
+                      ? 'Beheer je betaalmethoden, uitbetalingen en accountgegevens via het Stripe Express dashboard.'
+                      : 'Manage your payment methods, payouts and account details via the Stripe Express dashboard.',
+                  style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary),
                 ),
-                const SizedBox(height: 12),
-                if (_loadingStripe)
-                  const Center(child: CircularProgressIndicator())
-                else if (_stripeStatus?['connected'] == true && _stripeStatus?['enabled'] == true)
-                  Row(children: [
-                    const Icon(Icons.check_circle, color: BigDoggTheme.success, size: 18),
-                    const SizedBox(width: 8),
-                    Text(isNl ? 'Stripe account gekoppeld en actief' : 'Stripe account connected and active',
-                        style: const TextStyle(color: BigDoggTheme.success, fontWeight: FontWeight.w600)),
-                  ])
-                else if (_stripeStatus?['connected'] == true && _stripeStatus?['enabled'] == false)
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      const Icon(Icons.warning_amber, color: BigDoggTheme.warning, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(
-                        isNl ? 'Account gekoppeld maar onboarding nog niet voltooid.' : 'Account connected but onboarding not complete.',
-                        style: const TextStyle(color: BigDoggTheme.warning, fontSize: 13),
-                      )),
-                    ]),
-                    const SizedBox(height: 8),
-                    SizedBox(width: double.infinity, child: OutlinedButton(
-                      onPressed: _connectingStripe ? null : () => _connectStripe(isNl),
-                      child: Text(isNl ? 'Onboarding afronden' : 'Complete onboarding'),
-                    )),
-                  ])
-                else
-                  SizedBox(width: double.infinity, child: ElevatedButton.icon(
-                    onPressed: _connectingStripe ? null : () => _connectStripe(isNl),
-                    icon: _connectingStripe
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.link, color: Colors.white),
-                    label: Text(isNl ? 'Koppel Stripe account' : 'Connect Stripe account',
-                        style: const TextStyle(color: Colors.white)),
-                    style: ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.teal800),
+              ] else if (stripeConnectedNotEnabled) ...[
+                Row(children: [
+                  const Icon(Icons.warning_amber, color: BigDoggTheme.warning, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(
+                    isNl ? 'Account gekoppeld maar onboarding nog niet voltooid.' : 'Account connected but onboarding not complete.',
+                    style: const TextStyle(color: BigDoggTheme.warning, fontSize: 13),
                   )),
+                ]),
+                const SizedBox(height: 8),
+                SizedBox(width: double.infinity, child: OutlinedButton(
+                  onPressed: _connectingStripe ? null : () => _connectStripe(isNl),
+                  child: Text(isNl ? 'Onboarding afronden' : 'Complete onboarding'),
+                )),
+              ] else
+                SizedBox(width: double.infinity, child: ElevatedButton.icon(
+                  onPressed: _connectingStripe ? null : () => _connectStripe(isNl),
+                  icon: _connectingStripe
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.link, color: Colors.white),
+                  label: Text(isNl ? 'Koppel Stripe account' : 'Connect Stripe account',
+                      style: const TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.teal800),
+                )),
 
-                const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-                // ── Stripe fees dropdown ───────────────────────────
-                GestureDetector(
-                  onTap: () => setState(() => _stripeFeeExpanded = !_stripeFeeExpanded),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: BigDoggTheme.lightBg,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: BigDoggTheme.lightBorder),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, size: 15, color: BigDoggTheme.lightTextSecondary),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text(
-                          isNl ? 'Stripe transactiekosten — tik om te bekijken' : 'Stripe transaction fees — tap to view',
-                          style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary, fontWeight: FontWeight.w500),
-                        )),
-                        Icon(_stripeFeeExpanded ? Icons.expand_less : Icons.expand_more,
-                            size: 16, color: BigDoggTheme.lightTextSecondary),
-                      ],
-                    ),
-                  ),
+              // ── Stripe fees dropdown ─────────────────────────────
+              GestureDetector(
+                onTap: () => setState(() => _stripeFeeExpanded = !_stripeFeeExpanded),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(color: BigDoggTheme.lightBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: BigDoggTheme.lightBorder)),
+                  child: Row(children: [
+                    const Icon(Icons.info_outline, size: 15, color: BigDoggTheme.lightTextSecondary),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(
+                      isNl ? 'Stripe transactiekosten — tik om te bekijken' : 'Stripe transaction fees — tap to view',
+                      style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary, fontWeight: FontWeight.w500),
+                    )),
+                    Icon(_stripeFeeExpanded ? Icons.expand_less : Icons.expand_more, size: 16, color: BigDoggTheme.lightTextSecondary),
+                  ]),
                 ),
+              ),
 
-                if (_stripeFeeExpanded) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: BigDoggTheme.lightBg,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: BigDoggTheme.lightBorder),
+              if (_stripeFeeExpanded) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: BigDoggTheme.lightBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: BigDoggTheme.lightBorder)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(isNl ? 'Kosten per betaalmethode (Stripe NL)' : 'Fees per payment method (Stripe NL)',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
+                    const SizedBox(height: 10),
+                    _feeRow(Icons.account_balance_outlined, 'iDEAL', '€0,29', isNl ? 'Vaste vergoeding per transactie' : 'Fixed fee per transaction', feeColor: BigDoggTheme.success),
+                    const Divider(height: 12),
+                    _feeRow(Icons.credit_card_outlined, isNl ? 'Creditcard (NL/EU)' : 'Credit card (NL/EU)', '1,5% + €0,25', 'Visa, Mastercard, AmEx'),
+                    const Divider(height: 12),
+                    _feeRow(Icons.credit_card_outlined, isNl ? 'Creditcard (internationaal)' : 'Credit card (international)', '1,5% + 3,25% + €0,25', isNl ? 'Kaart van buiten NL/EU' : 'Card issued outside NL/EU', feeColor: BigDoggTheme.warning),
+                    const Divider(height: 12),
+                    _feeRow(Icons.phone_iphone_outlined, 'Apple Pay / Google Pay', isNl ? 'Zelfde als creditcard' : 'Same as credit card', isNl ? 'Tarief hangt af van onderliggende kaart' : 'Rate depends on the underlying card'),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: BigDoggTheme.warningBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: BigDoggTheme.warning.withOpacity(0.3))),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const Icon(Icons.info_outline, size: 14, color: BigDoggTheme.warning),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(
+                          isNl
+                              ? 'Deze kosten zijn van Stripe, niet van BigDogg. Je ontvangt het factuurbedrag minus de transactiekosten op je Stripe account. Tarieven kunnen wijzigen — check stripe.com/pricing voor de meest actuele informatie.'
+                              : 'These fees are charged by Stripe, not BigDogg. You receive the invoice amount minus transaction fees in your Stripe account. Rates may change — check stripe.com/pricing for the most up-to-date information.',
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF92400E), height: 1.5),
+                        )),
+                      ]),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isNl ? 'Kosten per betaalmethode (Stripe NL)' : 'Fees per payment method (Stripe NL)',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: BigDoggTheme.teal800),
-                        ),
-                        const SizedBox(height: 10),
-                        _feeRow(Icons.account_balance_outlined, 'iDEAL', '€0,29', isNl ? 'Vaste vergoeding per transactie' : 'Fixed fee per transaction', feeColor: BigDoggTheme.success),
-                        const Divider(height: 12),
-                        _feeRow(Icons.credit_card_outlined, isNl ? 'Creditcard (NL/EU)' : 'Credit card (NL/EU)', '1,5% + €0,25', isNl ? 'Visa, Mastercard, AmEx' : 'Visa, Mastercard, AmEx'),
-                        const Divider(height: 12),
-                        _feeRow(Icons.credit_card_outlined, isNl ? 'Creditcard (internationaal)' : 'Credit card (international)', '1,5% + 3,25% + €0,25', isNl ? 'Kaart van buiten NL/EU' : 'Card issued outside NL/EU', feeColor: BigDoggTheme.warning),
-                        const Divider(height: 12),
-                        _feeRow(Icons.phone_iphone_outlined, 'Apple Pay / Google Pay', isNl ? 'Zelfde als creditcard' : 'Same as credit card', isNl ? 'Tarief hangt af van onderliggende kaart' : 'Rate depends on the underlying card'),
-                        const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: BigDoggTheme.warningBg,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: BigDoggTheme.warning.withOpacity(0.3)),
-                          ),
-                          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            const Icon(Icons.info_outline, size: 14, color: BigDoggTheme.warning),
-                            const SizedBox(width: 6),
-                            Expanded(child: Text(
-                              isNl
-                                  ? 'Deze kosten zijn van Stripe, niet van BigDogg. Je ontvangt het factuurbedrag minus de transactiekosten op je Stripe account. Tarieven kunnen wijzigen — check stripe.com/pricing voor de meest actuele informatie.'
-                                  : 'These fees are charged by Stripe, not BigDogg. You receive the invoice amount minus transaction fees in your Stripe account. Rates may change — check stripe.com/pricing for the most up-to-date information.',
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF92400E), height: 1.5),
-                            )),
-                          ]),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                  ]),
+                ),
               ],
-            ),
+            ]),
           ),
 
           const SizedBox(height: 16),
