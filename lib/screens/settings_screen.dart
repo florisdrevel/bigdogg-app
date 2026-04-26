@@ -485,7 +485,6 @@ For questions: info@bigdogg.nl''';
               if (_loadingStripe)
                 const Center(child: CircularProgressIndicator())
               else if (stripeConnected) ...[
-                // Connected & active — show status + dashboard button
                 Row(children: [
                   const Icon(Icons.check_circle, color: BigDoggTheme.success, size: 18),
                   const SizedBox(width: 8),
@@ -514,8 +513,8 @@ For questions: info@bigdogg.nl''';
                 const SizedBox(height: 6),
                 Text(
                   isNl
-                      ? 'Beheer je betaalmethoden, uitbetalingen en accountgegevens via het Stripe Express dashboard.'
-                      : 'Manage your payment methods, payouts and account details via the Stripe Express dashboard.',
+                      ? 'Bekijk je uitbetalingen, transacties en accountgegevens via het Stripe Express dashboard. Betaalmethoden worden centraal beheerd via het BigDogg platform.'
+                      : 'View your payouts, transactions and account details via the Stripe Express dashboard. Payment methods are managed centrally via the BigDogg platform.',
                   style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary),
                 ),
               ] else if (stripeConnectedNotEnabled) ...[
