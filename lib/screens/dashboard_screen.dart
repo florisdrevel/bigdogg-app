@@ -23,11 +23,127 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
   bool _walkthroughStarted = false;
+  bool _welcomeShown = false;
 
   void _completeWalkthrough() {
     context.read<AppProvider>().markWalkthroughSeen();
     // Return to invoices after tour completes
-    setState(() => _currentIndex = 0);
+    setState(() {
+      _currentIndex = 0;
+      _welcomeShown = false;
+    });
+  }
+
+  void _showWelcomeDialog(bool isNl) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: BigDoggTheme.lightSurface,
+        insetPadding:
+            const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 420),
+          padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      BigDoggTheme.teal800.withOpacity(0.08),
+                      BigDoggTheme.gold500.withOpacity(0.14),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 64,
+                  height: 64,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                isNl ? 'Welkom bij BigDogg!' : 'Welcome to BigDogg!',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: BigDoggTheme.teal800,
+                  letterSpacing: -0.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                isNl
+                    ? 'Wat leuk dat je er bent! We nemen je nu mee op een korte rondleiding door alle functies — zo ben je binnen een paar minuten klaar om aan de slag te gaan.'
+                    : 'Glad you\'re here! We\'ll take you on a quick tour of all the features — so you\'re ready to get started in just a few minutes.',
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  color: BigDoggTheme.lightTextSecondary,
+                  height: 1.55,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        _completeWalkthrough();
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        foregroundColor: BigDoggTheme.lightTextSecondary,
+                      ),
+                      child: Text(isNl ? 'Overslaan' : 'Skip'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        if (mounted) {
+                          setState(() => _welcomeShown = true);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: BigDoggTheme.teal800,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        elevation: 2,
+                      ),
+                      child: Text(
+                        isNl ? 'Start rondleiding →' : 'Start the tour →',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   // Profile tab index — shifts by 1 when projects enabled
@@ -84,16 +200,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final showWalkthrough = appProvider.prefsLoaded && !appProvider.hasSeenWalkthrough;
 
     // When walkthrough becomes active for the first time this session,
-    // jump to the Profile tab so step 1 makes sense.
+    // jump to the Profile tab so step 1 makes sense, then show the welcome dialog.
     if (showWalkthrough && !_walkthroughStarted) {
       _walkthroughStarted = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _currentIndex = _profileTabIndex(projectsEnabled));
+        if (mounted) {
+          setState(() => _currentIndex = _profileTabIndex(projectsEnabled));
+          _showWelcomeDialog(isNl);
+        }
       });
     }
-    // Reset the flag when walkthrough is dismissed so it can re-trigger on restart
+    // Reset flags when walkthrough is dismissed so it can re-trigger on restart
     if (!showWalkthrough && _walkthroughStarted) {
       _walkthroughStarted = false;
+      _welcomeShown = false;
     }
 
     final screens = _getScreens(projectsEnabled);
@@ -180,7 +300,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return WalkthroughOverlay(
       isNl: isNl,
-      active: showWalkthrough,
+      active: showWalkthrough && _welcomeShown,
       onComplete: _completeWalkthrough,
       onTabChange: (idx) => setState(() => _currentIndex = idx),
       currentTabIndex: safeIndex,
