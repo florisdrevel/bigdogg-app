@@ -1,46 +1,110 @@
 <!DOCTYPE html>
-<html>
+<html lang="nl">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- iOS meta tags & icons -->
+  <!-- ─── Primary SEO ────────────────────────────────────── -->
+  <title>BigDogg — Boekhouden voor ZZP'ers · €9,99/maand</title>
+  <meta name="description" content="BigDogg is dé boekhoudtool voor Nederlandse ZZP'ers. AI-facturen, BTW-aangifte, klantenbeheer. €9,99/maand. 30 dagen gratis. Geen creditcard.">
+  <meta name="keywords" content="ZZP boekhouding, boekhouden ZZP, facturen ZZP, BTW aangifte, ZZP factuurprogramma, boekhoudprogramma ZZP, Moneybird alternatief, Exact alternatief, AI boekhouden, factureren ZZP, BTW-aangifte software">
+  <meta name="author" content="BigDogg">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://bigdogg.nl/">
+
+  <!-- ─── Open Graph (Facebook, LinkedIn) ────────────────── -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bigdogg.nl/">
+  <meta property="og:title" content="BigDogg — Boekhouden voor ZZP'ers · €9,99/maand">
+  <meta property="og:description" content="De simpele, slimme boekhoudtool voor Nederlandse freelancers. AI-facturen, BTW-aangifte, klantenbeheer. €9,99/maand. 30 dagen gratis.">
+  <meta property="og:image" content="https://bigdogg.nl/icons/Icon-512.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:locale" content="nl_NL">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta property="og:site_name" content="BigDogg">
+
+  <!-- ─── Twitter Card ───────────────────────────────────── -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="BigDogg — Boekhouden voor ZZP'ers · €9,99/maand">
+  <meta name="twitter:description" content="De simpele, slimme boekhoudtool voor Nederlandse freelancers. €9,99/maand. 30 dagen gratis.">
+  <meta name="twitter:image" content="https://bigdogg.nl/icons/Icon-512.png">
+
+  <!-- ─── iOS / mobile web app ───────────────────────────── -->
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="bigdogg_app">
+  <meta name="apple-mobile-web-app-title" content="BigDogg">
+  <meta name="theme-color" content="#1B3A4B">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
+  <!-- ─── Favicon ────────────────────────────────────────── -->
   <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/x-icon" href="favicon.ico"/>
 
-  <title>bigdogg_app</title>
+  <!-- ─── PWA manifest ───────────────────────────────────── -->
   <link rel="manifest" href="manifest.json">
+
+  <!-- ─── Structured data (SoftwareApplication) ──────────── -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "BigDogg",
+    "url": "https://bigdogg.nl/",
+    "applicationCategory": "BusinessApplication",
+    "applicationSubCategory": "Accounting",
+    "operatingSystem": "Web",
+    "description": "BigDogg is dé boekhoudtool voor Nederlandse ZZP'ers. AI-facturen, BTW-aangifte, klantenbeheer voor €9,99 per maand met 30 dagen gratis proefperiode.",
+    "inLanguage": ["nl-NL", "en-US"],
+    "creator": {
+      "@type": "Organization",
+      "name": "BigDogg",
+      "url": "https://bigdogg.nl/",
+      "email": "info@bigdogg.nl"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "9.99",
+      "priceCurrency": "EUR",
+      "priceValidUntil": "2027-04-28",
+      "availability": "https://schema.org/InStock",
+      "url": "https://bigdogg.nl/register",
+      "category": "subscription"
+    },
+    "featureList": [
+      "AI-gestuurde factuurgeneratie",
+      "BTW-aangifte en kwartaalrapporten",
+      "Klantenbeheer met self-onboarding",
+      "Uitgaven- en bonnenbeheer",
+      "Stripe Connect met iDEAL-betaling",
+      "Historische factuurimport via PDF",
+      "Tweetalig (Nederlands/Engels)",
+      "AI-belastingtips en jaarrapport"
+    ]
+  }
+  </script>
+
+  <!-- ─── Structured data (Organization) ─────────────────── -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "BigDogg",
+    "url": "https://bigdogg.nl/",
+    "logo": "https://bigdogg.nl/icons/Icon-512.png",
+    "email": "info@bigdogg.nl",
+    "address": {
+      "@type": "PostalAddress",
+      "addressCountry": "NL"
+    }
+  }
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
