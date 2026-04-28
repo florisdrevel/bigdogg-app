@@ -190,15 +190,7 @@ For questions about these terms: info@bigdogg.nl''';
       child: Row(
         children: [
           Image.asset('assets/images/logo.png',
-              width: isWide ? 36 : 32, height: isWide ? 36 : 32),
-          if (isWide) ...[
-            const SizedBox(width: 8),
-            const Text('BigDogg',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: BigDoggTheme.teal800)),
-          ],
+              width: isWide ? 96 : 80, height: isWide ? 96 : 80),
           const Spacer(),
           GestureDetector(
             onTap: () => setState(() => _isNl = !_isNl),
