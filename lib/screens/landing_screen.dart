@@ -12,7 +12,21 @@ class LandingScreen extends StatefulWidget {
 class _LandingScreenState extends State<LandingScreen> {
   bool _isNl = true;
 
+  // Anchor for the "Bekijk de functies" / "See the features" CTA
+  final GlobalKey _featuresKey = GlobalKey();
+
   String t(String nl, String en) => _isNl ? nl : en;
+
+  void _scrollToFeatures() {
+    final ctx = _featuresKey.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+      alignment: 0.05,
+    );
+  }
 
   void _showTerms(BuildContext context) {
     showDialog(
@@ -162,13 +176,11 @@ For questions about these terms: info@bigdogg.nl''';
           children: [
             _buildNav(isWide),
             _buildHero(isWide),
-            _buildSocialProof(isWide),
-            _buildHowItWorks(isWide),
+            _buildStatBar(isWide),
+            _buildProblemSolution(isWide),
             _buildFeatures(isWide),
             _buildComparison(isWide),
-            _buildTestimonials(isWide),
             _buildPricing(isWide),
-            _buildFaq(isWide),
             _buildFinalCta(isWide),
             _buildFooter(isWide),
           ],
@@ -226,7 +238,6 @@ For questions about these terms: info@bigdogg.nl''';
             ),
             const SizedBox(width: 4),
           ] else ...[
-            // Compact icon-only sign-in on mobile so the nav never overflows
             IconButton(
               onPressed: () => context.go('/login'),
               icon: const Icon(Icons.login_rounded,
@@ -247,13 +258,10 @@ For questions about these terms: info@bigdogg.nl''';
                   horizontal: isWide ? 20 : 14, vertical: 10),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
-              textStyle:
-                  TextStyle(fontSize: isWide ? 13 : 12.5),
+              textStyle: TextStyle(fontSize: isWide ? 13 : 12.5),
               elevation: 0,
             ),
-            child: Text(t(
-                isWide ? 'Gratis proberen' : 'Probeer gratis',
-                isWide ? 'Try for free' : 'Try free')),
+            child: Text(t('Probeer gratis', 'Try free')),
           ),
         ],
       ),
@@ -316,11 +324,10 @@ For questions about these terms: info@bigdogg.nl''';
           ),
         ),
         const SizedBox(height: 24),
-        // Hero hook — single sentence, wraps naturally on any width
         Text(
           t(
-            'Boekhouden voor ZZP\'ers — €9,99/maand. Geen Excel, geen accountant, geen gedoe.',
-            'Accounting for Dutch freelancers — €9.99/month. No Excel, no accountant, no hassle.',
+            'Boekhouden hoeft geen hoofdpijn te zijn.',
+            'Accounting shouldn\'t give you a headache.',
           ),
           style: TextStyle(
             fontSize: isWide ? 44 : 30,
@@ -333,8 +340,8 @@ For questions about these terms: info@bigdogg.nl''';
         const SizedBox(height: 18),
         Text(
           t(
-            'De simpele, slimme administratie-tool voor Nederlandse ZZP\'ers — gemaakt om Moneybird en Exact te vervangen voor een eerlijke prijs.',
-            'The simple, smart admin tool for Dutch freelancers — built to replace Moneybird and Exact at a fair price.',
+            'Maak facturen, doe je BTW en houd uitgaven bij — zonder accountant en voor €9,99 per maand.',
+            'Make invoices, file your VAT and track expenses — without an accountant, for €9.99 a month.',
           ),
           style: TextStyle(
             fontSize: isWide ? 17 : 15,
@@ -361,19 +368,23 @@ For questions about these terms: info@bigdogg.nl''';
                       fontSize: 16, fontWeight: FontWeight.w700),
                   elevation: 3,
                 ),
-                child: Text(t('Start gratis proefperiode →',
-                    'Start free trial →')),
+                child: Text(t('Probeer 30 dagen gratis',
+                    'Try free for 30 days')),
               ),
-              TextButton(
-                onPressed: () => context.go('/login'),
-                child: Text(
-                  t('Al een account? Inloggen',
-                      'Already have an account? Sign in'),
-                  style: const TextStyle(
-                      color: BigDoggTheme.teal700,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14),
+              OutlinedButton(
+                onPressed: _scrollToFeatures,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: BigDoggTheme.teal800,
+                  side: const BorderSide(
+                      color: BigDoggTheme.teal800, width: 1.5),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  textStyle: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600),
                 ),
+                child: Text(t('Bekijk de functies', 'See the features')),
               ),
             ],
           )
@@ -393,19 +404,23 @@ For questions about these terms: info@bigdogg.nl''';
                       fontSize: 16, fontWeight: FontWeight.w700),
                   elevation: 3,
                 ),
-                child: Text(t('Start gratis proefperiode →',
-                    'Start free trial →')),
+                child: Text(t('Probeer 30 dagen gratis',
+                    'Try free for 30 days')),
               ),
-              TextButton(
-                onPressed: () => context.go('/login'),
-                child: Text(
-                  t('Al een account? Inloggen',
-                      'Already have an account? Sign in'),
-                  style: const TextStyle(
-                      color: BigDoggTheme.teal700,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14),
+              const SizedBox(height: 10),
+              OutlinedButton(
+                onPressed: _scrollToFeatures,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: BigDoggTheme.teal800,
+                  side: const BorderSide(
+                      color: BigDoggTheme.teal800, width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  textStyle: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w600),
                 ),
+                child: Text(t('Bekijk de functies', 'See the features')),
               ),
             ],
           ),
@@ -418,7 +433,8 @@ For questions about these terms: info@bigdogg.nl''';
                 t('Geen creditcard', 'No credit card')),
             _trustBadge(Icons.cancel_outlined,
                 t('Altijd opzegbaar', 'Cancel anytime')),
-            _trustBadge(Icons.flag_outlined, 'Made in NL 🇳🇱'),
+            _trustBadge(Icons.flag_outlined,
+                t('Gemaakt in NL 🇳🇱', 'Made in NL 🇳🇱')),
           ],
         ),
       ],
@@ -455,8 +471,7 @@ For questions about these terms: info@bigdogg.nl''';
       ),
       child: Column(
         children: [
-          Image.asset('assets/images/logo.png',
-              width: 120, height: 120),
+          Image.asset('assets/images/logo.png', width: 120, height: 120),
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.all(16),
@@ -559,8 +574,8 @@ For questions about these terms: info@bigdogg.nl''';
           ),
           const SizedBox(height: 8),
           Text(
-            t('AI maakt je factuur in een oogwenk.',
-                'AI creates your invoice near-instantly.'),
+            t('AI maakt je factuur in een paar seconden.',
+                'AI writes your invoice in seconds.'),
             style: const TextStyle(
                 fontSize: 11, color: BigDoggTheme.lightTextHint),
             textAlign: TextAlign.center,
@@ -589,89 +604,77 @@ For questions about these terms: info@bigdogg.nl''';
     );
   }
 
-  // ─── Social proof stats ─────────────────────────────────────
-  Widget _buildSocialProof(bool isWide) {
+  // ─── Honest stat bar ──────────────────────────────────────
+  Widget _buildStatBar(bool isWide) {
+    final items = [
+      t('Net gelanceerd', 'Just launched'),
+      '€9,99 / ${t('maand', 'month')}',
+      t('30 dagen gratis', '30 days free'),
+      t('Gemaakt in Nederland', 'Built in the Netherlands'),
+    ];
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: isWide ? 64 : 20, vertical: 32),
+          horizontal: isWide ? 64 : 20, vertical: 22),
       color: BigDoggTheme.teal800,
-      child: Column(
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: isWide ? 28 : 14,
+        runSpacing: 8,
         children: [
-          Text(
-            t('Vertrouwd door ZZP\'ers in heel Nederland',
-                'Trusted by freelancers across the Netherlands'),
-            style: const TextStyle(
-                color: Colors.white60,
-                fontSize: 13,
-                fontWeight: FontWeight.w500),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 22),
-          Wrap(
-            spacing: isWide ? 48 : 28,
-            runSpacing: 18,
-            alignment: WrapAlignment.center,
-            children: [
-              _statItem('€ 0', t('Verborgen kosten', 'Hidden fees')),
-              _statItem('30',
-                  t('Dagen gratis proberen', 'Days free trial')),
-              _statItem('~instant',
-                  t('Factuur aanmaken', 'To create invoice')),
-              _statItem('€9,99',
-                  t('Per maand, alles inbegrepen', 'Per month, all in')),
-            ],
-          ),
+          for (var i = 0; i < items.length; i++) ...[
+            Text(
+              items[i],
+              style: TextStyle(
+                color: i == 1 ? BigDoggTheme.gold400 : Colors.white70,
+                fontSize: isWide ? 14 : 12.5,
+                fontWeight:
+                    i == 1 ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+            if (i < items.length - 1)
+              Text(
+                '·',
+                style: TextStyle(
+                    color: Colors.white30,
+                    fontSize: isWide ? 14 : 12.5),
+              ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _statItem(String value, String label) {
-    return Column(
-      children: [
-        Text(value,
-            style: const TextStyle(
-                color: BigDoggTheme.gold400,
-                fontSize: 28,
-                fontWeight: FontWeight.w800)),
-        Text(label,
-            style: const TextStyle(
-                color: Colors.white60, fontSize: 12)),
-      ],
-    );
-  }
-
-  // ─── How it works ──────────────────────────────────────────
-  Widget _buildHowItWorks(bool isWide) {
-    final steps = [
+  // ─── Problem / solution ───────────────────────────────────
+  Widget _buildProblemSolution(bool isWide) {
+    final items = [
       {
-        'num': '1',
-        'icon': Icons.cloud_upload_outlined,
-        'title': t('Meld je aan, sleep je verleden erin',
-            'Sign up, drag your past in'),
-        'desc': t(
-          'Upload oude facturen als PDF. Onze AI parseert ze, organiseert je geschiedenis en bouwt direct een jaarrapport.',
-          'Upload old invoices as PDFs. Our AI parses them, organises your history and builds an annual report instantly.',
+        'pain': t(
+          'Je betaalt €17 of meer per maand voor functies die je nooit gebruikt.',
+          'You pay €17 or more a month for features you never use.',
+        ),
+        'fix': t(
+          'BigDogg kost €9,99 per maand. Alles zit erin. Geen extra pakketten.',
+          'BigDogg is €9.99 a month. Everything is included. No add-ons.',
         ),
       },
       {
-        'num': '2',
-        'icon': Icons.smart_toy_outlined,
-        'title': t('Factureer met één zin',
-            'Invoice with one sentence'),
-        'desc': t(
-          '"5 dagen coaching voor ToraTora" → klare factuur met BTW. Of bouw \'m handmatig met je eigen logo en sjabloon.',
-          '"5 days coaching for ToraTora" → finished invoice with VAT. Or build it manually with your own logo and template.',
+        'pain': t(
+          'Elk kwartaal zit je weer met je BTW-aangifte in je maag.',
+          'Every quarter your VAT return hangs over your head.',
+        ),
+        'fix': t(
+          'BigDogg maakt je BTW-rapport met één klik. Klaar voor de Belastingdienst.',
+          'BigDogg builds your VAT report in one click. Ready for the tax office.',
         ),
       },
       {
-        'num': '3',
-        'icon': Icons.task_alt_outlined,
-        'title': t('Eén klik voor je BTW-aangifte',
-            'One click for your VAT report'),
-        'desc': t(
-          'Elk kwartaal genereert BigDogg je BTW-overzicht. Eind van het jaar een compleet rapport met AI-belastingtips.',
-          'Each quarter BigDogg generates your VAT overview. At year-end, a full report with AI tax tips.',
+        'pain': t(
+          'Je blijft achter je geld aanrennen omdat klanten te laat betalen.',
+          'You spend half your time chasing clients who pay late.',
+        ),
+        'fix': t(
+          'Zet een iDEAL-betaallink direct op de factuur. Klanten betalen met één tik.',
+          'Drop an iDEAL payment link straight on the invoice. Clients pay with one tap.',
         ),
       },
     ];
@@ -682,7 +685,8 @@ For questions about these terms: info@bigdogg.nl''';
       child: Column(
         children: [
           Text(
-            t('Zo werkt BigDogg', 'How BigDogg works'),
+            t('Drie irritaties die we hebben opgelost',
+                'Three frustrations we fixed'),
             style: TextStyle(
                 fontSize: isWide ? 30 : 24,
                 fontWeight: FontWeight.w800,
@@ -692,8 +696,8 @@ For questions about these terms: info@bigdogg.nl''';
           ),
           const SizedBox(height: 8),
           Text(
-            t('Drie stappen. Geen accountant nodig.',
-                'Three steps. No accountant required.'),
+            t('Boekhouden voor ZZP\'ers, dan eindelijk simpel.',
+                'Accounting for freelancers, finally simple.'),
             style: const TextStyle(
                 fontSize: 15,
                 color: BigDoggTheme.lightTextSecondary),
@@ -703,15 +707,15 @@ For questions about these terms: info@bigdogg.nl''';
           isWide
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: steps
-                      .map((s) => Expanded(child: _stepCard(s)))
+                  children: items
+                      .map((p) => Expanded(child: _problemCard(p)))
                       .toList(),
                 )
               : Column(
-                  children: steps
-                      .map((s) => Padding(
+                  children: items
+                      .map((p) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
-                            child: _stepCard(s),
+                            child: _problemCard(p),
                           ))
                       .toList(),
                 ),
@@ -720,10 +724,10 @@ For questions about these terms: info@bigdogg.nl''';
     );
   }
 
-  Widget _stepCard(Map s) {
+  Widget _problemCard(Map p) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 6),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: BigDoggTheme.lightSurface,
         borderRadius: BorderRadius.circular(14),
@@ -732,113 +736,123 @@ For questions about these terms: info@bigdogg.nl''';
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: BigDoggTheme.gold500,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(s['num'] as String,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15)),
-              ),
-              const SizedBox(width: 12),
-              Icon(s['icon'] as IconData,
-                  color: BigDoggTheme.teal800, size: 22),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(s['title'] as String,
+          Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: BigDoggTheme.error.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              t('Probleem', 'Problem'),
               style: const TextStyle(
+                  color: BigDoggTheme.error,
+                  fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: BigDoggTheme.teal800)),
-          const SizedBox(height: 8),
-          Text(s['desc'] as String,
+                  letterSpacing: 0.5),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            p['pain'] as String,
+            style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: BigDoggTheme.teal800,
+                height: 1.4),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: BigDoggTheme.success.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              t('Met BigDogg', 'With BigDogg'),
               style: const TextStyle(
-                  color: BigDoggTheme.lightTextSecondary,
-                  fontSize: 13,
-                  height: 1.55)),
+                  color: BigDoggTheme.success,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            p['fix'] as String,
+            style: const TextStyle(
+                color: BigDoggTheme.lightTextSecondary,
+                fontSize: 14,
+                height: 1.55),
+          ),
         ],
       ),
     );
   }
 
-  // ─── Features ──────────────────────────────────────────────
+  // ─── Features ─────────────────────────────────────────────
   Widget _buildFeatures(bool isWide) {
     final features = [
       {
         'icon': Icons.smart_toy_outlined,
-        'title': t('Prompt-to-factuur', 'Prompt-to-invoice'),
+        'title': t('AI facturen', 'AI invoices'),
         'desc': t(
-          'Stop met typen, begin met factureren. Maak professionele, BTW-conforme facturen in een oogwenk met eenvoudige tekst.',
-          'Stop typing, start billing. Create professional, tax-compliant invoices near-instantly using simple prompts.',
+          'Type kort wat je deed en BigDogg maakt de factuur. Met de juiste BTW, klantgegevens en je eigen logo.',
+          'Type a short note about what you did and BigDogg writes the invoice — with the right VAT, client details and your own logo.',
         ),
-        'highlight': true,
       },
       {
-        'icon': Icons.psychology_outlined,
-        'title': t('Persoonlijke belastingstrateeg',
-            'Personal tax strategist'),
+        'icon': Icons.task_alt_outlined,
+        'title': t('BTW aangifte', 'VAT reports'),
         'desc': t(
-          'Onze AI vindt aftrekposten. De meeste gebruikers besparen 3-4x hun abonnementskosten aan belastingoptimalisaties.',
-          'Our AI finds deductions. Most users save 3-4x their subscription cost in tax optimisations alone.',
+          'Elk kwartaal een PDF met alles wat de Belastingdienst nodig heeft. Aanklikken en versturen.',
+          'A quarterly PDF with everything the tax office needs. One click and you\'re done.',
         ),
-        'highlight': false,
       },
       {
-        'icon': Icons.upload_file_outlined,
-        'title': t('Switch in 60 seconden', 'Switch in 60 seconds'),
+        'icon': Icons.description_outlined,
+        'title': t('Jaarrapport', 'Annual report'),
         'desc': t(
-          'Sleep je volledige factuurhistorie erin. BigDogg genereert direct historische jaarrapporten en organiseert je verleden.',
-          'Drag in your complete invoice history. BigDogg instantly generates historical annual reports and organises your past.',
+          'Aan het eind van het jaar een compleet overzicht voor je accountant of voor jezelf — inclusief tips voor aftrekposten.',
+          'A complete year-end overview for your accountant — or for yourself — including tips for deductions.',
         ),
-        'highlight': false,
       },
       {
-        'icon': Icons.people_outline,
-        'title': t('Klant-onboarding', 'Client self-onboarding'),
+        'icon': Icons.payments_outlined,
+        'title': t('Stripe betaallinks', 'Stripe payment links'),
         'desc': t(
-          'Stuur een link, laat je klanten hun gegevens invullen. Geen gedoe meer met IBAN- of KvK-nummers.',
-          'Send a link, let your clients fill in their details. No more chasing IBANs or KvK numbers.',
+          'Zet een iDEAL- of creditcardbetaallink direct op de factuur. Betalingen worden automatisch geboekt.',
+          'Add an iDEAL or card payment link straight on the invoice. Payments get logged automatically.',
         ),
-        'highlight': false,
       },
       {
-        'icon': Icons.language_outlined,
-        'title': t('Volledig tweetalig', 'Fully bilingual'),
+        'icon': Icons.camera_alt_outlined,
+        'title': t('Bonnen scannen', 'Scan receipts'),
         'desc': t(
-          'Schakel direct tussen Nederlands en Engels. Ideaal voor expats en internationale klanten.',
-          'Toggle between Dutch and English instantly. Perfect for expats and international clients.',
+          'Maak een foto van je bonnetje. BigDogg ziet het bedrag, de BTW en de categorie. Niets meer overtypen.',
+          'Snap a photo of your receipt. BigDogg picks up the amount, VAT and category — no retyping.',
         ),
-        'highlight': false,
       },
       {
-        'icon': Icons.bar_chart_outlined,
-        'title': t('Premium analytics', 'Premium analytics'),
+        'icon': Icons.schedule_outlined,
+        'title': t('Urenregistratie', 'Hours tracker'),
         'desc': t(
-          'BTW-rapporten, jaaroverzichten, omzet per klant. Alles wat je accountant nodig heeft.',
-          'VAT reports, annual overviews, revenue per client. Everything your accountant needs.',
+          'Houd je uren bij voor de zelfstandigenaftrek. BigDogg laat zien hoe ver je bent met de 1.225-uurdrempel.',
+          'Log your hours for the self-employed deduction. BigDogg shows how close you are to the 1,225-hour threshold.',
         ),
-        'highlight': false,
       },
     ];
 
     return Container(
+      key: _featuresKey,
       padding: EdgeInsets.symmetric(
           horizontal: isWide ? 64 : 20, vertical: 64),
       color: BigDoggTheme.lightSurface,
       child: Column(
         children: [
           Text(
-            t('Alles wat je nodig hebt als ZZP\'er',
-                'Everything you need as a freelancer'),
+            t('Wat zit erin?', 'What\'s included?'),
             style: TextStyle(
                 fontSize: isWide ? 30 : 24,
                 fontWeight: FontWeight.w800,
@@ -848,8 +862,8 @@ For questions about these terms: info@bigdogg.nl''';
           ),
           const SizedBox(height: 8),
           Text(
-            t('Zonder overbodige complexiteit — gewoon wat werkt.',
-                'Without unnecessary complexity — just what works.'),
+            t('Geen poespas. Gewoon wat werkt.',
+                'No fluff. Just what works.'),
             style: const TextStyle(
                 fontSize: 15,
                 color: BigDoggTheme.lightTextSecondary),
@@ -894,19 +908,13 @@ For questions about these terms: info@bigdogg.nl''';
   }
 
   Widget _featureCard(Map f) {
-    final isHighlight = f['highlight'] == true;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 6),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isHighlight
-            ? BigDoggTheme.teal800
-            : BigDoggTheme.lightBg,
+        color: BigDoggTheme.lightBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: isHighlight
-                ? BigDoggTheme.teal800
-                : BigDoggTheme.lightBorder),
+        border: Border.all(color: BigDoggTheme.lightBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -914,31 +922,22 @@ For questions about these terms: info@bigdogg.nl''';
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isHighlight
-                  ? Colors.white.withOpacity(0.15)
-                  : BigDoggTheme.teal800.withOpacity(0.08),
+              color: BigDoggTheme.teal800.withOpacity(0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(f['icon'] as IconData,
-                color: isHighlight
-                    ? Colors.white
-                    : BigDoggTheme.teal800,
-                size: 22),
+                color: BigDoggTheme.teal800, size: 22),
           ),
           const SizedBox(height: 14),
           Text(f['title'] as String,
-              style: TextStyle(
+              style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
-                  color: isHighlight
-                      ? Colors.white
-                      : BigDoggTheme.teal800)),
+                  color: BigDoggTheme.teal800)),
           const SizedBox(height: 6),
           Text(f['desc'] as String,
-              style: TextStyle(
-                  color: isHighlight
-                      ? Colors.white70
-                      : BigDoggTheme.lightTextSecondary,
+              style: const TextStyle(
+                  color: BigDoggTheme.lightTextSecondary,
                   fontSize: 13,
                   height: 1.5)),
         ],
@@ -946,7 +945,7 @@ For questions about these terms: info@bigdogg.nl''';
     );
   }
 
-  // ─── Comparison ────────────────────────────────────────────
+  // ─── Comparison ───────────────────────────────────────────
   Widget _buildComparison(bool isWide) {
     final hPad = isWide ? 20.0 : 10.0;
     final brandFont = isWide ? 12.0 : 11.0;
@@ -972,7 +971,6 @@ For questions about these terms: info@bigdogg.nl''';
           ),
         );
       }
-      // BigDogg pill — FittedBox prevents wrapping on narrow screens
       return Expanded(
         child: Center(
           child: Container(
@@ -982,10 +980,7 @@ For questions about these terms: info@bigdogg.nl''';
               color: BigDoggTheme.gold500,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: inner,
-            ),
+            child: FittedBox(fit: BoxFit.scaleDown, child: inner),
           ),
         ),
       );
@@ -997,10 +992,10 @@ For questions about these terms: info@bigdogg.nl''';
       child: Column(
         children: [
           Text(
-            t('Waarom €9,99 en niet €29,99?',
-                'Why €9.99 and not €29.99?'),
+            t('BigDogg vs Moneybird vs Exact Online',
+                'BigDogg vs Moneybird vs Exact Online'),
             style: TextStyle(
-                fontSize: isWide ? 30 : 24,
+                fontSize: isWide ? 30 : 22,
                 fontWeight: FontWeight.w800,
                 color: BigDoggTheme.teal800,
                 letterSpacing: -0.5),
@@ -1008,10 +1003,8 @@ For questions about these terms: info@bigdogg.nl''';
           ),
           const SizedBox(height: 8),
           Text(
-            t(
-              'BigDogg biedt premium functies voor een eerlijke prijs.',
-              'BigDogg delivers premium features at a fair price.',
-            ),
+            t('Dezelfde dingen, voor een eerlijkere prijs.',
+                'The same things, at a fairer price.'),
             style: const TextStyle(
                 fontSize: 15,
                 color: BigDoggTheme.lightTextSecondary),
@@ -1019,7 +1012,7 @@ For questions about these terms: info@bigdogg.nl''';
           ),
           const SizedBox(height: 40),
           Container(
-            constraints: const BoxConstraints(maxWidth: 700),
+            constraints: const BoxConstraints(maxWidth: 720),
             decoration: BoxDecoration(
               color: BigDoggTheme.lightSurface,
               borderRadius: BorderRadius.circular(16),
@@ -1047,11 +1040,10 @@ For questions about these terms: info@bigdogg.nl''';
                       Expanded(
                         flex: 3,
                         child: Text(
-                          t('Functie', 'Feature'),
+                          '',
                           style: TextStyle(
                               color: Colors.white60,
-                              fontSize: brandFont,
-                              fontWeight: FontWeight.w600),
+                              fontSize: brandFont),
                         ),
                       ),
                       brandHeader('Moneybird'),
@@ -1060,66 +1052,8 @@ For questions about these terms: info@bigdogg.nl''';
                     ],
                   ),
                 ),
-                ..._comparisonRows(hPad: hPad, rowFont: rowFont, markFont: markFont),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: hPad, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: BigDoggTheme.gold500.withOpacity(0.06),
-                    borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(15)),
-                    border: Border(
-                        top: BorderSide(
-                            color: BigDoggTheme.lightBorder)),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          t('Prijs / maand', 'Price / month'),
-                          style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: BigDoggTheme.teal800,
-                              fontSize: rowFont),
-                        ),
-                      ),
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.center,
-                          child: Text('€29+',
-                              style: TextStyle(
-                                  color: BigDoggTheme.error,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: rowFont)),
-                        ),
-                      ),
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.center,
-                          child: Text('€39+',
-                              style: TextStyle(
-                                  color: BigDoggTheme.error,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: rowFont)),
-                        ),
-                      ),
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.center,
-                          child: Text('€9,99',
-                              style: TextStyle(
-                                  color: BigDoggTheme.success,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: isWide ? 16 : 14)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                ..._comparisonRows(
+                    hPad: hPad, rowFont: rowFont, markFont: markFont),
               ],
             ),
           ),
@@ -1133,41 +1067,67 @@ For questions about these terms: info@bigdogg.nl''';
     required double rowFont,
     required double markFont,
   }) {
-    final rows = [
-      [t('AI factuur assistent', 'AI invoice assistant'), '✗', '✗', '✓'],
-      [t('Historische import', 'Historical import'), '✗', '✗', '✓'],
-      [t('BTW rapport PDF', 'VAT report PDF'), '✓', '✓', '✓'],
-      [t('Klant onboarding', 'Client onboarding'), '✗', '✗', '✓'],
-      [t('Tweetalig', 'Bilingual'), '✗', '✗', '✓'],
-      [t('Belastingtips AI', 'AI tax tips'), '✗', '✗', '✓'],
-      [t('Stripe iDEAL betaal-QR', 'Stripe iDEAL payment QR'), '✗', '✗', '✓'],
-      [t('Eén plan, geen tiers', 'Single plan, no tiers'), '✗', '✗', '✓'],
+    // Each row: [label, moneybird, exact, bigdogg]
+    final rows = <List<String>>[
+      [t('Prijs / maand', 'Price / month'), '€17+', '€40+', '€9,99'],
+      [
+        t('Gratis proefperiode', 'Free trial'),
+        t('60 dagen', '60 days'),
+        t('30 dagen', '30 days'),
+        t('30 dagen', '30 days'),
+      ],
+      [t('AI facturen genereren', 'AI invoice generation'), '✗', '✗', '✓'],
+      [t('BTW aangifte PDF', 'VAT report PDF'), '✓', '✓', '✓'],
+      [t('Jaarrapport', 'Annual report'), '✓', '✓', '✓'],
+      [t('Betaallinks op facturen', 'Payment links on invoices'), '✓', '✓', '✓'],
+      [t('Eenvoud', 'Simplicity'), '★★', '★', '★★★'],
     ];
 
-    Widget mark(String s) => FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.center,
-          child: Text(s,
-              style: TextStyle(
-                  color: s == '✓'
-                      ? BigDoggTheme.success
-                      : BigDoggTheme.error,
-                  fontWeight: FontWeight.w700,
-                  fontSize: markFont)),
-        );
+    Widget cell(String s) {
+      Color color;
+      if (s == '✓') {
+        color = BigDoggTheme.success;
+      } else if (s == '✗') {
+        color = BigDoggTheme.error;
+      } else if (s.startsWith('★')) {
+        color = BigDoggTheme.gold500;
+      } else if (s.startsWith('€')) {
+        color = BigDoggTheme.teal800;
+      } else {
+        color = BigDoggTheme.lightTextPrimary;
+      }
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: Text(
+          s,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontSize: (s == '✓' || s == '✗' || s.startsWith('★'))
+                ? markFont
+                : rowFont,
+          ),
+        ),
+      );
+    }
 
     return rows.asMap().entries.map((entry) {
       final i = entry.key;
       final row = entry.value;
+      final isLast = i == rows.length - 1;
       return Container(
-        padding: EdgeInsets.symmetric(
-            horizontal: hPad, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 12),
         decoration: BoxDecoration(
           color: i.isEven
               ? BigDoggTheme.lightBg.withOpacity(0.5)
               : BigDoggTheme.lightSurface,
           border: Border(
-              top: BorderSide(color: BigDoggTheme.lightBorder)),
+            top: BorderSide(color: BigDoggTheme.lightBorder),
+          ),
+          borderRadius: isLast
+              ? const BorderRadius.vertical(bottom: Radius.circular(15))
+              : null,
         ),
         child: Row(
           children: [
@@ -1176,170 +1136,33 @@ For questions about these terms: info@bigdogg.nl''';
               child: Text(row[0],
                   style: TextStyle(
                       fontSize: rowFont,
+                      fontWeight: FontWeight.w500,
                       color: BigDoggTheme.lightTextPrimary)),
             ),
-            Expanded(child: mark(row[1])),
-            Expanded(child: mark(row[2])),
-            Expanded(child: mark(row[3])),
+            Expanded(child: cell(row[1])),
+            Expanded(child: cell(row[2])),
+            Expanded(child: cell(row[3])),
           ],
         ),
       );
     }).toList();
   }
 
-  // ─── Testimonials ──────────────────────────────────────────
-  Widget _buildTestimonials(bool isWide) {
-    final testimonials = [
-      {
-        'initials': 'SK',
-        'name': 'Sanne K.',
-        'role': t('Marketingadviseur, Utrecht',
-            'Marketing Consultant, Utrecht'),
-        'quote': t(
-          'Eindelijk een tool die mijn administratie écht versimpelt. Ik bespaar 3 uur per week en betaal de helft van wat ik bij Moneybird kwijt was.',
-          'Finally a tool that genuinely simplifies my admin. I save 3 hours per week and pay half what I used to at Moneybird.',
-        ),
-      },
-      {
-        'initials': 'TV',
-        'name': 'Tijmen V.',
-        'role':
-            t('Freelance Developer, Amsterdam', 'Freelance Developer, Amsterdam'),
-        'quote': t(
-          'Switch was geregeld in 5 minuten. Ik dropte mijn oude PDF\'s erin en BigDogg organiseerde de hele geschiedenis voor me.',
-          'Switching took 5 minutes. I dropped in my old PDFs and BigDogg organised my whole history for me.',
-        ),
-      },
-      {
-        'initials': 'ED',
-        'name': 'Eva D.',
-        'role':
-            t('Coach & Trainer, Eindhoven', 'Coach & Trainer, Eindhoven'),
-        'quote': t(
-          'De AI-belastingtips alleen al verdienen het abonnement terug. Ik vond drie aftrekposten die ik over het hoofd had gezien.',
-          'The AI tax tips alone pay back the subscription. I found three deductions I had been missing.',
-        ),
-      },
+  // ─── Pricing ──────────────────────────────────────────────
+  Widget _buildPricing(bool isWide) {
+    final list = [
+      t('✓ Onbeperkt facturen maken', '✓ Unlimited invoices'),
+      t('✓ AI factuur uit één zin', '✓ AI invoice from one sentence'),
+      t('✓ Oude facturen importeren', '✓ Import old invoices'),
+      t('✓ PDF maken & versturen', '✓ Make & send PDFs'),
+      t('✓ Klanten beheren', '✓ Manage clients'),
+      t('✓ Uitgaven & bonnen bijhouden', '✓ Track expenses & receipts'),
+      t('✓ BTW-aangifte per kwartaal', '✓ Quarterly VAT report'),
+      t('✓ Jaarrapport met aftrekposten-tips',
+          '✓ Annual report with deduction tips'),
+      t('✓ iDEAL betaallinks via Stripe', '✓ iDEAL payment links via Stripe'),
     ];
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isWide ? 64 : 20, vertical: 64),
-      child: Column(
-        children: [
-          Text(
-            t('Wat ZZP\'ers zeggen', 'What freelancers say'),
-            style: TextStyle(
-                fontSize: isWide ? 30 : 24,
-                fontWeight: FontWeight.w800,
-                color: BigDoggTheme.teal800,
-                letterSpacing: -0.5),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            t('Echte verhalen van Nederlandse freelancers.',
-                'Real stories from Dutch freelancers.'),
-            style: const TextStyle(
-                fontSize: 15,
-                color: BigDoggTheme.lightTextSecondary),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 40),
-          isWide
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: testimonials
-                      .map((q) => Expanded(child: _testimonialCard(q)))
-                      .toList(),
-                )
-              : Column(
-                  children: testimonials
-                      .map((q) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _testimonialCard(q),
-                          ))
-                      .toList(),
-                ),
-        ],
-      ),
-    );
-  }
-
-  Widget _testimonialCard(Map q) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 6),
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: BigDoggTheme.lightSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: BigDoggTheme.lightBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: List.generate(
-              5,
-              (i) => const Padding(
-                padding: EdgeInsets.only(right: 2),
-                child: Icon(Icons.star_rounded,
-                    color: BigDoggTheme.gold500, size: 18),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            '"${q['quote']}"',
-            style: const TextStyle(
-                fontSize: 14,
-                color: BigDoggTheme.lightTextPrimary,
-                height: 1.55,
-                fontStyle: FontStyle.italic),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: BigDoggTheme.teal800,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(q['initials'] as String,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13)),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(q['name'] as String,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: BigDoggTheme.teal800,
-                            fontSize: 13)),
-                    Text(q['role'] as String,
-                        style: const TextStyle(
-                            color: BigDoggTheme.lightTextSecondary,
-                            fontSize: 12)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Pricing ───────────────────────────────────────────────
-  Widget _buildPricing(bool isWide) {
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: isWide ? 64 : 20, vertical: 64),
@@ -1409,8 +1232,8 @@ For questions about these terms: info@bigdogg.nl''';
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    t('30 dagen gratis · Geen creditcard vereist',
-                        '30-day free trial · No credit card'),
+                    t('30 dagen gratis · Geen creditcard nodig',
+                        '30 days free · No credit card needed'),
                     style: const TextStyle(
                         color: BigDoggTheme.gold400,
                         fontWeight: FontWeight.w600,
@@ -1420,26 +1243,7 @@ For questions about these terms: info@bigdogg.nl''';
                 const SizedBox(height: 24),
                 const Divider(color: Colors.white24),
                 const SizedBox(height: 16),
-                ...[
-                  t('✓ Onbeperkt factureren',
-                      '✓ Unlimited invoicing'),
-                  t('✓ AI factuur assistent',
-                      '✓ AI invoice assistant'),
-                  t('✓ Historische factuurimport',
-                      '✓ Historical invoice import'),
-                  t('✓ PDF generatie & e-mail',
-                      '✓ PDF generation & email'),
-                  t('✓ Klantenbeheer & onboarding',
-                      '✓ Client management & onboarding'),
-                  t('✓ Uitgaven & bonnen bijhouden',
-                      '✓ Expense & receipt tracking'),
-                  t('✓ Kwartaal BTW rapport',
-                      '✓ Quarterly VAT report'),
-                  t('✓ Jaarrapport met belastingtips',
-                      '✓ Annual report with tax tips'),
-                  t('✓ iDEAL betaling via Stripe',
-                      '✓ iDEAL payment via Stripe'),
-                ].map((item) => Padding(
+                ...list.map((item) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Text(item,
                           style: const TextStyle(
@@ -1462,8 +1266,8 @@ For questions about these terms: info@bigdogg.nl''';
                       Expanded(
                         child: Text(
                           t(
-                            'Data gehost in EU (Frankfurt) · AVG-conform',
-                            'Data hosted in EU (Frankfurt) · GDPR compliant',
+                            'Data in Frankfurt (EU) · voldoet aan de AVG',
+                            'Data in Frankfurt (EU) · GDPR compliant',
                           ),
                           style: const TextStyle(
                               color: Colors.white70,
@@ -1489,15 +1293,15 @@ For questions about these terms: info@bigdogg.nl''';
                           fontSize: 16, fontWeight: FontWeight.w700),
                       elevation: 0,
                     ),
-                    child: Text(t('Start gratis proefperiode →',
-                        'Start free trial →')),
+                    child: Text(t('Probeer 30 dagen gratis →',
+                        'Try free for 30 days →')),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Center(
                   child: Text(
                     t(
-                        'Geen creditcard · Altijd opzegbaar · iDEAL via Stripe',
+                        'Geen creditcard nodig · Altijd opzegbaar · iDEAL via Stripe',
                         'No credit card · Cancel anytime · iDEAL via Stripe'),
                     style: const TextStyle(
                         color: Colors.white38, fontSize: 12),
@@ -1512,132 +1316,7 @@ For questions about these terms: info@bigdogg.nl''';
     );
   }
 
-  // ─── FAQ ───────────────────────────────────────────────────
-  Widget _buildFaq(bool isWide) {
-    final faqs = [
-      [
-        t('Is BigDogg Belastingdienst-conform?',
-            'Is BigDogg compliant with the Belastingdienst?'),
-        t(
-          'Ja. BTW-rapporten en factuurformaten volgen de huidige Nederlandse standaarden. Je blijft als ondernemer zelf verantwoordelijk voor je aangiftes.',
-          'Yes. VAT reports and invoice formats follow current Dutch standards. As an entrepreneur, you remain responsible for filing your returns.',
-        ),
-      ],
-      [
-        t('Kan ik vanuit Moneybird of Exact overstappen?',
-            'Can I switch from Moneybird or Exact?'),
-        t(
-          'Ja. Sleep je oude facturen als PDF in BigDogg en onze AI parseert ze, organiseert je geschiedenis en bouwt direct een jaarrapport. De meeste gebruikers zijn binnen 5 minuten over.',
-          'Yes. Drag your old PDF invoices into BigDogg and our AI parses them, organises your history and builds an annual report instantly. Most users switch in 5 minutes.',
-        ),
-      ],
-      [
-        t('Wat als ik wil opzeggen?', 'What if I want to cancel?'),
-        t(
-          'Opzeggen kan altijd via Instellingen. Je behoudt toegang tot het einde van de lopende betaalperiode. Je kunt al je facturen en rapporten downloaden voordat je vertrekt.',
-          'You can cancel anytime via Settings. You keep access until the end of your current billing period and can download all your invoices and reports before leaving.',
-        ),
-      ],
-      [
-        t('Ondersteunen jullie iDEAL?', 'Do you support iDEAL?'),
-        t(
-          'Ja. Via Stripe Connect kunnen je klanten met iDEAL of creditcard betalen, direct vanaf de factuur of via QR-code. Betalingen worden automatisch gemarkeerd.',
-          'Yes. Via Stripe Connect, your clients can pay with iDEAL or card directly from the invoice or via QR code. Payments are auto-marked as received.',
-        ),
-      ],
-      [
-        t('Staat mijn data in Nederland of de EU?',
-            'Is my data hosted in the Netherlands or EU?'),
-        t(
-          'Ja. Alle data staat op Supabase EU (Frankfurt) en wordt verwerkt conform de AVG. We verkopen geen data en gebruiken geen tracking-cookies van derden.',
-          'Yes. All data lives on Supabase EU (Frankfurt) and is processed per GDPR. We never sell data and use no third-party tracking cookies.',
-        ),
-      ],
-      [
-        t('Ondersteunen jullie buitenlandse klanten?',
-            'Do you support international clients?'),
-        t(
-          'Ja. BigDogg is volledig tweetalig (NL/EN), ondersteunt verlegging van BTW (reverse-charge) voor EU- en niet-EU-klanten en factureert in meerdere valuta.',
-          'Yes. BigDogg is fully bilingual (NL/EN), supports VAT reverse-charge for EU and non-EU clients, and invoices in multiple currencies.',
-        ),
-      ],
-    ];
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isWide ? 64 : 20, vertical: 64),
-      child: Column(
-        children: [
-          Text(
-            t('Veelgestelde vragen', 'Frequently asked questions'),
-            style: TextStyle(
-                fontSize: isWide ? 30 : 24,
-                fontWeight: FontWeight.w800,
-                color: BigDoggTheme.teal800,
-                letterSpacing: -0.5),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-          Container(
-            constraints: const BoxConstraints(maxWidth: 720),
-            decoration: BoxDecoration(
-              color: BigDoggTheme.lightSurface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: BigDoggTheme.lightBorder),
-            ),
-            child: Theme(
-              data: Theme.of(context)
-                  .copyWith(dividerColor: BigDoggTheme.lightBorder),
-              child: Column(
-                children: faqs
-                    .asMap()
-                    .entries
-                    .map((e) => _faqTile(e.value[0], e.value[1],
-                        showDivider: e.key < faqs.length - 1))
-                    .toList(),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _faqTile(String q, String a, {required bool showDivider}) {
-    return Container(
-      decoration: BoxDecoration(
-        border: showDivider
-            ? Border(
-                bottom: BorderSide(color: BigDoggTheme.lightBorder))
-            : null,
-      ),
-      child: ExpansionTile(
-        tilePadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        childrenPadding:
-            const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        iconColor: BigDoggTheme.teal800,
-        collapsedIconColor: BigDoggTheme.teal800,
-        title: Text(q,
-            style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: BigDoggTheme.teal800,
-                fontSize: 14)),
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(a,
-                style: const TextStyle(
-                    color: BigDoggTheme.lightTextSecondary,
-                    fontSize: 13,
-                    height: 1.6)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Final CTA ─────────────────────────────────────────────
+  // ─── Final CTA ────────────────────────────────────────────
   Widget _buildFinalCta(bool isWide) {
     return Container(
       padding: EdgeInsets.symmetric(
@@ -1653,8 +1332,8 @@ For questions about these terms: info@bigdogg.nl''';
         children: [
           Text(
             t(
-              'Klaar om te stoppen met te veel betalen?',
-              'Ready to stop overpaying?',
+              'Klaar om je administratie simpel te maken?',
+              'Ready to make your admin simple?',
             ),
             style: TextStyle(
                 fontSize: isWide ? 32 : 26,
@@ -1666,8 +1345,8 @@ For questions about these terms: info@bigdogg.nl''';
           const SizedBox(height: 12),
           Text(
             t(
-              'Sluit je aan bij Nederlandse ZZP\'ers die al slimmer werken.',
-              'Join Dutch freelancers already working smarter.',
+              'Probeer BigDogg 30 dagen gratis. Bevalt het niet, dan zeg je gewoon op.',
+              'Try BigDogg free for 30 days. Don\'t like it? Just cancel.',
             ),
             style: const TextStyle(
                 fontSize: 16,
@@ -1690,14 +1369,14 @@ For questions about these terms: info@bigdogg.nl''';
               elevation: 4,
             ),
             child: Text(t(
-                'Start gratis — geen creditcard nodig',
-                'Start free — no credit card needed')),
+                'Probeer gratis — geen creditcard nodig',
+                'Try free — no credit card needed')),
           ),
           const SizedBox(height: 16),
           Text(
             t(
-                '30 dagen gratis. Daarna €9,99/maand. Altijd opzegbaar.',
-                '30 days free. Then €9.99/month. Cancel anytime.'),
+                '30 dagen gratis. Daarna €9,99 per maand. Altijd opzegbaar.',
+                '30 days free. Then €9.99 per month. Cancel anytime.'),
             style: const TextStyle(
                 color: BigDoggTheme.lightTextHint, fontSize: 13),
             textAlign: TextAlign.center,
@@ -1707,7 +1386,7 @@ For questions about these terms: info@bigdogg.nl''';
     );
   }
 
-  // ─── Footer ────────────────────────────────────────────────
+  // ─── Footer ───────────────────────────────────────────────
   Widget _buildFooter(bool isWide) {
     return Container(
       padding: EdgeInsets.symmetric(
@@ -1736,6 +1415,28 @@ For questions about these terms: info@bigdogg.nl''';
                 ),
                 Row(
                   children: [
+                    GestureDetector(
+                      onTap: () => setState(() => _isNl = !_isNl),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: BigDoggTheme.gold500.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                              color:
+                                  BigDoggTheme.gold500.withOpacity(0.4)),
+                        ),
+                        child: Text(
+                          _isNl ? 'EN' : 'NL',
+                          style: const TextStyle(
+                              color: BigDoggTheme.gold400,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     TextButton(
                       onPressed: () => _showTerms(context),
                       child: Text(
@@ -1767,6 +1468,28 @@ For questions about these terms: info@bigdogg.nl''';
                             color: Colors.white,
                             fontWeight: FontWeight.w700)),
                     const Spacer(),
+                    GestureDetector(
+                      onTap: () => setState(() => _isNl = !_isNl),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: BigDoggTheme.gold500.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                              color:
+                                  BigDoggTheme.gold500.withOpacity(0.4)),
+                        ),
+                        child: Text(
+                          _isNl ? 'EN' : 'NL',
+                          style: const TextStyle(
+                              color: BigDoggTheme.gold400,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     TextButton(
                       onPressed: () => context.go('/login'),
                       child: Text(t('Inloggen', 'Sign in'),
