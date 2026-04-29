@@ -805,8 +805,8 @@ For questions about these terms: info@bigdogg.nl''';
         'icon': Icons.smart_toy_outlined,
         'title': t('AI facturering', 'AI invoicing'),
         'desc': t(
-          'Type kort wat je deed en BigDogg maakt de factuur. Met de juiste BTW, klantgegevens en je eigen logo.',
-          'Type a short note about what you did and BigDogg writes the invoice — with the right VAT, client details and your own logo.',
+          'Typ kort wat je hebt gedaan en BigDogg maakt de factuur. Met de juiste BTW, klantgegevens en je eigen logo.',
+          'Type a short note about what you\'ve done and BigDogg writes the invoice — with the right VAT, client details and your own logo.',
         ),
       },
       {
@@ -821,8 +821,8 @@ For questions about these terms: info@bigdogg.nl''';
         'icon': Icons.description_outlined,
         'title': t('Jaarrapport', 'Annual report'),
         'desc': t(
-          'Aan het eind van het jaar een compleet overzicht voor je accountant of voor jezelf — inclusief tips voor aftrekposten.',
-          'A complete year-end overview for your accountant — or for yourself — including tips for deductions.',
+          'Een compleet jaarrapport met tips voor aftrekposten — werk dat een accountant je honderden euro\'s per jaar kost. Je abonnement is meteen terugverdiend.',
+          'A complete annual report with deduction tips — work an accountant would charge you hundreds for. Your subscription pays for itself many times over.',
         ),
       },
       {
@@ -887,8 +887,97 @@ For questions about these terms: info@bigdogg.nl''';
                           ))
                       .toList(),
                 ),
+          const SizedBox(height: 24),
+          _afschrijvingenHighlight(isWide),
         ],
       ),
+    );
+  }
+
+  Widget _afschrijvingenHighlight(bool isWide) {
+    final title = t('Investeringen & afschrijvingen',
+        'Investments & depreciation');
+    final body = t(
+      'Veel ZZP\'ers slaan afschrijvingen over — te ingewikkeld. BigDogg doet het automatisch zodra je een investering invoert. Honderden euro\'s belastingvoordeel die anders blijven liggen.',
+      'Many freelancers skip depreciation — too complicated. BigDogg does it automatically the moment you log an investment. Hundreds in tax savings that would otherwise be left on the table.',
+    );
+
+    return Container(
+      padding: EdgeInsets.all(isWide ? 32 : 22),
+      decoration: BoxDecoration(
+        color: BigDoggTheme.teal800,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: isWide
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: BigDoggTheme.gold500,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.trending_up_rounded,
+                      color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        body,
+                        style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            height: 1.55),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: BigDoggTheme.gold500,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.trending_up_rounded,
+                      color: Colors.white, size: 22),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  body,
+                  style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      height: 1.55),
+                ),
+              ],
+            ),
     );
   }
 
