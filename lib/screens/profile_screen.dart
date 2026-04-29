@@ -3,8 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import '../services/web_io.dart';
 import '../services/profile_service.dart';
 import '../services/invoices_service.dart';
 import '../providers/app_provider.dart';
@@ -64,7 +63,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool _isMobile() {
     if (!kIsWeb) return true;
-    final ua = html.window.navigator.userAgent.toLowerCase();
+    final ua = getUserAgent().toLowerCase();
     return ua.contains('mobile') ||
         ua.contains('android') ||
         ua.contains('iphone') ||
@@ -128,36 +127,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickAndUploadLogo(bool isNl) async {
-    final completer = Completer<void>();
-    final input = html.FileUploadInputElement();
-    input.accept = 'image/png,image/jpeg,image/jpg,image/webp';
-    input.click();
-    input.onChange.listen((event) async {
-      final files = input.files;
-      if (files != null && files.isNotEmpty) {
-        final file = files[0];
-        final reader = html.FileReader();
-        reader.readAsArrayBuffer(file);
-        await reader.onLoad.first;
-        final bytes = Uint8List.fromList(reader.result as List<int>);
-        setState(() => _uploadingLogo = true);
-        final result = await ProfileService.uploadLogo(
-          bytes: bytes,
-          fileName: file.name,
-        );
-        setState(() {
-          _uploadingLogo = false;
-          if (result['success']) {
-            _logoUrl = result['logo_url'];
-            _success = isNl ? 'Logo opgeslagen' : 'Logo saved';
-          } else {
-            _error = result['message'];
-          }
-        });
+    final picked = await pickFiles(
+      accept: 'image/png,image/jpeg,image/jpg,image/webp',
+    );
+    if (picked == null || picked.isEmpty) return;
+    final file = picked.first;
+    setState(() => _uploadingLogo = true);
+    final result = await ProfileService.uploadLogo(
+      bytes: file.bytes,
+      fileName: file.name,
+    );
+    setState(() {
+      _uploadingLogo = false;
+      if (result['success']) {
+        _logoUrl = result['logo_url'];
+        _success = isNl ? 'Logo opgeslagen' : 'Logo saved';
+      } else {
+        _error = result['message'];
       }
-      completer.complete();
     });
-    await completer.future;
   }
 
   Future<void> _saveProfile(bool isNl) async {
@@ -189,46 +177,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _pickFiles(bool isNl,
       {bool camera = false, required bool forExpenses}) async {
-    if (kIsWeb) {
-      final completer = Completer<void>();
-      final input = html.FileUploadInputElement();
-      if (camera) {
-        input.accept = 'image/*';
-        input.setAttribute('capture', 'environment');
+    if (!kIsWeb) return;
+    final picked = await pickFiles(
+      camera: camera,
+      accept: camera
+          ? 'image/*'
+          : 'application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.webp,.heic',
+      multiple: true,
+    );
+    if (picked == null || picked.isEmpty) return;
+    final names = picked.map((p) => p.name).toList();
+    final bytes = picked.map((p) => p.bytes).toList();
+    setState(() {
+      if (forExpenses) {
+        _expenseFilesBytes = bytes;
+        _expenseFileNames = names;
+        _expenseImportResult = null;
       } else {
-        input.accept =
-            'application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.webp,.heic';
+        _invoiceFilesBytes = bytes;
+        _invoiceFileNames = names;
+        _invoiceImportResult = null;
       }
-      input.multiple = true;
-      input.click();
-      input.onChange.listen((event) async {
-        final files = input.files;
-        if (files != null && files.isNotEmpty) {
-          final names = <String>[];
-          final bytes = <Uint8List>[];
-          for (final file in files) {
-            final reader = html.FileReader();
-            reader.readAsArrayBuffer(file);
-            await reader.onLoad.first;
-            bytes.add(Uint8List.fromList(reader.result as List<int>));
-            names.add(file.name);
-          }
-          setState(() {
-            if (forExpenses) {
-              _expenseFilesBytes = bytes;
-              _expenseFileNames = names;
-              _expenseImportResult = null;
-            } else {
-              _invoiceFilesBytes = bytes;
-              _invoiceFileNames = names;
-              _invoiceImportResult = null;
-            }
-          });
-        }
-        completer.complete();
-      });
-      await completer.future;
-    }
+    });
   }
 
   Future<void> _runInvoiceImport(bool isNl) async {

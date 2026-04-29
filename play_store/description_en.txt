@@ -1,0 +1,38 @@
+BigDogg — accounting for Dutch freelancers. Simple. Smart. Fairly priced.
+
+No Excel. No accountant. No hassle. BigDogg is the all-in-one admin tool you handle in a few minutes a week — for €9.99 per month.
+
+WHY BIGDOGG?
+• Save half on your accounting tool — while getting more features than Moneybird (€17/mo) or Exact (€39+/mo).
+• AI does the heavy lifting: prompt-to-invoice, automatic VAT calculations, smart tax tips.
+• No hidden fees, no surprises, cancel anytime.
+
+KEY FEATURES
+• Prompt-to-invoice — type "5 days coaching for ToraTora", get a finished VAT-compliant invoice.
+• Client management — add clients manually or send an invite link so they fill in their own details.
+• Stripe Connect — let clients pay with iDEAL or card directly from the invoice or via QR code. Payments are auto-marked as received.
+• Expense management — photograph your receipt, BigDogg recognises amount, VAT and category via AI.
+• Investments & depreciation — log easily and see annual depreciation in your reports.
+• Quarterly VAT report — one click, complete PDF, ready for the Belastingdienst.
+• Annual report with AI tax tips — BigDogg finds deductions you missed.
+• Hours tracker — log your hours toward the 1,225-hour criterion (self-employed deduction).
+• Historical import — drag old PDF invoices in, AI organises your history and builds an annual report instantly.
+• Bilingual — toggle between Dutch and English instantly. Perfect for expats and international clients.
+
+SECURE & PRIVACY-FRIENDLY
+• All data hosted in the EU (Frankfurt) on Supabase — GDPR compliant.
+• No third-party tracking cookies.
+• We never sell your data.
+
+PRICING
+• €9.99 per month — everything included.
+• 30-day free trial, no credit card required.
+• Cancel anytime via Settings.
+
+WHO IS IT FOR?
+BigDogg is built for Dutch freelancers, ZZP'ers and sole proprietors who have had enough of bloated, expensive accounting tools. Whether you're a coach, consultant, developer, designer, photographer or trainer — BigDogg keeps your admin simple.
+
+PLEASE NOTE
+BigDogg supports you with your administration, but as an entrepreneur you remain responsible for filing your tax returns. We recommend regularly downloading backups of your invoices and reports.
+
+Questions? Email info@bigdogg.nl

@@ -1,0 +1,1 @@
+Eerste release van BigDogg! Maak professionele facturen met AI, beheer je uitgaven en BTW-aangifte met één klik. Importeer oude facturen als PDF en bouw direct een jaarrapport. iDEAL-betalingen via Stripe. Volledig tweetalig (NL/EN). 30 dagen gratis proberen — geen creditcard nodig.

@@ -1,4 +1,4 @@
-package nl.bigdogg.bigdogg_app
+package nl.bigdogg.app
 
 import io.flutter.embedding.android.FlutterActivity
 

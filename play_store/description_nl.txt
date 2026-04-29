@@ -1,0 +1,38 @@
+BigDogg — boekhouden voor Nederlandse ZZP'ers. Simpel. Slim. Eerlijk geprijsd.
+
+Geen Excel. Geen accountant. Geen gedoe. BigDogg is de complete administratie-tool die je in een paar minuten per week regelt — voor €9,99 per maand.
+
+WAAROM BIGDOGG?
+• Bespaar de helft op je boekhoudtool — terwijl je meer functies krijgt dan Moneybird (€17/mnd) of Exact (€39+/mnd).
+• AI doet het zware werk: prompt-to-factuur, automatische BTW-berekening, slimme belastingtips.
+• Geen verborgen kosten, geen verrassingen, altijd opzegbaar.
+
+KERNFUNCTIES
+• Prompt-to-factuur — typ "5 dagen coaching voor ToraTora", krijg een complete BTW-conforme factuur.
+• Klantenbeheer — voeg klanten handmatig toe of stuur een uitnodigingslink zodat ze zelf hun gegevens invullen.
+• Stripe Connect — laat klanten betalen met iDEAL of creditcard direct vanaf de factuur of via QR-code. Betalingen worden automatisch gemarkeerd.
+• Uitgavenbeheer — fotografeer je bon, BigDogg herkent bedrag, BTW en categorie via AI.
+• Investeringen & afschrijvingen — registreer eenvoudig en zie de jaarlijkse afschrijving terug in je rapporten.
+• Kwartaal BTW-rapport — eén klik, complete PDF, klaar voor de Belastingdienst.
+• Jaarrapport met AI-belastingtips — BigDogg vindt aftrekposten die je over het hoofd zag.
+• Urenregistratie — houd je uren bij voor het urencriterium van 1.225 uur (zelfstandigenaftrek).
+• Historische import — sleep oude facturen als PDF erin, AI organiseert je geschiedenis en bouwt direct een jaarrapport.
+• Tweetalig — schakel direct tussen Nederlands en Engels. Ideaal voor expats en internationale klanten.
+
+VEILIG & PRIVACY-VRIENDELIJK
+• Alle data gehost in de EU (Frankfurt) op Supabase — AVG-conform.
+• Geen tracking-cookies van derden.
+• We verkopen je data nooit aan derden.
+
+PRIJS
+• €9,99 per maand — alles inbegrepen.
+• 30 dagen gratis proberen, geen creditcard vereist.
+• Altijd opzegbaar via Instellingen.
+
+VOOR WIE?
+BigDogg is gebouwd voor Nederlandse ZZP'ers, freelancers en eenmanszaken die genoeg hebben van logge, dure boekhoudtools. Of je nu coach, consultant, ontwikkelaar, ontwerper, fotograaf of trainer bent — BigDogg houdt je administratie simpel.
+
+LET OP
+BigDogg ondersteunt jou bij je administratie, maar je blijft als ondernemer zelf verantwoordelijk voor je belastingaangiften. We raden je aan regelmatig back-ups te downloaden van je facturen en rapporten.
+
+Vragen? Stuur een e-mail naar info@bigdogg.nl

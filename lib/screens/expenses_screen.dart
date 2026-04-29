@@ -8,8 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import '../services/web_io.dart';
 import '../services/expenses_service.dart';
 import '../services/api_config.dart';
 import '../providers/app_provider.dart';
@@ -40,7 +39,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
 
   bool _isMobile() {
     if (!kIsWeb) return true;
-    final ua = html.window.navigator.userAgent.toLowerCase();
+    final ua = getUserAgent().toLowerCase();
     return ua.contains('mobile') || ua.contains('android') ||
         ua.contains('iphone') || ua.contains('ipad');
   }
@@ -120,27 +119,16 @@ class _ExpensesScreenState extends State<ExpensesScreen>
     String? fileName;
 
     if (kIsWeb) {
-      final completer = Completer<void>();
-      final input = html.FileUploadInputElement();
-      if (camera) {
-        input.accept = 'image/*';
-        input.setAttribute('capture', 'environment');
-      } else {
-        input.accept = 'image/*,application/pdf,.pdf,.heic,.heif,*/*';
+      final picked = await pickFiles(
+        camera: camera,
+        accept: camera
+            ? 'image/*'
+            : 'image/*,application/pdf,.pdf,.heic,.heif,*/*',
+      );
+      if (picked != null && picked.isNotEmpty) {
+        bytes = picked.first.bytes;
+        fileName = picked.first.name;
       }
-      input.click();
-      input.onChange.listen((event) async {
-        final file = input.files?.first;
-        if (file != null) {
-          final reader = html.FileReader();
-          reader.readAsArrayBuffer(file);
-          await reader.onLoad.first;
-          bytes = Uint8List.fromList(reader.result as List<int>);
-          fileName = file.name;
-        }
-        completer.complete();
-      });
-      await completer.future;
     } else {
       final picker = ImagePicker();
       final picked = await picker.pickImage(

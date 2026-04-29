@@ -1,0 +1,1 @@
+First release of BigDogg! Create professional invoices with AI, manage expenses and VAT reports with one click. Import old invoices as PDFs and build an annual report instantly. iDEAL payments via Stripe. Fully bilingual (NL/EN). 30-day free trial — no credit card required.
