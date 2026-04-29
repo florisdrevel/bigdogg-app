@@ -69,9 +69,19 @@ class ReferralService {
           'code': data['code'],
           'signups': data['signups'] ?? 0,
           'converted': data['converted'] ?? 0,
+          'bonus_months_earned': data['bonus_months_earned'] ?? 0,
+          'bonus_months_max': data['bonus_months_max'] ?? 3,
+          'bonus_active_until': data['bonus_active_until'],
         };
       }
     } catch (_) {}
-    return {'code': null, 'signups': 0, 'converted': 0};
+    return {
+      'code': null,
+      'signups': 0,
+      'converted': 0,
+      'bonus_months_earned': 0,
+      'bonus_months_max': 3,
+      'bonus_active_until': null,
+    };
   }
 }

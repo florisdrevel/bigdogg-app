@@ -817,7 +817,10 @@ For questions: info@bigdogg.nl''';
     final code = _referralStats?['code'] as String?;
     final hasCode = code != null;
     final signups = (_referralStats?['signups'] as int?) ?? 0;
-    final converted = (_referralStats?['converted'] as int?) ?? 0;
+    final bonusEarned = (_referralStats?['bonus_months_earned'] as int?) ?? 0;
+    final bonusMax = (_referralStats?['bonus_months_max'] as int?) ?? 3;
+    // 6 successful signups = max bonus (3 months); next bonus needs 2 more
+    final nextThreshold = (bonusEarned >= bonusMax) ? null : ((bonusEarned + 1) * 2);
     final link = hasCode ? 'https://bigdogg.nl/#/register?ref=$code' : null;
 
     return Container(
@@ -857,8 +860,8 @@ For questions: info@bigdogg.nl''';
           const SizedBox(height: 8),
           Text(
             isNl
-                ? 'Stuur een vriend. Zij krijgen 30 dagen gratis. Jij ook.'
-                : 'Send a friend. They get 30 days free. So do you.',
+                ? '2 vrienden aangemeld = 1 maand BigDogg Pro gratis. Tot maximaal 3 maanden.'
+                : '2 friends signed up = 1 free month of BigDogg Pro. Up to 3 months total.',
             style: const TextStyle(
               color: Colors.white70,
               fontSize: 13,
@@ -923,12 +926,37 @@ For questions: info@bigdogg.nl''';
                 const SizedBox(width: 12),
                 Expanded(
                     child: _referralStat(
-                  value: converted.toString(),
-                  label: isNl ? 'Actief abonnement' : 'Paid subscription',
+                  value: '$bonusEarned / $bonusMax',
+                  label: isNl ? 'Gratis maanden' : 'Free months',
                   gold: true,
                 )),
               ],
             ),
+            if (nextThreshold != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                isNl
+                    ? 'Nog ${nextThreshold - signups} aanmelding${(nextThreshold - signups) == 1 ? "" : "en"} tot je volgende gratis maand.'
+                    : '${nextThreshold - signups} more signup${(nextThreshold - signups) == 1 ? "" : "s"} until your next free month.',
+                style: const TextStyle(
+                  color: BigDoggTheme.gold400,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 10),
+              Text(
+                isNl
+                    ? 'Maximum bereikt — bedankt voor het delen!'
+                    : 'Maximum reached — thanks for sharing!',
+                style: const TextStyle(
+                  color: BigDoggTheme.gold400,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ] else ...[
             // No code yet — single big actionable button
             SizedBox(
