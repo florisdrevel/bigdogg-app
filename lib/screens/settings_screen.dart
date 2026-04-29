@@ -61,10 +61,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _generateReferralLink(bool isNl) async {
     setState(() => _loadingReferral = true);
-    final code = await ReferralService.generateCode();
+    final result = await ReferralService.generateCode();
     if (!mounted) return;
-    if (code != null) {
-      // Refresh stats too so the counts come along
+    if (result.ok) {
+      final code = result.code!;
       final stats = await ReferralService.getStats();
       if (!mounted) return;
       setState(() {
@@ -73,7 +73,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             : {..._referralStats ?? const {}, 'code': code};
         _loadingReferral = false;
       });
-      // Also copy straight to clipboard so the click feels productive
       final link = 'https://bigdogg.nl/#/register?ref=$code';
       await Clipboard.setData(ClipboardData(text: link));
       if (!mounted) return;
@@ -86,13 +85,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ));
     } else {
       setState(() => _loadingReferral = false);
+      final detail = result.error ?? 'Unknown error';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(isNl
-            ? 'Kon je link niet aanmaken. Probeer het later opnieuw.'
-            : 'Couldn\'t create your link. Please try again later.'),
-        duration: const Duration(seconds: 4),
+            ? 'Kon link niet aanmaken: $detail'
+            : 'Could not create link: $detail'),
+        duration: const Duration(seconds: 8),
         backgroundColor: BigDoggTheme.error,
       ));
+      // Also dump to console so the browser devtools shows it
+      // ignore: avoid_print
+      print('[referral] generate failed: $detail');
     }
   }
 
