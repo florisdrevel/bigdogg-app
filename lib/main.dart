@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -45,7 +46,20 @@ final _router = GoRouter(
   routes: [
     GoRoute(path: '/', builder: (context, state) => const LandingScreen()),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-    GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
+    GoRoute(
+      path: '/register',
+      builder: (context, state) {
+        // Capture ?ref=XXXXX so it survives the email-confirm round trip.
+        final ref = state.uri.queryParameters['ref'];
+        if (ref != null && ref.trim().isNotEmpty) {
+          // Fire-and-forget; don't block the route build on disk IO.
+          SharedPreferences.getInstance().then((prefs) {
+            prefs.setString('pending_referral_code', ref.trim());
+          });
+        }
+        return const RegisterScreen();
+      },
+    ),
     GoRoute(path: '/dashboard', builder: (context, state) => const DashboardScreen()),
     GoRoute(path: '/reset-password', builder: (context, state) => const ResetPasswordScreen()),
     GoRoute(

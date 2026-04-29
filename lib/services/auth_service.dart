@@ -17,17 +17,27 @@ class AuthService {
     String fullName,
   ) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final ref = prefs.getString('pending_referral_code');
+
+      final body = <String, dynamic>{
+        'email': email,
+        'password': password,
+        'full_name': fullName,
+      };
+      if (ref != null && ref.trim().isNotEmpty) {
+        body['ref'] = ref.trim();
+      }
+
       final response = await http.post(
         Uri.parse('$baseUrl/api/v1/auth/register'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-          'full_name': fullName,
-        }),
+        body: jsonEncode(body),
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
+        // Clear the pending referral code so it isn't reused next signup
+        await prefs.remove('pending_referral_code');
         return {'success': true, 'data': data};
       }
       return {'success': false, 'message': data['detail'] ?? 'Registration failed'};

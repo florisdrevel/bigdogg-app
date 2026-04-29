@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/subscription_service.dart';
 import '../services/auth_service.dart';
+import '../services/referral_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/payments_service.dart';
@@ -35,11 +37,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _passwordError;
   String? _passwordSuccess;
 
+  // Referral state
+  Map<String, dynamic>? _referralStats;
+  bool _loadingReferral = true;
+
   @override
   void initState() {
     super.initState();
     _loadStatus();
     _loadStripeStatus();
+    _loadReferralStats();
+  }
+
+  Future<void> _loadReferralStats() async {
+    setState(() => _loadingReferral = true);
+    final stats = await ReferralService.getStats();
+    if (!mounted) return;
+    if (stats['code'] == null) {
+      // No code yet — generate one so the user always has a link to share
+      final code = await ReferralService.generateCode();
+      if (code != null) {
+        stats['code'] = code;
+      }
+    }
+    setState(() {
+      _referralStats = stats;
+      _loadingReferral = false;
+    });
+  }
+
+  Future<void> _copyReferralLink(bool isNl) async {
+    final code = _referralStats?['code'] as String?;
+    if (code == null) return;
+    final link = 'https://bigdogg.nl/#/register?ref=$code';
+    await Clipboard.setData(ClipboardData(text: link));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(isNl ? 'Link gekopieerd!' : 'Link copied!'),
+      duration: const Duration(seconds: 2),
+      backgroundColor: BigDoggTheme.success,
+    ));
   }
 
   @override
@@ -664,6 +701,11 @@ For questions: info@bigdogg.nl''';
 
           const SizedBox(height: 16),
 
+          // ── 5a. INVITE A FRIEND ───────────────────────────────────
+          _buildReferralSection(isNl),
+
+          const SizedBox(height: 16),
+
           // ── 5. RESTART WALKTHROUGH ────────────────────────────────
           Container(
             decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
@@ -733,4 +775,163 @@ For questions: info@bigdogg.nl''';
     padding: const EdgeInsets.only(bottom: 8),
     child: Text(text, style: const TextStyle(fontSize: 14, color: BigDoggTheme.lightTextPrimary)),
   );
+
+  Widget _buildReferralSection(bool isNl) {
+    final code = _referralStats?['code'] as String?;
+    final signups = (_referralStats?['signups'] as int?) ?? 0;
+    final converted = (_referralStats?['converted'] as int?) ?? 0;
+    final link = code != null
+        ? 'https://bigdogg.nl/#/register?ref=$code'
+        : (isNl ? 'Genereren…' : 'Generating…');
+
+    return Container(
+      decoration: BoxDecoration(
+        color: BigDoggTheme.teal800,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: BigDoggTheme.gold500,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.card_giftcard_rounded,
+                    color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isNl ? 'Nodig een vriend uit' : 'Invite a friend',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: Colors.white,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isNl
+                ? 'Stuur een vriend. Zij krijgen 30 dagen gratis. Jij ook.'
+                : 'Send a friend. They get 30 days free. So do you.',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Link box + copy button
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withOpacity(0.18)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    link,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: (_loadingReferral || code == null)
+                      ? null
+                      : () => _copyReferralLink(isNl),
+                  icon: const Icon(Icons.copy_rounded, size: 14),
+                  label: Text(isNl ? 'Kopieer' : 'Copy',
+                      style: const TextStyle(fontSize: 12.5)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: BigDoggTheme.gold500,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6)),
+                    elevation: 0,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _referralStat(
+                value: signups.toString(),
+                label: isNl ? 'Vrienden aangemeld' : 'Friends signed up',
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: _referralStat(
+                value: converted.toString(),
+                label: isNl ? 'Actief abonnement' : 'Paid subscription',
+                gold: true,
+              )),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _referralStat({
+    required String value,
+    required String label,
+    bool gold = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: gold ? BigDoggTheme.gold400 : Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white60,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
