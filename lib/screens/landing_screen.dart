@@ -1417,13 +1417,16 @@ For questions about these terms: info@bigdogg.nl''';
   // ─── Support callout ─────────────────────────────────────
   Widget _buildSupportCallout(bool isWide) {
     return Container(
+      width: double.infinity,
       padding: EdgeInsets.symmetric(
           horizontal: isWide ? 64 : 20,
           vertical: isWide ? 32 : 24),
       color: BigDoggTheme.lightBg,
-      child: Center(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 760),
+          width: double.infinity,
           padding: EdgeInsets.all(isWide ? 36 : 24),
           decoration: BoxDecoration(
             color: BigDoggTheme.teal800,
