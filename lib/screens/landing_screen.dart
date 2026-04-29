@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../theme.dart';
-import '../services/support_service.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -182,42 +180,8 @@ For questions about these terms: info@bigdogg.nl''';
             _buildProblemSolution(isWide),
             _buildFeatures(isWide),
             _buildComparison(isWide),
-            // TEMP DEBUG PROBE — remove after diagnosing the page-cut bug
-            Container(
-              width: double.infinity,
-              height: 60,
-              color: const Color(0xFFFF0000),
-              alignment: Alignment.center,
-              child: const Text('PROBE A: after comparison',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
-            _buildSupportCallout(isWide),
-            Container(
-              width: double.infinity,
-              height: 60,
-              color: const Color(0xFFFF8800),
-              alignment: Alignment.center,
-              child: const Text('PROBE B: after support',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
             _buildPricing(isWide),
-            Container(
-              width: double.infinity,
-              height: 60,
-              color: const Color(0xFF00AA00),
-              alignment: Alignment.center,
-              child: const Text('PROBE C: after pricing',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
             _buildFinalCta(isWide),
-            Container(
-              width: double.infinity,
-              height: 60,
-              color: const Color(0xFF0066FF),
-              alignment: Alignment.center,
-              child: const Text('PROBE D: after final CTA',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
             _buildFooter(isWide),
           ],
         ),
@@ -1077,95 +1041,37 @@ For questions about these terms: info@bigdogg.nl''';
     );
   }
 
-  // ─── Comparison + alleen-bij-BigDogg cards ──────────────
+  // ─── Comparison ───────────────────────────────────────────
   Widget _buildComparison(bool isWide) {
-    const double tableWidth = 760;
-    const double labelWidth = 240;
-    const double brandWidth = 104;
+    final hPad = isWide ? 20.0 : 10.0;
+    final brandFont = isWide ? 12.0 : 11.0;
+    final rowFont = isWide ? 13.0 : 12.0;
+    final markFont = isWide ? 16.0 : 15.0;
 
-    // Each row: [label, BigDogg, Moneybird, Exact, Tellow, Bunni]
-    final rows = <List<String>>[
-      [
-        t('Prijs / maand', 'Price / month'),
-        '€9,99', '€14+', '€49+', '€8–15', '€9,95',
-      ],
-      [
-        t('Gratis proberen', 'Free trial'),
-        t('30 dagen', '30 days'),
-        t('60 dagen*', '60 days*'),
-        t('30 dagen', '30 days'),
-        t('Beperkt', 'Limited'),
-        t('30 dagen', '30 days'),
-      ],
-      [
-        t('AI facturen genereren', 'AI invoice generation'),
-        '✅', '❌', '❌', '❌', '❌',
-      ],
-      [
-        t('AI jaarrapport + belastingtips',
-            'AI annual report + tax tips'),
-        '✅', '❌', '❌', '❌', '❌',
-      ],
-      [
-        t('Betaallink op factuur', 'Payment link on invoice'),
-        '✅', '❌', '❌', '❌', '❌',
-      ],
-      [
-        t('QR-code betaling', 'QR-code payment'),
-        '✅', '❌', '❌', '❌', '❌',
-      ],
-      [
-        t('Urencriterium tracker', 'Hours-criterion tracker'),
-        '✅',
-        t('Basis', 'Basic'),
-        '❌', '❌', '✅',
-      ],
-      [
-        t('Historische import via AI', 'Historical AI import'),
-        '✅', '❌', '❌', '❌', '❌',
-      ],
-      [
-        t('Klant self-onboarding', 'Client self-onboarding'),
-        '✅', '❌', '❌', '❌', '❌',
-      ],
-      [
-        t('Geschikt voor gewone ZZP\'er',
-            'Right for everyday freelancers'),
-        '✅', '⚠️', '❌', '✅', '✅',
-      ],
-      [
-        t('Klantenservice', 'Support'),
-        t('👤 Mens + videogesprek', '👤 Human + video call'),
-        t('📧 E-mail (traag)', '📧 Email (slow)'),
-        '📧 E-mail',
-        '📧 E-mail',
-        '📧 E-mail',
-      ],
-    ];
-
-    Widget brandHeaderCell(String name, {bool highlight = false}) {
+    Widget brandHeader(String label, {bool highlight = false}) {
       final inner = Text(
-        name,
+        label,
         style: TextStyle(
-          color: highlight ? Colors.white : Colors.white70,
-          fontSize: 12,
+          color: highlight ? Colors.white : Colors.white60,
+          fontSize: brandFont,
           fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
         ),
         textAlign: TextAlign.center,
       );
       if (!highlight) {
-        return SizedBox(
-          width: brandWidth,
-          child: Center(
-            child: FittedBox(fit: BoxFit.scaleDown, child: inner),
+        return Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: inner,
           ),
         );
       }
-      return SizedBox(
-        width: brandWidth,
+      return Expanded(
         child: Center(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: EdgeInsets.symmetric(
+                horizontal: isWide ? 8 : 6, vertical: 3),
             decoration: BoxDecoration(
               color: BigDoggTheme.gold500,
               borderRadius: BorderRadius.circular(6),
@@ -1176,61 +1082,138 @@ For questions about these terms: info@bigdogg.nl''';
       );
     }
 
-    Widget valueCell(String s, {required bool isBigDogg}) {
-      final isEmoji = s == '✅' || s == '❌' || s == '⚠️';
-      Color color = BigDoggTheme.lightTextPrimary;
-      if (isBigDogg && s.startsWith('€')) {
-        color = BigDoggTheme.teal800;
-      }
-      return SizedBox(
-        width: brandWidth,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              s,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: isEmoji ? 18 : 12,
-                color: color,
-                fontWeight: isBigDogg && s.startsWith('€')
-                    ? FontWeight.w800
-                    : FontWeight.w500,
-                height: 1.3,
-              ),
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: isWide ? 64 : 16, vertical: 64),
+      child: Column(
+        children: [
+          Text(
+            t('BigDogg vs Moneybird vs Exact Online',
+                'BigDogg vs Moneybird vs Exact Online'),
+            style: TextStyle(
+                fontSize: isWide ? 30 : 22,
+                fontWeight: FontWeight.w800,
+                color: BigDoggTheme.teal800,
+                letterSpacing: -0.5),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            t('Dezelfde dingen, voor een eerlijkere prijs.',
+                'The same things, at a fairer price.'),
+            style: const TextStyle(
+                fontSize: 15,
+                color: BigDoggTheme.lightTextSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 40),
+          Container(
+            constraints: const BoxConstraints(maxWidth: 720),
+            decoration: BoxDecoration(
+              color: BigDoggTheme.lightSurface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: BigDoggTheme.lightBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
+            child: Column(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: hPad, vertical: 14),
+                  decoration: const BoxDecoration(
+                    color: BigDoggTheme.teal800,
+                    borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(15)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          '',
+                          style: TextStyle(
+                              color: Colors.white60,
+                              fontSize: brandFont),
+                        ),
+                      ),
+                      brandHeader('Moneybird'),
+                      brandHeader('Exact'),
+                      brandHeader('BigDogg', highlight: true),
+                    ],
+                  ),
+                ),
+                ..._comparisonRows(
+                    hPad: hPad, rowFont: rowFont, markFont: markFont),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _comparisonRows({
+    required double hPad,
+    required double rowFont,
+    required double markFont,
+  }) {
+    // Each row: [label, moneybird, exact, bigdogg]
+    final rows = <List<String>>[
+      [t('Prijs / maand', 'Price / month'), '€17+', '€40+', '€9,99'],
+      [
+        t('Gratis proefperiode', 'Free trial'),
+        t('60 dagen', '60 days'),
+        t('30 dagen', '30 days'),
+        t('30 dagen', '30 days'),
+      ],
+      [t('AI facturen genereren', 'AI invoice generation'), '✗', '✗', '✓'],
+      [t('BTW aangifte PDF', 'VAT report PDF'), '✓', '✓', '✓'],
+      [t('Jaarrapport', 'Annual report'), '✓', '✓', '✓'],
+      [t('Betaallinks op facturen', 'Payment links on invoices'), '✓', '✓', '✓'],
+      [t('Eenvoud', 'Simplicity'), '★★', '★', '★★★'],
+    ];
+
+    Widget cell(String s) {
+      Color color;
+      if (s == '✓') {
+        color = BigDoggTheme.success;
+      } else if (s == '✗') {
+        color = BigDoggTheme.error;
+      } else if (s.startsWith('★')) {
+        color = BigDoggTheme.gold500;
+      } else if (s.startsWith('€')) {
+        color = BigDoggTheme.teal800;
+      } else {
+        color = BigDoggTheme.lightTextPrimary;
+      }
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: Text(
+          s,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontSize: (s == '✓' || s == '✗' || s.startsWith('★'))
+                ? markFont
+                : rowFont,
           ),
         ),
       );
     }
 
-    final headerRow = Container(
-      width: tableWidth,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: const BoxDecoration(
-        color: BigDoggTheme.teal800,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(width: labelWidth),
-          brandHeaderCell('BigDogg', highlight: true),
-          brandHeaderCell('Moneybird'),
-          brandHeaderCell('Exact'),
-          brandHeaderCell('Tellow'),
-          brandHeaderCell('Bunni'),
-        ],
-      ),
-    );
-
-    final dataRows = rows.asMap().entries.map((entry) {
+    return rows.asMap().entries.map((entry) {
       final i = entry.key;
       final row = entry.value;
       final isLast = i == rows.length - 1;
       return Container(
-        width: tableWidth,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 12),
         decoration: BoxDecoration(
           color: i.isEven
               ? BigDoggTheme.lightBg.withOpacity(0.5)
@@ -1243,348 +1226,22 @@ For questions about these terms: info@bigdogg.nl''';
               : null,
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(
-              width: labelWidth,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Text(
-                  row[0],
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                    color: BigDoggTheme.lightTextPrimary,
-                    height: 1.4,
-                  ),
-                ),
-              ),
+            Expanded(
+              flex: 3,
+              child: Text(row[0],
+                  style: TextStyle(
+                      fontSize: rowFont,
+                      fontWeight: FontWeight.w500,
+                      color: BigDoggTheme.lightTextPrimary)),
             ),
-            valueCell(row[1], isBigDogg: true),
-            valueCell(row[2], isBigDogg: false),
-            valueCell(row[3], isBigDogg: false),
-            valueCell(row[4], isBigDogg: false),
-            valueCell(row[5], isBigDogg: false),
+            Expanded(child: cell(row[1])),
+            Expanded(child: cell(row[2])),
+            Expanded(child: cell(row[3])),
           ],
         ),
       );
     }).toList();
-
-    final table = Container(
-      width: tableWidth,
-      decoration: BoxDecoration(
-        color: BigDoggTheme.lightSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: BigDoggTheme.lightBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(children: [headerRow, ...dataRows]),
-    );
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isWide ? 64 : 16, vertical: 64),
-      child: Column(
-        children: [
-          Text(
-            t('Waarom ZZP\'ers kiezen voor BigDogg',
-                'Why freelancers choose BigDogg'),
-            style: TextStyle(
-                fontSize: isWide ? 30 : 24,
-                fontWeight: FontWeight.w800,
-                color: BigDoggTheme.teal800,
-                letterSpacing: -0.5),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            t(
-              'Wij zeggen niet dat anderen slecht zijn. Maar dit zijn wel de feiten.',
-              'We\'re not saying the others are bad. These are just the facts.',
-            ),
-            style: const TextStyle(
-                fontSize: 15,
-                color: BigDoggTheme.lightTextSecondary),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-          isWide
-              ? Center(child: table)
-              : SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: table,
-                ),
-          if (!isWide) ...[
-            const SizedBox(height: 8),
-            Text(
-              t('→ Veeg om alle kolommen te zien',
-                  '→ Swipe to see all columns'),
-              style: const TextStyle(
-                  fontSize: 11,
-                  color: BigDoggTheme.lightTextHint,
-                  fontStyle: FontStyle.italic),
-            ),
-          ],
-          const SizedBox(height: 12),
-          Text(
-            t('* Alleen met Moneybird bankrekening',
-                '* Only with a Moneybird bank account'),
-            style: const TextStyle(
-                fontSize: 11,
-                color: BigDoggTheme.lightTextHint,
-                fontStyle: FontStyle.italic),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 48),
-          _buildAlleenBijBigDoggSection(isWide),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAlleenBijBigDoggSection(bool isWide) {
-    final cards = [
-      {
-        'title': t('AI facturering uit één zin',
-            'AI invoicing from one sentence'),
-        'body': t(
-          'Typ in gewoon Nederlands wat je hebt gedaan. BigDogg maakt de factuur compleet — met BTW, klantgegevens en je logo. Geen ander pakket doet dit.',
-          'Type in plain language what you did. BigDogg writes the complete invoice — with VAT, client details and your logo. No other tool does this.',
-        ),
-      },
-      {
-        'title': t('AI jaarrapport met belastingtips',
-            'AI annual report with tax tips'),
-        'body': t(
-          'Aan het eind van het jaar krijg je een compleet rapport mét tips voor aftrekposten op basis van jouw cijfers. Werk dat een accountant honderden euro\'s kost.',
-          'At year-end you get a complete report with deduction tips based on your numbers. Work an accountant would charge you hundreds for.',
-        ),
-      },
-      {
-        'title': t('Historische import via AI', 'Historical import via AI'),
-        'body': t(
-          'Sleep oude facturen van Moneybird of Exact erin. BigDogg leest ze automatisch in en bouwt direct een jaarrapport. Overstappen kost 5 minuten.',
-          'Drop old invoices from Moneybird or Exact in. BigDogg reads them automatically and builds an annual report instantly. Switching takes 5 minutes.',
-        ),
-      },
-    ];
-
-    return isWide
-        ? Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: cards
-                .map((c) => Expanded(child: _alleenBijBigDoggCard(c)))
-                .toList(),
-          )
-        : Column(
-            children: cards
-                .map((c) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _alleenBijBigDoggCard(c),
-                    ))
-                .toList(),
-          );
-  }
-
-  Widget _alleenBijBigDoggCard(Map c) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 6),
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: BigDoggTheme.lightSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: BigDoggTheme.lightBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: BigDoggTheme.gold500,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              t('Alleen bij BigDogg', 'Only at BigDogg'),
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(c['title'] as String,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: BigDoggTheme.teal800,
-                  height: 1.3)),
-          const SizedBox(height: 8),
-          Text(c['body'] as String,
-              style: const TextStyle(
-                  color: BigDoggTheme.lightTextSecondary,
-                  fontSize: 13,
-                  height: 1.55)),
-        ],
-      ),
-    );
-  }
-
-  // ─── Support callout ─────────────────────────────────────
-  Widget _buildSupportCallout(bool isWide) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-          horizontal: isWide ? 64 : 20,
-          vertical: isWide ? 32 : 24),
-      color: BigDoggTheme.lightBg,
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
-        child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(isWide ? 36 : 24),
-          decoration: BoxDecoration(
-            color: BigDoggTheme.teal800,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: BigDoggTheme.teal800.withOpacity(0.25),
-                blurRadius: 30,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: isWide
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _supportAvatar(big: true),
-                    const SizedBox(width: 28),
-                    Expanded(child: _supportTextBlock()),
-                    const SizedBox(width: 24),
-                    _supportButton(),
-                  ],
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _supportAvatar(big: false),
-                    const SizedBox(height: 16),
-                    _supportTextBlock(),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                        width: double.infinity, child: _supportButton()),
-                  ],
-                ),
-        ),
-      ),
-    );
-  }
-
-  Widget _supportAvatar({required bool big}) {
-    final size = big ? 80.0 : 64.0;
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: BigDoggTheme.gold500,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: BigDoggTheme.gold500.withOpacity(0.35),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Icon(Icons.person_rounded,
-          color: Colors.white, size: size * 0.55),
-    );
-  }
-
-  Widget _supportTextBlock() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          t('Vastgelopen? Dan bel ik je gewoon op.',
-              'Stuck? I\'ll just call you.'),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.4,
-            height: 1.2,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          t(
-            'BigDogg is gebouwd met AI, maar de mensen erachter zijn gewoon menselijk. Kom je er niet uit via e-mail? Dan spring ik — de oprichter — zelf op een videogesprek met je om het op te lossen. Geen chatbot, geen ticketsysteem, geen wachtrij. Gewoon een gesprek.',
-            'BigDogg is built with AI, but the people behind it are entirely human. If email doesn\'t solve it, I — the founder — will personally jump on a video call with you to sort it out. No chatbot, no ticket queue, no waiting. Just a conversation.',
-          ),
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 14,
-            height: 1.55,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          t('E-mail support + persoonlijk videogesprek indien nodig',
-              'Email support + personal video call if needed'),
-          style: const TextStyle(
-            color: BigDoggTheme.gold400,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _supportButton() {
-    return ElevatedButton(
-      onPressed: () => _showSupportDialog(context),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: BigDoggTheme.gold500,
-        foregroundColor: Colors.white,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10)),
-        textStyle:
-            const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-        elevation: 0,
-      ),
-      child: Text(t('Stel je vraag', 'Ask a question')),
-    );
-  }
-
-  void _showSupportDialog(BuildContext ctx) {
-    showDialog(
-      context: ctx,
-      builder: (_) => _SupportDialog(isNl: _isNl),
-    );
   }
 
   // ─── Pricing ──────────────────────────────────────────────
@@ -1884,16 +1541,7 @@ For questions about these terms: info@bigdogg.nl''';
                           style: const TextStyle(
                               color: Colors.white60, fontSize: 12)),
                     ),
-                    const SizedBox(width: 4),
-                    TextButton(
-                      onPressed: () => launchUrl(
-                          Uri.parse('https://bigdogg.nl/privacy.html'),
-                          mode: LaunchMode.externalApplication),
-                      child: const Text('Privacy',
-                          style: TextStyle(
-                              color: Colors.white60, fontSize: 12)),
-                    ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 8),
                     TextButton(
                       onPressed: () => context.go('/login'),
                       child: Text(t('Inloggen', 'Sign in'),
@@ -1947,26 +1595,13 @@ For questions about these terms: info@bigdogg.nl''';
                   ],
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton(
-                      onPressed: () => _showTerms(context),
-                      child: Text(
-                          t('Algemene Voorwaarden',
-                              'Terms & Conditions'),
-                          style: const TextStyle(
-                              color: Colors.white60, fontSize: 12)),
-                    ),
-                    TextButton(
-                      onPressed: () => launchUrl(
-                          Uri.parse('https://bigdogg.nl/privacy.html'),
-                          mode: LaunchMode.externalApplication),
-                      child: const Text('Privacy',
-                          style: TextStyle(
-                              color: Colors.white60, fontSize: 12)),
-                    ),
-                  ],
+                TextButton(
+                  onPressed: () => _showTerms(context),
+                  child: Text(
+                      t('Algemene Voorwaarden',
+                          'Terms & Conditions'),
+                      style: const TextStyle(
+                          color: Colors.white60, fontSize: 12)),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1978,335 +1613,6 @@ For questions about these terms: info@bigdogg.nl''';
                 ),
               ],
             ),
-    );
-  }
-}
-
-// ─── Support dialog ───────────────────────────────────────
-class _SupportDialog extends StatefulWidget {
-  final bool isNl;
-  const _SupportDialog({required this.isNl});
-
-  @override
-  State<_SupportDialog> createState() => _SupportDialogState();
-}
-
-class _SupportDialogState extends State<_SupportDialog> {
-  final _name = TextEditingController();
-  final _email = TextEditingController();
-  final _message = TextEditingController();
-  String _preferred = 'email'; // 'email' | 'video'
-  bool _submitting = false;
-  bool _submitted = false;
-  String? _error;
-
-  String t(String nl, String en) => widget.isNl ? nl : en;
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _email.dispose();
-    _message.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    final name = _name.text.trim();
-    final email = _email.text.trim();
-    final msg = _message.text.trim();
-    if (name.isEmpty ||
-        email.isEmpty ||
-        msg.isEmpty ||
-        !email.contains('@')) {
-      setState(() => _error = t(
-          'Vul alle velden in.', 'Please fill in all fields.'));
-      return;
-    }
-    setState(() {
-      _submitting = true;
-      _error = null;
-    });
-    final ok = await SupportService.submit(
-      name: name,
-      email: email,
-      message: msg,
-      preferredContact: _preferred,
-    );
-    if (!mounted) return;
-    setState(() {
-      _submitting = false;
-      if (ok) {
-        _submitted = true;
-      } else {
-        _error = t(
-          'Versturen mislukt. Mail ons op info@bigdogg.nl',
-          'Couldn\'t send. Email us at info@bigdogg.nl',
-        );
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      backgroundColor: BigDoggTheme.lightSurface,
-      insetPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Container(
-        constraints:
-            const BoxConstraints(maxWidth: 480, maxHeight: 680),
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-        child: SingleChildScrollView(
-          child: _submitted ? _buildSuccess() : _buildForm(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSuccess() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: BigDoggTheme.success.withOpacity(0.12),
-            shape: BoxShape.circle,
-          ),
-          alignment: Alignment.center,
-          child: const Icon(Icons.check_rounded,
-              color: BigDoggTheme.success, size: 32),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          t('Bedankt!', 'Thanks!'),
-          style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: BigDoggTheme.teal800,
-              letterSpacing: -0.4),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          t('Ik neem binnen 24 uur contact met je op.',
-              'I\'ll be in touch within 24 hours.'),
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-              fontSize: 14,
-              color: BigDoggTheme.lightTextSecondary,
-              height: 1.5),
-        ),
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: BigDoggTheme.teal800,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-            child: Text(t('Sluiten', 'Close')),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildForm() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                t('Stel je vraag', 'Ask a question'),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: BigDoggTheme.teal800,
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close,
-                  color: BigDoggTheme.lightTextSecondary),
-              onPressed: () => Navigator.of(context).pop(),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          t('Ik kom binnen 24 uur bij je terug.',
-              'I\'ll get back to you within 24 hours.'),
-          style: const TextStyle(
-              fontSize: 13,
-              color: BigDoggTheme.lightTextSecondary),
-        ),
-        const SizedBox(height: 18),
-        _label(t('Naam', 'Name')),
-        const SizedBox(height: 6),
-        TextField(controller: _name, decoration: _decoration()),
-        const SizedBox(height: 14),
-        _label(t('E-mailadres', 'Email address')),
-        const SizedBox(height: 6),
-        TextField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            decoration: _decoration()),
-        const SizedBox(height: 14),
-        _label(t('Je vraag', 'Your question')),
-        const SizedBox(height: 6),
-        TextField(
-            controller: _message, maxLines: 4, decoration: _decoration()),
-        const SizedBox(height: 18),
-        _label(t('Hoe wil je antwoord?',
-            'How would you like a reply?')),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-                child: _prefChip('email', Icons.email_outlined,
-                    t('E-mail', 'Email'))),
-            const SizedBox(width: 8),
-            Expanded(
-                child: _prefChip('video', Icons.videocam_outlined,
-                    t('Videogesprek', 'Video call'))),
-          ],
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: 14),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: BigDoggTheme.error.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.warning_rounded,
-                    color: BigDoggTheme.error, size: 16),
-                const SizedBox(width: 6),
-                Expanded(
-                    child: Text(_error!,
-                        style: const TextStyle(
-                            color: BigDoggTheme.error, fontSize: 12))),
-              ],
-            ),
-          ),
-        ],
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _submitting ? null : _submit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: BigDoggTheme.teal800,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              textStyle: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w700),
-              elevation: 0,
-            ),
-            child: _submitting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2.5, color: Colors.white))
-                : Text(t('Versturen', 'Send')),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _label(String text) => Text(
-        text,
-        style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: BigDoggTheme.teal800,
-            letterSpacing: 0.1),
-      );
-
-  InputDecoration _decoration() => InputDecoration(
-        isDense: true,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: BigDoggTheme.lightBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: BigDoggTheme.lightBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide:
-              const BorderSide(color: BigDoggTheme.teal800, width: 1.5),
-        ),
-      );
-
-  Widget _prefChip(String value, IconData icon, String label) {
-    final selected = _preferred == value;
-    return GestureDetector(
-      onTap: () => setState(() => _preferred = value),
-      child: Container(
-        padding:
-            const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-        decoration: BoxDecoration(
-          color: selected
-              ? BigDoggTheme.teal800
-              : BigDoggTheme.lightSurface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected
-                ? BigDoggTheme.teal800
-                : BigDoggTheme.lightBorder,
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                size: 16,
-                color: selected
-                    ? Colors.white
-                    : BigDoggTheme.lightTextSecondary),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: selected
-                      ? Colors.white
-                      : BigDoggTheme.lightTextPrimary,
-                  fontSize: 13,
-                  fontWeight: selected
-                      ? FontWeight.w600
-                      : FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
