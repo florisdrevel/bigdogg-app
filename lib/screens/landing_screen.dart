@@ -803,7 +803,7 @@ For questions about these terms: info@bigdogg.nl''';
     final features = [
       {
         'icon': Icons.smart_toy_outlined,
-        'title': t('AI facturen', 'AI invoices'),
+        'title': t('AI facturering', 'AI invoicing'),
         'desc': t(
           'Type kort wat je deed en BigDogg maakt de factuur. Met de juiste BTW, klantgegevens en je eigen logo.',
           'Type a short note about what you did and BigDogg writes the invoice — with the right VAT, client details and your own logo.',
@@ -1188,8 +1188,8 @@ For questions about these terms: info@bigdogg.nl''';
           ),
           const SizedBox(height: 8),
           Text(
-            t('Geen verborgen kosten. Geen verrassingen.',
-                'No hidden fees. No surprises.'),
+            t('Eén vaste prijs. Geen verrassingen.',
+                'One flat price. No surprises.'),
             style: const TextStyle(
                 fontSize: 15,
                 color: BigDoggTheme.lightTextSecondary),

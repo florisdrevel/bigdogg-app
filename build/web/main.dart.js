@@ -54781,7 +54781,7 @@ s=A.i(A.bm(l.h(a,"pain")),p,p,p,p,B.a4l,p,p,p)
 r=A.a2(31,B.V.m()>>>16&255,B.V.m()>>>8&255,B.V.m()&255)
 q=A.a5(6)
 return A.a1(p,A.a4(A.b([m,B.di,s,B.EX,A.a1(p,A.i(this.d?"Met BigDogg":"With BigDogg",p,p,p,p,B.a5V,p,p,p),B.h,p,p,new A.a6(r,p,p,q,p,p,B.p),p,p,p,p,B.jF,p,p,p),B.di,A.i(A.bm(l.h(a,"fix")),p,p,p,p,B.a4q,p,p,p)],t.p),B.x,B.e,B.f),B.h,p,p,new A.a6(B.j,p,n,o,p,p,B.p),p,p,p,B.t4,B.M6,p,p,p)},
-afY(a){var s,r,q,p,o,n,m,l,k=this,j=null,i=k.d,h=i?"AI facturen":"AI invoices"
+afY(a){var s,r,q,p,o,n,m,l,k=this,j=null,i=k.d,h=i?"AI facturering":"AI invoicing"
 i=i?"Type kort wat je deed en BigDogg maakt de factuur. Met de juiste BTW, klantgegevens en je eigen logo.":"Type a short note about what you did and BigDogg writes the invoice \u2014 with the right VAT, client details and your own logo."
 s=t.N
 r=t.K
@@ -54840,7 +54840,7 @@ agk(a){var s,r=this,q=null,p=r.d,o=p?"\u2713 Onbeperkt facturen maken":"\u2713 U
 p=a?64:20
 o=r.d?"E\xe9n plan. Alles inbegrepen.":"One plan. Everything included."
 o=A.i(o,q,q,q,q,A.b6(q,q,B.m,q,q,q,q,q,q,q,q,a?30:24,q,q,B.cN,q,q,!0,q,-0.5,q,q,q,q,q,q),B.aB,q,q)
-n=A.i(r.d?"Geen verborgen kosten. Geen verrassingen.":"No hidden fees. No surprises.",q,q,q,q,B.hc,B.aB,q,q)
+n=A.i(r.d?"E\xe9n vaste prijs. Geen verrassingen.":"One flat price. No surprises.",q,q,q,q,B.hc,B.aB,q,q)
 m=A.a5(20)
 l=A.b([new A.bL(0,B.a6,A.a2(89,B.m.m()>>>16&255,B.m.m()>>>8&255,B.m.m()&255),B.zY,40)],t.V)
 k=t.p
