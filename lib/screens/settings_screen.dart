@@ -53,22 +53,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _loadingReferral = true);
     final stats = await ReferralService.getStats();
     if (!mounted) return;
-    if (stats['code'] == null) {
-      // No code yet — generate one so the user always has a link to share
-      final code = await ReferralService.generateCode();
-      if (code != null) {
-        stats['code'] = code;
-      }
-    }
     setState(() {
       _referralStats = stats;
       _loadingReferral = false;
     });
   }
 
+  Future<void> _generateReferralLink(bool isNl) async {
+    setState(() => _loadingReferral = true);
+    final code = await ReferralService.generateCode();
+    if (!mounted) return;
+    if (code != null) {
+      // Refresh stats too so the counts come along
+      final stats = await ReferralService.getStats();
+      if (!mounted) return;
+      setState(() {
+        _referralStats = stats['code'] != null
+            ? stats
+            : {..._referralStats ?? const {}, 'code': code};
+        _loadingReferral = false;
+      });
+      // Also copy straight to clipboard so the click feels productive
+      final link = 'https://bigdogg.nl/#/register?ref=$code';
+      await Clipboard.setData(ClipboardData(text: link));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isNl
+            ? 'Je link is aangemaakt en gekopieerd!'
+            : 'Your link is ready and copied!'),
+        duration: const Duration(seconds: 3),
+        backgroundColor: BigDoggTheme.success,
+      ));
+    } else {
+      setState(() => _loadingReferral = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isNl
+            ? 'Kon je link niet aanmaken. Probeer het later opnieuw.'
+            : 'Couldn\'t create your link. Please try again later.'),
+        duration: const Duration(seconds: 4),
+        backgroundColor: BigDoggTheme.error,
+      ));
+    }
+  }
+
   Future<void> _copyReferralLink(bool isNl) async {
     final code = _referralStats?['code'] as String?;
-    if (code == null) return;
+    // No code yet → generate one (which also copies on success)
+    if (code == null) {
+      await _generateReferralLink(isNl);
+      return;
+    }
     final link = 'https://bigdogg.nl/#/register?ref=$code';
     await Clipboard.setData(ClipboardData(text: link));
     if (!mounted) return;
@@ -778,11 +812,10 @@ For questions: info@bigdogg.nl''';
 
   Widget _buildReferralSection(bool isNl) {
     final code = _referralStats?['code'] as String?;
+    final hasCode = code != null;
     final signups = (_referralStats?['signups'] as int?) ?? 0;
     final converted = (_referralStats?['converted'] as int?) ?? 0;
-    final link = code != null
-        ? 'https://bigdogg.nl/#/register?ref=$code'
-        : (isNl ? 'Genereren…' : 'Generating…');
+    final link = hasCode ? 'https://bigdogg.nl/#/register?ref=$code' : null;
 
     return Container(
       decoration: BoxDecoration(
@@ -831,67 +864,104 @@ For questions: info@bigdogg.nl''';
           ),
           const SizedBox(height: 14),
 
-          // Link box + copy button
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white.withOpacity(0.18)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    link,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w500,
+          if (hasCode) ...[
+            // Link box + copy button
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.18)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SelectableText(
+                      link!,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: (_loadingReferral || code == null)
-                      ? null
-                      : () => _copyReferralLink(isNl),
-                  icon: const Icon(Icons.copy_rounded, size: 14),
-                  label: Text(isNl ? 'Kopieer' : 'Copy',
-                      style: const TextStyle(fontSize: 12.5)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: BigDoggTheme.gold500,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6)),
-                    elevation: 0,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed:
+                        _loadingReferral ? null : () => _copyReferralLink(isNl),
+                    icon: const Icon(Icons.copy_rounded, size: 14),
+                    label: Text(isNl ? 'Kopieer' : 'Copy',
+                        style: const TextStyle(fontSize: 12.5)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: BigDoggTheme.gold500,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6)),
+                      elevation: 0,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                   ),
-                ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                    child: _referralStat(
+                  value: signups.toString(),
+                  label: isNl ? 'Vrienden aangemeld' : 'Friends signed up',
+                )),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: _referralStat(
+                  value: converted.toString(),
+                  label: isNl ? 'Actief abonnement' : 'Paid subscription',
+                  gold: true,
+                )),
               ],
             ),
-          ),
-
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _referralStat(
-                value: signups.toString(),
-                label: isNl ? 'Vrienden aangemeld' : 'Friends signed up',
-              )),
-              const SizedBox(width: 12),
-              Expanded(child: _referralStat(
-                value: converted.toString(),
-                label: isNl ? 'Actief abonnement' : 'Paid subscription',
-                gold: true,
-              )),
-            ],
-          ),
+          ] else ...[
+            // No code yet — single big actionable button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _loadingReferral
+                    ? null
+                    : () => _generateReferralLink(isNl),
+                icon: _loadingReferral
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.link_rounded, size: 18),
+                label: Text(
+                  _loadingReferral
+                      ? (isNl ? 'Bezig…' : 'Working…')
+                      : (isNl
+                          ? 'Maak mijn uitnodigingslink'
+                          : 'Create my invite link'),
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: BigDoggTheme.gold500,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
