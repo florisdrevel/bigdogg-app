@@ -28,6 +28,10 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   int? _filterMonth;
   String _sortBy = 'date_desc';
 
+  // Overdue (>14d) banner — dismissed-per-invoice persisted in SharedPreferences
+  static const String _overduePrefsKey = 'dismissed_overdue_invoices';
+  Set<String> _dismissedOverdue = {};
+
   /// Returns the current quarter number (1–4) based on today's date.
   static int get _currentQuarter {
     final month = DateTime.now().month;
@@ -42,6 +46,89 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     // Default to current quarter
     _filterQuarter = _currentQuarter;
     _loadInvoices();
+    _loadDismissedOverdue();
+  }
+
+  Future<void> _loadDismissedOverdue() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_overduePrefsKey) ?? const [];
+    if (!mounted) return;
+    setState(() => _dismissedOverdue = list.toSet());
+  }
+
+  Future<void> _persistDismissedOverdue() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_overduePrefsKey, _dismissedOverdue.toList());
+  }
+
+  List<dynamic> get _overdueInvoices {
+    final cutoff = DateTime.now().subtract(const Duration(days: 14));
+    return _invoices.where((inv) {
+      if (inv['status'] != 'sent') return false;
+      final dateStr = inv['invoice_date'] as String?;
+      if (dateStr == null) return false;
+      final d = DateTime.tryParse(dateStr);
+      if (d == null) return false;
+      if (d.isAfter(cutoff)) return false;
+      final id = inv['id']?.toString();
+      if (id == null) return false;
+      return !_dismissedOverdue.contains(id);
+    }).toList();
+  }
+
+  void _dismissOverdueBanner() {
+    final ids = _overdueInvoices
+        .map((inv) => inv['id']?.toString())
+        .whereType<String>()
+        .toList();
+    setState(() => _dismissedOverdue.addAll(ids));
+    _persistDismissedOverdue();
+  }
+
+  Widget _buildOverdueBanner(bool isNl) {
+    final overdue = _overdueInvoices;
+    if (overdue.isEmpty) return const SizedBox.shrink();
+    final count = overdue.length;
+    final label = isNl
+        ? (count == 1
+            ? '1 factuur staat langer dan 14 dagen open'
+            : '$count facturen staan langer dan 14 dagen open')
+        : (count == 1
+            ? '1 invoice has been unpaid for over 14 days'
+            : '$count invoices have been unpaid for over 14 days');
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFFFEF3C7),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded,
+              color: Color(0xFF92400E), size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF92400E),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'PlusJakartaSans',
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: _dismissOverdueBanner,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.close,
+                  color: const Color(0xFF92400E).withOpacity(0.7),
+                  size: 18),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadInvoices() async {
@@ -682,6 +769,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       children: [
         Column(
           children: [
+            // ── Overdue banner (>14d unpaid sent invoices) ─────────
+            _buildOverdueBanner(isNl),
+
             // ── Quarter header banner ──────────────────────────────
             Container(
               width: double.infinity,
