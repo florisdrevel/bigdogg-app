@@ -526,13 +526,15 @@ For questions about these terms: info@bigdogg.nl''';
                 _invoiceLineItem('21% BTW', '€ 635,25'),
                 const Divider(height: 16),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(t('Totaal', 'Total'),
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: BigDoggTheme.teal800,
-                            fontSize: 13)),
+                    Expanded(
+                      child: Text(t('Totaal', 'Total'),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: BigDoggTheme.teal800,
+                              fontSize: 13)),
+                    ),
+                    const SizedBox(width: 8),
                     const Text('€ 3.660,25',
                         style: TextStyle(
                             fontWeight: FontWeight.w800,
@@ -589,12 +591,17 @@ For questions about these terms: info@bigdogg.nl''';
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
+          Expanded(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   fontSize: 11,
-                  color: BigDoggTheme.lightTextSecondary)),
+                  color: BigDoggTheme.lightTextSecondary),
+            ),
+          ),
+          const SizedBox(width: 8),
           Text(amount,
               style: const TextStyle(
                   fontSize: 11,
@@ -1332,8 +1339,8 @@ For questions about these terms: info@bigdogg.nl''';
         children: [
           Text(
             t(
-              'Klaar om je administratie simpel te maken?',
-              'Ready to make your admin simple?',
+              'Klaar voor simpele administratie?',
+              'Ready for simple admin?',
             ),
             style: TextStyle(
                 fontSize: isWide ? 32 : 26,
