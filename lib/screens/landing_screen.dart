@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme.dart';
 import '../services/support_service.dart';
 
@@ -1847,7 +1848,16 @@ For questions about these terms: info@bigdogg.nl''';
                           style: const TextStyle(
                               color: Colors.white60, fontSize: 12)),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
+                    TextButton(
+                      onPressed: () => launchUrl(
+                          Uri.parse('https://bigdogg.nl/privacy.html'),
+                          mode: LaunchMode.externalApplication),
+                      child: const Text('Privacy',
+                          style: TextStyle(
+                              color: Colors.white60, fontSize: 12)),
+                    ),
+                    const SizedBox(width: 4),
                     TextButton(
                       onPressed: () => context.go('/login'),
                       child: Text(t('Inloggen', 'Sign in'),
@@ -1901,13 +1911,26 @@ For questions about these terms: info@bigdogg.nl''';
                   ],
                 ),
                 const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => _showTerms(context),
-                  child: Text(
-                      t('Algemene Voorwaarden',
-                          'Terms & Conditions'),
-                      style: const TextStyle(
-                          color: Colors.white60, fontSize: 12)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: () => _showTerms(context),
+                      child: Text(
+                          t('Algemene Voorwaarden',
+                              'Terms & Conditions'),
+                          style: const TextStyle(
+                              color: Colors.white60, fontSize: 12)),
+                    ),
+                    TextButton(
+                      onPressed: () => launchUrl(
+                          Uri.parse('https://bigdogg.nl/privacy.html'),
+                          mode: LaunchMode.externalApplication),
+                      child: const Text('Privacy',
+                          style: TextStyle(
+                              color: Colors.white60, fontSize: 12)),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
