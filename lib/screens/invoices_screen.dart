@@ -6,11 +6,13 @@ import 'package:provider/provider.dart';
 import '../services/invoices_service.dart';
 import '../services/clients_service.dart';
 import '../services/products_service.dart';
+import '../services/quotes_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/api_config.dart';
 import 'invoice_detail_screen.dart';
 import 'prompt_invoice_screen.dart';
+import 'quote_detail_screen.dart';
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -19,7 +21,11 @@ class InvoicesScreen extends StatefulWidget {
   State<InvoicesScreen> createState() => _InvoicesScreenState();
 }
 
-class _InvoicesScreenState extends State<InvoicesScreen> {
+class _InvoicesScreenState extends State<InvoicesScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  // ─── Invoices state ──────────────────────────────────────
   List<dynamic> _invoices = [];
   bool _loading = true;
 
@@ -32,6 +38,12 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   static const String _overduePrefsKey = 'dismissed_overdue_invoices';
   Set<String> _dismissedOverdue = {};
 
+  // ─── Quotes state ────────────────────────────────────────
+  List<dynamic> _quotes = [];
+  bool _loadingQuotes = true;
+  String? _quoteFilterStatus;
+  String _quoteSortBy = 'date_desc';
+
   /// Returns the current quarter number (1–4) based on today's date.
   static int get _currentQuarter {
     final month = DateTime.now().month;
@@ -43,10 +55,20 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   @override
   void initState() {
     super.initState();
-    // Default to current quarter
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _filterQuarter = _currentQuarter;
     _loadInvoices();
     _loadDismissedOverdue();
+    _loadQuotes();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadDismissedOverdue() async {
@@ -136,6 +158,16 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     });
   }
 
+  Future<void> _loadQuotes() async {
+    setState(() => _loadingQuotes = true);
+    final result = await QuotesService.getQuotes();
+    if (!mounted) return;
+    setState(() {
+      _loadingQuotes = false;
+      if (result['success']) _quotes = result['quotes'];
+    });
+  }
+
   void _navigateToInvoice(String invoiceId) {
     Navigator.push(
       context,
@@ -143,6 +175,19 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         builder: (context) => InvoiceDetailScreen(invoiceId: invoiceId),
       ),
     ).then((_) => _loadInvoices());
+  }
+
+  void _navigateToQuote(String quoteId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QuoteDetailScreen(quoteId: quoteId),
+      ),
+    ).then((_) {
+      _loadQuotes();
+      // The convert action may have produced a new invoice, so refresh too.
+      _loadInvoices();
+    });
   }
 
   List<dynamic> get _filteredInvoices {
@@ -192,15 +237,35 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     return list;
   }
 
-  /// True only when the user has manually changed away from the default
-  /// current-quarter filter (or added a status or sort filter).
+  List<dynamic> get _filteredQuotes {
+    List<dynamic> list = List.from(_quotes);
+    if (_quoteFilterStatus != null) {
+      list = list.where((q) => q['status'] == _quoteFilterStatus).toList();
+    }
+    list.sort((a, b) {
+      switch (_quoteSortBy) {
+        case 'amount_asc':
+          return (double.tryParse(a['total_incl_btw'].toString()) ?? 0)
+              .compareTo(double.tryParse(b['total_incl_btw'].toString()) ?? 0);
+        case 'amount_desc':
+          return (double.tryParse(b['total_incl_btw'].toString()) ?? 0)
+              .compareTo(double.tryParse(a['total_incl_btw'].toString()) ?? 0);
+        case 'date_asc':
+          return (a['quote_date'] ?? '').compareTo(b['quote_date'] ?? '');
+        case 'date_desc':
+        default:
+          return (b['quote_date'] ?? '').compareTo(a['quote_date'] ?? '');
+      }
+    });
+    return list;
+  }
+
   bool get _hasActiveFilters =>
       _filterStatus != null ||
       _filterMonth != null ||
       _filterQuarter != _currentQuarter ||
       _sortBy != 'date_desc';
 
-  /// Human-readable label for the active period filter shown in the header.
   String _periodLabel(bool isNl) {
     if (_filterMonth != null) {
       final months = isNl
@@ -237,6 +302,36 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         return isNl ? 'Verstuurd' : 'Sent';
       case 'overdue':
         return isNl ? 'Verlopen' : 'Overdue';
+      default:
+        return isNl ? 'Concept' : 'Draft';
+    }
+  }
+
+  Color _quoteStatusColor(String s) {
+    switch (s) {
+      case 'sent':
+        return BigDoggTheme.info;
+      case 'accepted':
+        return BigDoggTheme.success;
+      case 'declined':
+        return BigDoggTheme.error;
+      case 'converted':
+        return const Color(0xFF7C3AED); // purple
+      default:
+        return BigDoggTheme.lightTextSecondary; // grey for draft
+    }
+  }
+
+  String _quoteStatusLabel(String s, bool isNl) {
+    switch (s) {
+      case 'sent':
+        return isNl ? 'Verstuurd' : 'Sent';
+      case 'accepted':
+        return isNl ? 'Geaccepteerd' : 'Accepted';
+      case 'declined':
+        return isNl ? 'Afgewezen' : 'Declined';
+      case 'converted':
+        return isNl ? 'Omgezet' : 'Converted';
       default:
         return isNl ? 'Concept' : 'Draft';
     }
@@ -430,7 +525,6 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                           onPressed: () {
                             setState(() {
                               _filterStatus = null;
-                              // Reset to current quarter (the default), not "all"
                               _filterQuarter = _currentQuarter;
                               _filterMonth = null;
                               _sortBy = 'date_desc';
@@ -447,6 +541,115 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showQuoteFilterSheet(bool isNl) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => DraggableScrollableSheet(
+          initialChildSize: 0.55,
+          minChildSize: 0.4,
+          maxChildSize: 0.85,
+          expand: false,
+          builder: (context, scrollController) => SingleChildScrollView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: BigDoggTheme.lightBorder,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  isNl ? 'Filteren & sorteren' : 'Filter & sort',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: BigDoggTheme.teal800),
+                ),
+                const SizedBox(height: 16),
+                Text(isNl ? 'Status' : 'Status',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: BigDoggTheme.lightTextSecondary)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    _filterChip(isNl ? 'Alle' : 'All',
+                        _quoteFilterStatus == null, () {
+                      setSheetState(() => _quoteFilterStatus = null);
+                      setState(() => _quoteFilterStatus = null);
+                    }),
+                    for (final s in const [
+                      'draft',
+                      'sent',
+                      'accepted',
+                      'declined',
+                      'converted'
+                    ])
+                      _filterChip(_quoteStatusLabel(s, isNl),
+                          _quoteFilterStatus == s, () {
+                        setSheetState(() => _quoteFilterStatus = s);
+                        setState(() => _quoteFilterStatus = s);
+                      }),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(isNl ? 'Sorteren' : 'Sort by',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: BigDoggTheme.lightTextSecondary)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    _filterChip(isNl ? 'Datum ↓' : 'Date ↓',
+                        _quoteSortBy == 'date_desc', () {
+                      setSheetState(() => _quoteSortBy = 'date_desc');
+                      setState(() => _quoteSortBy = 'date_desc');
+                    }),
+                    _filterChip(isNl ? 'Datum ↑' : 'Date ↑',
+                        _quoteSortBy == 'date_asc', () {
+                      setSheetState(() => _quoteSortBy = 'date_asc');
+                      setState(() => _quoteSortBy = 'date_asc');
+                    }),
+                    _filterChip(isNl ? 'Bedrag ↓' : 'Amount ↓',
+                        _quoteSortBy == 'amount_desc', () {
+                      setSheetState(() => _quoteSortBy = 'amount_desc');
+                      setState(() => _quoteSortBy = 'amount_desc');
+                    }),
+                    _filterChip(isNl ? 'Bedrag ↑' : 'Amount ↑',
+                        _quoteSortBy == 'amount_asc', () {
+                      setSheetState(() => _quoteSortBy = 'amount_asc');
+                      setState(() => _quoteSortBy = 'amount_asc');
+                    }),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -483,8 +686,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('access_token');
       final r = await http.get(
-        Uri.parse('\/api/v1/projects/'),
-        headers: {'Authorization': 'Bearer '},
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/projects/'),
+        headers: {'Authorization': 'Bearer $token'},
       );
       if (r.statusCode == 200) return jsonDecode(r.body)['projects'] ?? [];
     } catch (_) {}
@@ -636,6 +839,151 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     );
   }
 
+  void _showCreateQuote(bool isNl) async {
+    final clientsResult = await ClientsService.getClients();
+    final productsResult = await ProductsService.getProducts();
+    final projects = await _fetchProjects();
+    if (!clientsResult['success'] || !productsResult['success']) return;
+    final clients = clientsResult['clients'] as List;
+    final products = productsResult['products'] as List;
+    if (!mounted) return;
+
+    String? selectedClientId;
+    String? selectedProjectId;
+    List<Map<String, dynamic>> lines = [];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isNl ? 'Nieuwe offerte' : 'New Quote'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedClientId,
+                  decoration:
+                      InputDecoration(labelText: isNl ? 'Klant' : 'Client'),
+                  items: clients
+                      .map((c) => DropdownMenuItem<String>(
+                            value: c['id'] as String,
+                            child: Text(c['company_name'] ?? c['contact_name']),
+                          ))
+                      .toList(),
+                  onChanged: (val) =>
+                      setDialogState(() => selectedClientId = val),
+                ),
+                if (projects.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String?>(
+                    value: selectedProjectId,
+                    decoration: InputDecoration(
+                        labelText: isNl ? 'Project (optioneel)' : 'Project (optional)'),
+                    items: [
+                      DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text(isNl ? 'Geen project' : 'No project')),
+                      ...projects.map((p) => DropdownMenuItem<String?>(
+                            value: p['id'] as String,
+                            child: Row(children: [
+                              Container(
+                                width: 10, height: 10,
+                                decoration: BoxDecoration(
+                                  color: Color(int.parse((p['color'] ?? '#1B3A4B').replaceFirst('#', '0xFF'))),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(p['name'] ?? ''),
+                            ]),
+                          )),
+                    ],
+                    onChanged: (val) =>
+                        setDialogState(() => selectedProjectId = val),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Text(isNl ? 'Regels' : 'Lines',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                ...lines.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final line = entry.value;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(line['description'],
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w500)),
+                                Text(
+                                  '${line['quantity']}x €${line['unit_price_ex_btw']} (${line['btw_rate']}% BTW)',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color:
+                                          BigDoggTheme.lightTextSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline,
+                                color: BigDoggTheme.error),
+                            onPressed: () =>
+                                setDialogState(() => lines.removeAt(i)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+                TextButton.icon(
+                  onPressed: () =>
+                      _showAddLine(context, products, isNl, (line) {
+                    setDialogState(() => lines.add(line));
+                  }),
+                  icon: const Icon(Icons.add),
+                  label: Text(isNl ? 'Regel toevoegen' : 'Add line'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(isNl ? 'Annuleren' : 'Cancel')),
+            ElevatedButton(
+              onPressed: selectedClientId == null || lines.isEmpty
+                  ? null
+                  : () async {
+                      Navigator.pop(context);
+                      final result = await QuotesService.createQuote(
+                        clientId: selectedClientId!,
+                        lines: lines,
+                        projectId: selectedProjectId,
+                      );
+                      if (result['success'] && mounted) {
+                        await _loadQuotes();
+                        final qid = result['quote']['id'];
+                        _navigateToQuote(qid);
+                      }
+                    },
+              child: Text(isNl ? 'Aanmaken' : 'Create'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showAddLine(BuildContext context, List products, bool isNl,
       Function(Map<String, dynamic>) onAdd) {
     String? selectedProductId;
@@ -680,8 +1028,6 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                         priceController.text =
                             p['unit_price'].toString();
                         btwRate = p['btw_rate'];
-                        unit = p['unit'] ?? 'fixed';
-                        unit = p['unit'] ?? 'fixed';
                         unit = p['unit'] ?? 'fixed';
                       }
                     });
@@ -742,7 +1088,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 Navigator.pop(context);
                 onAdd({
                   'description': descController.text,
-                  'quantity': double.parse(qtyController.text),                  'unit': unit,
+                  'quantity': double.parse(qtyController.text),
+                  'unit': unit,
                   'unit_price_ex_btw':
                       double.parse(priceController.text),
                   'btw_rate': btwRate,
@@ -756,219 +1103,374 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isNl = context.watch<AppProvider>().language == 'nl';
-    final filtered = _filteredInvoices;
-
-    return Stack(
+  // ─── Tab bodies ─────────────────────────────────────────────
+  Widget _buildInvoicesTab(bool isNl, List<dynamic> filtered) {
+    return Column(
       children: [
-        Column(
-          children: [
-            // ── Overdue banner (>14d unpaid sent invoices) ─────────
-            _buildOverdueBanner(isNl),
-
-            // ── Quarter header banner ──────────────────────────────
-            Container(
-              width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: const BoxDecoration(
-                color: BigDoggTheme.teal800,
+        _buildOverdueBanner(isNl),
+        Container(
+          width: double.infinity,
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: const BoxDecoration(color: BigDoggTheme.teal800),
+          child: Row(
+            children: [
+              const Icon(Icons.calendar_today_outlined,
+                  size: 14, color: Colors.white70),
+              const SizedBox(width: 6),
+              Text(
+                _periodLabel(isNl),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  fontFamily: 'PlusJakartaSans',
+                ),
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.calendar_today_outlined,
-                      size: 14, color: Colors.white70),
-                  const SizedBox(width: 6),
-                  Text(
-                    _periodLabel(isNl),
+              const Spacer(),
+              if (_filterQuarter != null || _filterMonth != null)
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _filterQuarter = null;
+                    _filterMonth = null;
+                  }),
+                  child: Text(
+                    isNl ? 'Zie alle' : 'See all',
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      fontFamily: 'PlusJakartaSans',
+                      color: BigDoggTheme.gold500,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const Spacer(),
-                  // "See all" shortcut when in quarter mode
-                  if (_filterQuarter != null || _filterMonth != null)
-                    GestureDetector(
-                      onTap: () => setState(() {
-                        _filterQuarter = null;
-                        _filterMonth = null;
-                      }),
-                      child: Text(
-                        isNl ? 'Zie alle' : 'See all',
-                        style: const TextStyle(
-                          color: BigDoggTheme.gold500,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                ],
+                ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: BigDoggTheme.lightSurface,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${filtered.length} ${isNl ? 'facturen' : 'invoices'}',
+                  style: const TextStyle(
+                      color: BigDoggTheme.lightTextSecondary,
+                      fontSize: 13),
+                ),
               ),
-            ),
-
-            // ── Filter bar ────────────────────────────────────────
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: BigDoggTheme.lightSurface,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${filtered.length} ${isNl ? 'facturen' : 'invoices'}',
-                      style: const TextStyle(
-                          color: BigDoggTheme.lightTextSecondary,
-                          fontSize: 13),
+              GestureDetector(
+                onTap: () => _showFilterSheet(isNl),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _hasActiveFilters
+                        ? BigDoggTheme.teal800
+                        : BigDoggTheme.lightBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _hasActiveFilters
+                          ? BigDoggTheme.teal800
+                          : BigDoggTheme.lightBorder,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => _showFilterSheet(isNl),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _hasActiveFilters
-                            ? BigDoggTheme.teal800
-                            : BigDoggTheme.lightBg,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.tune,
+                          size: 14,
                           color: _hasActiveFilters
-                              ? BigDoggTheme.teal800
-                              : BigDoggTheme.lightBorder,
-                        ),
+                              ? Colors.white
+                              : BigDoggTheme.lightTextSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        isNl ? 'Filter' : 'Filter',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _hasActiveFilters
+                                ? Colors.white
+                                : BigDoggTheme.lightTextSecondary),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : filtered.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.tune,
-                              size: 14,
-                              color: _hasActiveFilters
-                                  ? Colors.white
-                                  : BigDoggTheme.lightTextSecondary),
-                          const SizedBox(width: 4),
+                          const Icon(Icons.receipt_long_outlined,
+                              size: 64,
+                              color: BigDoggTheme.lightTextHint),
+                          const SizedBox(height: 16),
                           Text(
-                            isNl ? 'Filter' : 'Filter',
-                            style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: _hasActiveFilters
-                                    ? Colors.white
-                                    : BigDoggTheme.lightTextSecondary),
+                            _hasActiveFilters
+                                ? (isNl
+                                    ? 'Geen resultaten voor deze filter'
+                                    : 'No results for this filter')
+                                : (isNl
+                                    ? 'Nog geen facturen dit kwartaal'
+                                    : 'No invoices this quarter yet'),
+                            style: const TextStyle(
+                                fontSize: 18,
+                                color: BigDoggTheme.lightTextSecondary),
+                          ),
+                          const SizedBox(height: 8),
+                          if (_hasActiveFilters)
+                            TextButton(
+                              onPressed: () => setState(() {
+                                _filterStatus = null;
+                                _filterQuarter = _currentQuarter;
+                                _filterMonth = null;
+                                _sortBy = 'date_desc';
+                              }),
+                              child: Text(isNl
+                                  ? 'Filters wissen'
+                                  : 'Clear filters'),
+                            )
+                          else
+                            Text(
+                              isNl
+                                  ? 'Tik + om je eerste factuur aan te maken'
+                                  : 'Tap + to create your first invoice',
+                              style: const TextStyle(
+                                  color: BigDoggTheme.lightTextHint),
+                            ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final inv = filtered[index];
+                        final status = inv['status'] ?? 'draft';
+                        final clientName =
+                            inv['clients']?['contact_name'] ??
+                                inv['client_name'] ??
+                                (isNl
+                                    ? 'Verwijderde klant'
+                                    : 'Deleted client');
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: BigDoggTheme.lightSurface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: BigDoggTheme.lightBorder),
+                          ),
+                          child: ListTile(
+                            contentPadding:
+                                const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                            onTap: () => _navigateToInvoice(inv['id']),
+                            title: Row(
+                              children: [
+                                Text(inv['invoice_number'],
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: _statusColor(status)
+                                        .withOpacity(0.1),
+                                    borderRadius:
+                                        BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    _statusLabel(status, isNl),
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: _statusColor(status),
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(clientName,
+                                    style: const TextStyle(
+                                        color: BigDoggTheme
+                                            .lightTextSecondary)),
+                                Text(inv['invoice_date'] ?? '',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: BigDoggTheme
+                                            .lightTextHint)),
+                              ],
+                            ),
+                            trailing: Text(
+                                '€${inv['total_incl_btw']}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: BigDoggTheme.teal800)),
+                          ),
+                        );
+                      },
+                    ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuotesTab(bool isNl, List<dynamic> filtered) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: BigDoggTheme.lightSurface,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${filtered.length} ${isNl ? 'offertes' : 'quotes'}',
+                  style: const TextStyle(
+                      color: BigDoggTheme.lightTextSecondary,
+                      fontSize: 13),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _showQuoteFilterSheet(isNl),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: (_quoteFilterStatus != null ||
+                            _quoteSortBy != 'date_desc')
+                        ? BigDoggTheme.teal800
+                        : BigDoggTheme.lightBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: (_quoteFilterStatus != null ||
+                              _quoteSortBy != 'date_desc')
+                          ? BigDoggTheme.teal800
+                          : BigDoggTheme.lightBorder,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.tune,
+                          size: 14,
+                          color: (_quoteFilterStatus != null ||
+                                  _quoteSortBy != 'date_desc')
+                              ? Colors.white
+                              : BigDoggTheme.lightTextSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        isNl ? 'Filter' : 'Filter',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: (_quoteFilterStatus != null ||
+                                    _quoteSortBy != 'date_desc')
+                                ? Colors.white
+                                : BigDoggTheme.lightTextSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: _loadingQuotes
+              ? const Center(child: CircularProgressIndicator())
+              : filtered.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.description_outlined,
+                              size: 64,
+                              color: BigDoggTheme.lightTextHint),
+                          const SizedBox(height: 16),
+                          Text(
+                            isNl ? 'Nog geen offertes' : 'No quotes yet',
+                            style: const TextStyle(
+                                fontSize: 18,
+                                color: BigDoggTheme.lightTextSecondary),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            isNl
+                                ? 'Tik + om je eerste offerte aan te maken'
+                                : 'Tap + to create your first quote',
+                            style: const TextStyle(
+                                color: BigDoggTheme.lightTextHint),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-
-            // ── Invoice list ──────────────────────────────────────
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : filtered.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.receipt_long_outlined,
-                                  size: 64,
-                                  color: BigDoggTheme.lightTextHint),
-                              const SizedBox(height: 16),
-                              Text(
-                                _hasActiveFilters
-                                    ? (isNl
-                                        ? 'Geen resultaten voor deze filter'
-                                        : 'No results for this filter')
-                                    : (isNl
-                                        ? 'Nog geen facturen dit kwartaal'
-                                        : 'No invoices this quarter yet'),
-                                style: const TextStyle(
-                                    fontSize: 18,
-                                    color: BigDoggTheme.lightTextSecondary),
-                              ),
-                              const SizedBox(height: 8),
-                              if (_hasActiveFilters)
-                                TextButton(
-                                  onPressed: () => setState(() {
-                                    _filterStatus = null;
-                                    _filterQuarter = _currentQuarter;
-                                    _filterMonth = null;
-                                    _sortBy = 'date_desc';
-                                  }),
-                                  child: Text(isNl
-                                      ? 'Filters wissen'
-                                      : 'Clear filters'),
-                                )
-                              else
-                                Text(
-                                  isNl
-                                      ? 'Tik + om je eerste factuur aan te maken'
-                                      : 'Tap + to create your first invoice',
-                                  style: const TextStyle(
-                                      color: BigDoggTheme.lightTextHint),
-                                ),
-                            ],
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final q = filtered[index];
+                        final status = (q['status'] ?? 'draft').toString();
+                        final clientName = q['clients']?['contact_name'] ??
+                            q['client_name'] ??
+                            (isNl ? 'Verwijderde klant' : 'Deleted client');
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: BigDoggTheme.lightSurface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: BigDoggTheme.lightBorder),
                           ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) {
-                            final inv = filtered[index];
-                            final status = inv['status'] ?? 'draft';
-                            final clientName =
-                                inv['clients']?['contact_name'] ??
-                                    inv['client_name'] ??
-                                    (isNl
-                                        ? 'Verwijderde klant'
-                                        : 'Deleted client');
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                color: BigDoggTheme.lightSurface,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                    color: BigDoggTheme.lightBorder),
-                              ),
-                              child: ListTile(
+                          child: Column(
+                            children: [
+                              ListTile(
                                 contentPadding:
                                     const EdgeInsets.symmetric(
                                         horizontal: 16, vertical: 8),
                                 onTap: () =>
-                                    _navigateToInvoice(inv['id']),
+                                    _navigateToQuote(q['id'].toString()),
                                 title: Row(
                                   children: [
-                                    Text(inv['invoice_number'],
+                                    Flexible(
+                                      child: Text(
+                                        q['quote_number']?.toString() ?? '',
+                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                            fontWeight:
-                                                FontWeight.w600)),
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
                                     const SizedBox(width: 8),
                                     Container(
-                                      padding:
-                                          const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: _statusColor(status)
+                                        color: _quoteStatusColor(status)
                                             .withOpacity(0.1),
                                         borderRadius:
                                             BorderRadius.circular(6),
                                       ),
                                       child: Text(
-                                        _statusLabel(status, isNl),
+                                        _quoteStatusLabel(status, isNl),
                                         style: TextStyle(
                                             fontSize: 11,
-                                            color: _statusColor(status),
-                                            fontWeight:
-                                                FontWeight.w600),
+                                            color: _quoteStatusColor(status),
+                                            fontWeight: FontWeight.w600),
                                       ),
                                     ),
                                   ],
@@ -981,7 +1483,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                         style: const TextStyle(
                                             color: BigDoggTheme
                                                 .lightTextSecondary)),
-                                    Text(inv['invoice_date'] ?? '',
+                                    Text(q['quote_date'] ?? '',
                                         style: const TextStyle(
                                             fontSize: 12,
                                             color: BigDoggTheme
@@ -989,53 +1491,157 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                   ],
                                 ),
                                 trailing: Text(
-                                    '€${inv['total_incl_btw']}',
+                                    '€${q['total_incl_btw']}',
                                     style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                         color: BigDoggTheme.teal800)),
                               ),
-                            );
-                          },
-                        ),
+                              if (status == 'accepted')
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                      16, 0, 16, 12),
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () async {
+                                        final r = await QuotesService
+                                            .convertToInvoice(
+                                                q['id'].toString());
+                                        if (!mounted) return;
+                                        if (r['success']) {
+                                          await _loadQuotes();
+                                          await _loadInvoices();
+                                          final invoiceId =
+                                              r['invoice_id'] as String?;
+                                          if (invoiceId != null) {
+                                            _navigateToInvoice(invoiceId);
+                                          }
+                                        } else {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(SnackBar(
+                                            content: Text(
+                                                r['message']?.toString() ??
+                                                    (isNl
+                                                        ? 'Omzetten mislukt'
+                                                        : 'Conversion failed')),
+                                          ));
+                                        }
+                                      },
+                                      icon: const Icon(
+                                          Icons.swap_horiz_rounded),
+                                      label: Text(isNl
+                                          ? 'Omzetten naar factuur'
+                                          : 'Convert to invoice'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            BigDoggTheme.gold500,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isNl = context.watch<AppProvider>().language == 'nl';
+    final filteredInvoices = _filteredInvoices;
+    final filteredQuotes = _filteredQuotes;
+    final isQuotesTab = _tabController.index == 1;
+
+    return Stack(
+      children: [
+        Column(
+          children: [
+            // ── Tab bar ─────────────────────────────────────────
+            Container(
+              color: BigDoggTheme.lightSurface,
+              child: TabBar(
+                controller: _tabController,
+                labelColor: BigDoggTheme.teal800,
+                unselectedLabelColor: BigDoggTheme.lightTextSecondary,
+                indicatorColor: BigDoggTheme.teal800,
+                indicatorWeight: 3,
+                labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'PlusJakartaSans'),
+                unselectedLabelStyle: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'PlusJakartaSans'),
+                tabs: [
+                  Tab(text: isNl ? 'Facturen' : 'Invoices'),
+                  Tab(text: isNl ? 'Offertes' : 'Quotes'),
+                ],
+              ),
+            ),
+            // ── Body ───────────────────────────────────────────
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildInvoicesTab(isNl, filteredInvoices),
+                  _buildQuotesTab(isNl, filteredQuotes),
+                ],
+              ),
             ),
           ],
         ),
 
-        // ── FABs ─────────────────────────────────────────────────
-        Positioned(
-          bottom: 88,
-          right: 16,
-          child: FloatingActionButton(
-            heroTag: 'ai_fab',
-            onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) =>
-                            const PromptInvoiceScreen()))
-                .then((result) {
-              if (result is String) {
-                _loadInvoices();
-                _navigateToInvoice(result);
-              } else if (result == true) {
-                _loadInvoices();
-              }
-            }),
-            backgroundColor: BigDoggTheme.teal800,
-            elevation: 2,
-            child:
-                const Icon(Icons.smart_toy_outlined, color: Colors.white),
+        // ── FABs (only on Invoices tab — quotes get a single + below) ───
+        if (!isQuotesTab) ...[
+          Positioned(
+            bottom: 88,
+            right: 16,
+            child: FloatingActionButton(
+              heroTag: 'ai_fab',
+              onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              const PromptInvoiceScreen()))
+                  .then((result) {
+                if (result is String) {
+                  _loadInvoices();
+                  _navigateToInvoice(result);
+                } else if (result == true) {
+                  _loadInvoices();
+                }
+              }),
+              backgroundColor: BigDoggTheme.teal800,
+              elevation: 2,
+              child: const Icon(Icons.smart_toy_outlined,
+                  color: Colors.white),
+            ),
           ),
-        ),
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: FloatingActionButton(
-            heroTag: 'create_fab',
-            onPressed: () => _showCreateInvoice(isNl),
-            child: const Icon(Icons.add),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: FloatingActionButton(
+              heroTag: 'create_fab',
+              onPressed: () => _showCreateInvoice(isNl),
+              child: const Icon(Icons.add),
+            ),
           ),
-        ),
+        ],
+        if (isQuotesTab)
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: FloatingActionButton(
+              heroTag: 'create_quote_fab',
+              onPressed: () => _showCreateQuote(isNl),
+              child: const Icon(Icons.add),
+            ),
+          ),
       ],
     );
   }
