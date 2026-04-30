@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 import '../services/ai_service.dart';
 import '../services/invoices_service.dart';
 import '../providers/app_provider.dart';
@@ -12,15 +14,87 @@ class PromptInvoiceScreen extends StatefulWidget {
   State<PromptInvoiceScreen> createState() => _PromptInvoiceScreenState();
 }
 
-class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
+class _PromptInvoiceScreenState extends State<PromptInvoiceScreen>
+    with SingleTickerProviderStateMixin {
   final _promptController = TextEditingController();
   Map<String, dynamic>? _parsed;
   bool _loading = false;
   bool _creating = false;
   String? _error;
 
+  // ─── Voice-to-text (mobile only) ───────────────────────────
+  final SpeechToText _stt = SpeechToText();
+  bool _speechAvailable = false;
+  bool _listening = false;
+  String _baseText = '';
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+    if (!kIsWeb) {
+      _initSpeech();
+    }
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      final ok = await _stt.initialize(
+        onError: (_) {
+          if (mounted) setState(() => _listening = false);
+        },
+        onStatus: (status) {
+          if (status == 'notListening' || status == 'done') {
+            if (mounted) setState(() => _listening = false);
+          }
+        },
+      );
+      if (mounted) setState(() => _speechAvailable = ok);
+    } catch (_) {
+      if (mounted) setState(() => _speechAvailable = false);
+    }
+  }
+
+  Future<void> _toggleListen(bool isNl) async {
+    if (kIsWeb || !_speechAvailable) return;
+    if (_listening) {
+      await _stt.stop();
+      if (mounted) setState(() => _listening = false);
+      return;
+    }
+    _baseText = _promptController.text;
+    setState(() => _listening = true);
+    try {
+      await _stt.listen(
+        onResult: (r) {
+          final spoken = r.recognizedWords;
+          final sep =
+              _baseText.isEmpty || _baseText.endsWith(' ') ? '' : ' ';
+          final next = _baseText + sep + spoken;
+          _promptController.value = TextEditingValue(
+            text: next,
+            selection: TextSelection.collapsed(offset: next.length),
+          );
+        },
+        pauseFor: const Duration(seconds: 3),
+        listenFor: const Duration(minutes: 5),
+        partialResults: true,
+        localeId: isNl ? 'nl_NL' : 'en_US',
+        listenMode: ListenMode.dictation,
+      );
+    } catch (_) {
+      if (mounted) setState(() => _listening = false);
+    }
+  }
+
   @override
   void dispose() {
+    _pulse.dispose();
+    _stt.stop();
     _promptController.dispose();
     super.dispose();
   }
@@ -65,6 +139,29 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
       setState(() => _error = result['message'] ??
           (isNl ? 'Aanmaken mislukt' : 'Failed to create'));
     }
+  }
+
+  Widget? _buildMicSuffix(bool isNl) {
+    if (kIsWeb || !_speechAvailable) return null;
+    return IconButton(
+      tooltip: _listening
+          ? (isNl ? 'Stop opnemen' : 'Stop recording')
+          : (isNl ? 'Spreek je tekst in' : 'Speak your text'),
+      onPressed: () => _toggleListen(isNl),
+      icon: _listening
+          ? AnimatedBuilder(
+              animation: _pulse,
+              builder: (_, __) => Icon(
+                Icons.mic,
+                color: Color.lerp(
+                  BigDoggTheme.error,
+                  BigDoggTheme.error.withOpacity(0.35),
+                  _pulse.value,
+                ),
+              ),
+            )
+          : const Icon(Icons.mic_none, color: BigDoggTheme.teal800),
+    );
   }
 
   @override
@@ -121,6 +218,7 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
+                      suffixIcon: _buildMicSuffix(isNl),
                     ),
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _parse(isNl),
