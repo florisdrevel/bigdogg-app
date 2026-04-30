@@ -90,12 +90,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     if (overdue.isEmpty) return const SizedBox.shrink();
     final count = overdue.length;
     final label = isNl
-        ? (count == 1
-            ? '1 factuur staat langer dan 14 dagen open'
-            : '$count facturen staan langer dan 14 dagen open')
-        : (count == 1
-            ? '1 invoice has been unpaid for over 14 days'
-            : '$count invoices have been unpaid for over 14 days');
+        ? 'Je hebt $count factuur(en) die al meer dan 14 dagen openstaan.'
+        : 'You have $count invoice(s) outstanding for more than 14 days.';
     return Container(
       width: double.infinity,
       color: const Color(0xFFFEF3C7),
