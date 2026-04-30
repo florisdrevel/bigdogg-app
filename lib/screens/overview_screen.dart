@@ -371,6 +371,9 @@ class _OverviewScreenState extends State<OverviewScreen>
   bool _loadingHours = true;
   bool _hoursExpanded = false;
 
+  // KOR checker (collapsible)
+  bool _korExpanded = false;
+
   int get _minYear => DateTime.now().year - 25;
 
   static Future<String?> _getToken() async {
@@ -1063,6 +1066,8 @@ class _OverviewScreenState extends State<OverviewScreen>
             _overviewRow(isNl ? 'Totale BTW te betalen' : 'Total VAT to pay', '\u20ac${a['total_btw_to_pay']}', color: BigDoggTheme.error),
           ]),
           const SizedBox(height: 16),
+          _buildKorChecker(isNl, a),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -1159,4 +1164,150 @@ class _OverviewScreenState extends State<OverviewScreen>
           fontSize: large ? 15 : 14, color: color ?? BigDoggTheme.lightTextPrimary)),
     ]),
   );
+
+  // ── KOR checker ───────────────────────────────────────────
+  // KOR = kleineondernemersregeling. Under €20,000 revenue you may opt out
+  // of charging BTW. Whether that is smart depends on whether your net BTW
+  // burden is positive (you pay) or negative (you reclaim).
+  Widget _buildKorChecker(bool isNl, Map<String, dynamic> a) {
+    const double korThreshold = 20000.0;
+    final revenue = (double.tryParse(a['total_revenue_ex_btw'].toString()) ?? 0);
+    final netBtw = (double.tryParse(a['total_btw_to_pay'].toString()) ?? 0);
+    // Sign convention: positive = you owe BTW to Belastingdienst.
+    final eligible = revenue < korThreshold;
+    final saves = eligible && netBtw > 0;
+    final costs = eligible && netBtw < 0;
+    final amountAbs = netBtw.abs();
+
+    Color bg;
+    Color border;
+    Color accent;
+    String headline;
+    String body;
+
+    if (!eligible) {
+      bg = BigDoggTheme.lightSurface;
+      border = BigDoggTheme.lightBorder;
+      accent = BigDoggTheme.lightTextSecondary;
+      headline = isNl
+          ? 'Niet in aanmerking voor de KOR'
+          : 'Not eligible for KOR';
+      body = isNl
+          ? 'Je omzet ligt boven €20.000 — je komt niet in aanmerking voor de KOR.'
+          : 'Your revenue is over €20,000 — you do not qualify for the KOR.';
+    } else if (saves) {
+      bg = BigDoggTheme.successBg;
+      border = BigDoggTheme.success.withOpacity(0.4);
+      accent = BigDoggTheme.success;
+      headline = isNl ? 'KOR kan je geld besparen' : 'KOR could save you money';
+      body = isNl
+          ? 'De KOR kan je ~€${amountAbs.toStringAsFixed(0)} per jaar besparen.'
+          : 'The KOR could save you ~€${amountAbs.toStringAsFixed(0)} per year.';
+    } else if (costs) {
+      bg = BigDoggTheme.warningBg;
+      border = BigDoggTheme.warning.withOpacity(0.5);
+      accent = const Color(0xFF92400E);
+      headline = isNl ? 'KOR is niet slim voor jou' : 'KOR is not smart for you';
+      body = isNl
+          ? 'De KOR zou je €${amountAbs.toStringAsFixed(0)} per jaar kosten. Niet slim voor jouw situatie.'
+          : 'The KOR would cost you €${amountAbs.toStringAsFixed(0)} per year. Not smart for your situation.';
+    } else {
+      // Net BTW exactly zero: technically eligible but neutral impact.
+      bg = BigDoggTheme.lightSurface;
+      border = BigDoggTheme.lightBorder;
+      accent = BigDoggTheme.teal800;
+      headline = isNl ? 'KOR: weinig effect' : 'KOR: little effect';
+      body = isNl
+          ? 'Je BTW-saldo is rond de €0 — de KOR maakt voor jou nu weinig verschil.'
+          : 'Your VAT balance is around €0 — the KOR would make little difference right now.';
+    }
+
+    final disclaimer = isNl
+        ? 'Twijfel je? Vraag het een boekhouder. BigDogg geeft geen fiscaal advies.'
+        : 'Not sure? Ask an accountant. BigDogg does not provide tax advice.';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header (always visible, tap to toggle)
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => setState(() => _korExpanded = !_korExpanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(Icons.calculate_outlined, color: accent, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isNl ? 'KOR checker' : 'KOR checker',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: BigDoggTheme.teal800),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          headline,
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: accent,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _korExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: BigDoggTheme.lightTextSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_korExpanded) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(body,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          height: 1.5,
+                          color: BigDoggTheme.lightTextPrimary)),
+                  const SizedBox(height: 10),
+                  Text(
+                    isNl
+                        ? 'Omzet ex BTW: €${revenue.toStringAsFixed(0)}  ·  Netto BTW: €${netBtw.toStringAsFixed(0)}'
+                        : 'Revenue ex VAT: €${revenue.toStringAsFixed(0)}  ·  Net VAT: €${netBtw.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                        fontSize: 11,
+                        color: BigDoggTheme.lightTextSecondary),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(disclaimer,
+                      style: const TextStyle(
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                          color: BigDoggTheme.lightTextSecondary)),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
