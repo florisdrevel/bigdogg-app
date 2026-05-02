@@ -9,6 +9,11 @@ class AppProvider extends ChangeNotifier {
   bool _hasSeenWalkthrough = true; // default true — only false once prefs confirm it
   bool _prefsLoaded = false;
 
+  // One-shot navigation request consumed by DashboardScreen.
+  // Used so e.g. enabling Projects via the Settings toggle takes the user
+  // straight to the new Projects tab.
+  int? _navigateToTab;
+
   ThemeMode get themeMode => _themeMode;
   String get language => _language;
   bool get isDark => _themeMode == ThemeMode.dark;
@@ -16,6 +21,7 @@ class AppProvider extends ChangeNotifier {
   bool get quotesEnabled => _quotesEnabled;
   bool get hasSeenWalkthrough => _hasSeenWalkthrough;
   bool get prefsLoaded => _prefsLoaded;
+  int? get navigateToTab => _navigateToTab;
 
   AppProvider() {
     _loadPreferences();
@@ -52,10 +58,23 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> setProjectsEnabled(bool enabled) async {
+    final wasEnabled = _projectsEnabled;
     _projectsEnabled = enabled;
+    // Off -> on: take the user straight to the new Projects tab. The list
+    // shifts (Projects inserts at index 4) so without this nudge the user
+    // would silently land on whatever screen now sits at their old index.
+    // On -> off: do nothing — the dashboard already clamps the index back
+    // to Settings.
+    if (!wasEnabled && enabled) {
+      _navigateToTab = 4;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('projects_enabled', enabled);
     notifyListeners();
+  }
+
+  void consumeNavigateToTab() {
+    _navigateToTab = null;
   }
 
   Future<void> setQuotesEnabled(bool enabled) async {

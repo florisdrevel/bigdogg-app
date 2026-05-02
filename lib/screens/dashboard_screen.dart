@@ -247,6 +247,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _welcomeShown = false;
     }
 
+    // Consume any pending tab-navigation request (e.g. the user just enabled
+    // Projects from Settings — jump them to the new Projects tab).
+    final pendingTab = appProvider.navigateToTab;
+    if (pendingTab != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        appProvider.consumeNavigateToTab();
+        setState(() => _currentIndex = pendingTab);
+      });
+    }
+
     final screens = _getScreens(projectsEnabled);
     final titles = isNl ? _getTitlesNl(projectsEnabled) : _getTitlesEn(projectsEnabled);
     final safeIndex = _currentIndex.clamp(0, screens.length - 1);
