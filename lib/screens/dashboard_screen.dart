@@ -347,6 +347,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       onTabChange: (idx) => setState(() => _currentIndex = idx),
       currentTabIndex: safeIndex,
       projectsEnabled: projectsEnabled,
+      quotesEnabled: appProvider.quotesEnabled,
       child: scaffold,
     );
   }

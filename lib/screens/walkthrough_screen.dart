@@ -9,6 +9,7 @@ class WalkthroughOverlay extends StatefulWidget {
   final ValueChanged<int> onTabChange;
   final int currentTabIndex;
   final bool projectsEnabled;
+  final bool quotesEnabled;
 
   const WalkthroughOverlay({
     super.key,
@@ -19,6 +20,7 @@ class WalkthroughOverlay extends StatefulWidget {
     required this.onTabChange,
     required this.currentTabIndex,
     required this.projectsEnabled,
+    required this.quotesEnabled,
   });
 
   @override
@@ -62,6 +64,7 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
 
   List<_Step> get _steps {
     final proj = widget.projectsEnabled;
+    final quotes = widget.quotesEnabled;
     return [
       _Step(
         tabIndex: 5,
@@ -76,8 +79,8 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
         icon: Icons.upload_file_outlined,
         titleNl: 'Profiel — Historische import',
         titleEn: 'Profile — Historical import',
-        bodyNl: 'Scroll naar beneden op dit scherm. Heb je facturen of kosten van vóór BigDogg? Importeer ze als PDF. BigDogg leest ze uit met AI en voegt ze toe aan je administratie.',
-        bodyEn: 'Scroll down on this screen. Have invoices or expenses from before BigDogg? Import them as PDF. BigDogg reads them with AI and adds them to your records.',
+        bodyNl: 'Scroll naar beneden op dit scherm. Heb je facturen of kosten van vóór BigDogg? Importeer ze als PDF. BigDogg leest ze uit met AI en voegt ze toe aan je administratie. Onderaan zie je per bestand welke geslaagd, dubbel of mislukt zijn.',
+        bodyEn: 'Scroll down on this screen. Have invoices or expenses from before BigDogg? Import them as PDF. BigDogg reads them with AI and adds them to your records. The list at the bottom shows per file whether it succeeded, was a duplicate, or failed.',
       ),
       _Step(
         tabIndex: 2,
@@ -103,13 +106,22 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
         bodyNl: 'Gebruik de robot-knop rechtsonder om AI een factuur te laten genereren vanuit een beschrijving in gewone taal. Of gebruik de + knop om een factuur stap voor stap zelf op te bouwen.',
         bodyEn: 'Use the robot button (bottom-right) to let AI generate an invoice from a plain-language description. Or use the + button to build an invoice step by step yourself.',
       ),
+      if (quotes)
+        _Step(
+          tabIndex: 0,
+          icon: Icons.description_outlined,
+          titleNl: 'Offertes',
+          titleEn: 'Quotes',
+          bodyNl: 'Bovenin staat een Offertes-tab naast Facturen. Maak een offerte met de robot-knop (AI) of de + knop, verstuur per e-mail en zet hem met één tik om naar een factuur zodra de klant akkoord is. Heb je geen offertes nodig? Zet ze uit in Instellingen.',
+          bodyEn: 'There\'s a Quotes tab next to Invoices at the top. Create a quote via the robot (AI) or + button, send by email, and convert it to an invoice with one tap when the client accepts. Don\'t need quotes? Turn them off in Settings.',
+        ),
       _Step(
         tabIndex: 3,
         icon: Icons.account_balance_wallet_outlined,
         titleNl: 'Kosten',
         titleEn: 'Expenses',
-        bodyNl: 'Voeg kosten toe via de camera (foto van je bon) of handmatig met de + knop. Gebruik het map-icoon voor afschrijvingen op investeringen. BTW wordt automatisch berekend.',
-        bodyEn: 'Add expenses via camera (photo of your receipt) or manually with the + button. Use the folder icon for depreciation on investments. VAT is calculated automatically.',
+        bodyNl: 'Voeg kosten toe via de camera (foto van je bon) of handmatig met de + knop. Gebruik het map-icoon voor afschrijvingen op investeringen. BTW wordt automatisch berekend. Bovenaan kun je per kwartaal filteren — zo zie je alleen de kosten van het lopende kwartaal.',
+        bodyEn: 'Add expenses via camera (photo of your receipt) or manually with the + button. Use the folder icon for depreciation on investments. VAT is calculated automatically. The selector at the top filters per quarter — handy to focus on the running quarter.',
       ),
       _Step(
         tabIndex: 4,
@@ -133,17 +145,35 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
           icon: Icons.folder_outlined,
           titleNl: 'Projecten',
           titleEn: 'Projects',
-          bodyNl: 'Activeer projecten in Instellingen. Maak projecten aan en koppel facturen en kosten eraan. Zo zie je per opdracht precies wat je hebt verdiend en uitgegeven.',
-          bodyEn: 'Enable projects in Settings. Create projects and link invoices and expenses. See exactly what each job earned and cost.',
+          bodyNl: 'Maak projecten aan en koppel facturen en kosten eraan. Zo zie je per opdracht precies wat je hebt verdiend en uitgegeven.',
+          bodyEn: 'Create projects and link invoices and expenses to them. See exactly what each job earned and cost.',
           isProjectsTab: true,
         ),
       _Step(
         tabIndex: -1,
-        icon: Icons.settings_outlined,
-        titleNl: 'Instellingen — Stripe & meer',
-        titleEn: 'Settings — Stripe & more',
-        bodyNl: 'Koppel je Stripe account om betaallinks op facturen te zetten. Klanten betalen direct via iDEAL of creditcard — ideaal voor betaling op locatie via QR-code. Hier vind je ook je abonnement en wachtwoordinstellingen.',
-        bodyEn: 'Connect Stripe to add payment links to invoices. Clients pay directly via iDEAL or credit card — great for on-the-spot payment via QR code. You\'ll also find subscription and password settings here.',
+        icon: Icons.tune_rounded,
+        titleNl: 'Instellingen — Functies aan-/uitzetten',
+        titleEn: 'Settings — Toggle features on/off',
+        bodyNl: 'Bovenaan in Instellingen vind je schakelaars voor Offertes en Projecten. Niet iedereen heeft alles nodig — zet aan of uit wat past bij hoe jij werkt. Verberg Offertes als je alleen factureert, of zet Projecten aan om opdrachten apart bij te houden.',
+        bodyEn: 'At the top of Settings you\'ll find switches for Quotes and Projects. Not everyone needs everything — toggle whatever fits how you work. Hide Quotes if you only invoice, or enable Projects to track work per job.',
+        isSettings: true,
+      ),
+      _Step(
+        tabIndex: -1,
+        icon: Icons.credit_card_rounded,
+        titleNl: 'Instellingen — Stripe & abonnement',
+        titleEn: 'Settings — Stripe & subscription',
+        bodyNl: 'Koppel je Stripe-account om betaallinks op facturen te zetten. Klanten betalen direct via iDEAL of creditcard — ideaal voor betaling op locatie via QR-code. Op dit scherm beheer je ook je abonnement en wachtwoord.',
+        bodyEn: 'Connect Stripe to add payment links to invoices. Clients pay directly via iDEAL or credit card — great for on-the-spot payment via QR code. You also manage your subscription and password on this screen.',
+        isSettings: true,
+      ),
+      _Step(
+        tabIndex: -1,
+        icon: Icons.account_balance_outlined,
+        titleNl: 'Instellingen — Bankrekening koppelen',
+        titleEn: 'Settings — Connect your bank',
+        bodyNl: 'Koppel je Nederlandse bankrekening via Tink (PSD2). BigDogg krijgt alleen leestoegang en kan dan automatisch je transacties inlezen, zodat je kosten niet meer met de hand hoeft in te voeren.',
+        bodyEn: 'Connect your Dutch bank account via Tink (PSD2). BigDogg only gets read access and can then automatically pull in your transactions, so you don\'t need to enter expenses by hand.',
         isSettings: true,
       ),
     ];
