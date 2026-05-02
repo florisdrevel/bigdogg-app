@@ -13,6 +13,8 @@ import 'settings_screen.dart';
 import 'projects_screen.dart';
 import 'walkthrough_screen.dart';
 
+const String _bankReturnQuery = 'bank';
+
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -24,6 +26,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
   bool _walkthroughStarted = false;
   bool _welcomeShown = false;
+  bool _bankReturnHandled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Show a snackbar when Tink redirects back to /dashboard?bank=success
+    // (or ?bank_error=...). Done once per session — flag prevents repeats
+    // when the user navigates between tabs.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _bankReturnHandled) return;
+      final uri = GoRouterState.of(context).uri;
+      final bank = uri.queryParameters[_bankReturnQuery];
+      final bankError = uri.queryParameters['bank_error'];
+      if (bank == 'success' || bankError != null) {
+        _bankReturnHandled = true;
+        final isNl = context.read<AppProvider>().language == 'nl';
+        final ok = bank == 'success';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ok
+              ? (isNl ? 'Bankrekening gekoppeld' : 'Bank account connected')
+              : (isNl ? 'Koppeling mislukt: ${bankError ?? ''}' : 'Connection failed: ${bankError ?? ''}')),
+          backgroundColor:
+              ok ? BigDoggTheme.success : BigDoggTheme.error,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ));
+      }
+    });
+  }
 
   void _completeWalkthrough() {
     context.read<AppProvider>().markWalkthroughSeen();

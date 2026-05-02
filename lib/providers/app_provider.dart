@@ -5,6 +5,7 @@ class AppProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   String _language = 'en';
   bool _projectsEnabled = false;
+  bool _quotesEnabled = true;
   bool _hasSeenWalkthrough = true; // default true — only false once prefs confirm it
   bool _prefsLoaded = false;
 
@@ -12,6 +13,7 @@ class AppProvider extends ChangeNotifier {
   String get language => _language;
   bool get isDark => _themeMode == ThemeMode.dark;
   bool get projectsEnabled => _projectsEnabled;
+  bool get quotesEnabled => _quotesEnabled;
   bool get hasSeenWalkthrough => _hasSeenWalkthrough;
   bool get prefsLoaded => _prefsLoaded;
 
@@ -24,10 +26,12 @@ class AppProvider extends ChangeNotifier {
     final theme = prefs.getString('theme') ?? 'light';
     final lang = prefs.getString('language') ?? 'en';
     final projects = prefs.getBool('projects_enabled') ?? false;
+    final quotes = prefs.getBool('quotes_enabled') ?? true;
     final seen = prefs.getBool('has_seen_walkthrough') ?? false;
     _themeMode = theme == 'dark' ? ThemeMode.dark : ThemeMode.light;
     _language = lang;
     _projectsEnabled = projects;
+    _quotesEnabled = quotes;
     _hasSeenWalkthrough = seen;
     _prefsLoaded = true;
     notifyListeners();
@@ -51,6 +55,13 @@ class AppProvider extends ChangeNotifier {
     _projectsEnabled = enabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('projects_enabled', enabled);
+    notifyListeners();
+  }
+
+  Future<void> setQuotesEnabled(bool enabled) async {
+    _quotesEnabled = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('quotes_enabled', enabled);
     notifyListeners();
   }
 

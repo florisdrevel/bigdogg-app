@@ -260,6 +260,44 @@ static Future<Map<String, dynamic>> deleteImportedInvoice(String invoiceId) asyn
     return {'success': false, 'message': 'Connection error'};
   }
 }
+
+/// Unified history of every file uploaded through either import flow.
+/// Each row carries: filename, import_type ('invoice'|'expense'),
+/// records_imported, records_duplicate, records_failed, status, imported_at.
+static Future<Map<String, dynamic>> getFileImports() async {
+  final token = await getToken();
+  try {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/v1/invoices/file-imports'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return {
+        'success': true,
+        'file_imports': data['file_imports'] ?? [],
+        'warning': data['warning'],
+      };
+    }
+    return {'success': false, 'file_imports': []};
+  } catch (e) {
+    return {'success': false, 'file_imports': [], 'message': 'Connection error'};
+  }
+}
+
+static Future<Map<String, dynamic>> deleteFileImport(String recordId) async {
+  final token = await getToken();
+  try {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/v1/invoices/file-imports/$recordId'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) return {'success': true};
+    return {'success': false};
+  } catch (e) {
+    return {'success': false, 'message': 'Connection error'};
+  }
+}
   static Future<Map<String, dynamic>> sendReminder(String invoiceId) async {
     final token = await _getToken();
     try {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/quotes_service.dart';
+import '../services/email_service.dart';
 import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
@@ -20,6 +21,7 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
   List<dynamic> _lines = [];
   bool _loading = true;
   bool _busy = false;
+  bool _sendingEmail = false;
 
   @override
   void initState() {
@@ -69,6 +71,59 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
         content: Text(isNl ? 'Kon PDF niet openen' : 'Could not open PDF'),
       ));
     }
+  }
+
+  Future<void> _sendEmail(bool isNl) async {
+    if (_quote == null) return;
+    final client = _quote!['clients'];
+    final clientEmail = client?['email'] ?? _quote!['client_email'] ?? '';
+    if (clientEmail.toString().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(isNl
+              ? 'Geen e-mailadres beschikbaar'
+              : 'No email address available'),
+          backgroundColor: BigDoggTheme.error,
+        ));
+      }
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isNl ? 'Offerte versturen' : 'Send Quote'),
+        content: Text(isNl
+            ? 'Verstuur offerte ${_quote!['quote_number']} naar $clientEmail?'
+            : 'Send quote ${_quote!['quote_number']} to $clientEmail?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(isNl ? 'Annuleren' : 'Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(isNl ? 'Versturen' : 'Send'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    setState(() => _sendingEmail = true);
+    final result = await EmailService.sendQuote(widget.quoteId);
+    if (!mounted) return;
+    setState(() => _sendingEmail = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(result['success']
+          ? (isNl ? 'Offerte verstuurd!' : 'Quote sent!')
+          : (result['message']?.toString() ?? 'Error')),
+      backgroundColor:
+          result['success'] ? BigDoggTheme.success : BigDoggTheme.error,
+      behavior: SnackBarBehavior.floating,
+    ));
+    if (result['success']) _load();
   }
 
   Future<void> _convert(bool isNl) async {
@@ -193,6 +248,12 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
         ),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined,
+                color: Colors.white),
+            onPressed: () => _downloadPdf(isNl),
+            tooltip: 'PDF',
+          ),
           if (q != null && q['status'] != 'converted')
             IconButton(
               tooltip: isNl ? 'Verwijderen' : 'Delete',
@@ -336,14 +397,25 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
 
     return Column(
       children: [
-        if (status == 'accepted')
+        if (status == 'accepted') ...[
           _bigButton(
             label: isNl ? 'Omzetten naar factuur' : 'Convert to invoice',
             color: BigDoggTheme.gold500,
             icon: Icons.swap_horiz_rounded,
             onTap: _busy ? null : () => _convert(isNl),
           ),
-        if (status == 'accepted') const SizedBox(height: 8),
+          const SizedBox(height: 8),
+        ],
+        if (!isConverted)
+          _bigButton(
+            label: _sendingEmail
+                ? (isNl ? 'Versturen...' : 'Sending...')
+                : (isNl ? 'Verstuur per e-mail' : 'Send by email'),
+            color: BigDoggTheme.teal600,
+            icon: Icons.email_outlined,
+            onTap: _sendingEmail ? null : () => _sendEmail(isNl),
+          ),
+        if (!isConverted) const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(

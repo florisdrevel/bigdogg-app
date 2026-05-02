@@ -30,4 +30,24 @@ class EmailService {
       return {'success': false, 'message': 'Connection error'};
     }
   }
+
+  static Future<Map<String, dynamic>> sendQuote(String quoteId) async {
+    final token = await _getToken();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/email/quote/$quoteId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true};
+      }
+      return {'success': false, 'message': data['detail']};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error'};
+    }
+  }
 }

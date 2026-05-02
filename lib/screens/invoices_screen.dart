@@ -12,6 +12,7 @@ import '../theme.dart';
 import '../services/api_config.dart';
 import 'invoice_detail_screen.dart';
 import 'prompt_invoice_screen.dart';
+import 'prompt_quote_screen.dart';
 import 'quote_detail_screen.dart';
 
 class InvoicesScreen extends StatefulWidget {
@@ -1554,44 +1555,51 @@ class _InvoicesScreenState extends State<InvoicesScreen>
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
+    final quotesEnabled = context.watch<AppProvider>().quotesEnabled;
     final filteredInvoices = _filteredInvoices;
     final filteredQuotes = _filteredQuotes;
-    final isQuotesTab = _tabController.index == 1;
+    // When quotes are toggled off, the tab bar isn't rendered, so the
+    // tab controller index is moot — force isQuotesTab to false so the
+    // FAB layout falls back to the invoices-only setup.
+    final isQuotesTab = quotesEnabled && _tabController.index == 1;
 
     return Stack(
       children: [
         Column(
           children: [
-            // ── Tab bar ─────────────────────────────────────────
-            Container(
-              color: BigDoggTheme.lightSurface,
-              child: TabBar(
-                controller: _tabController,
-                labelColor: BigDoggTheme.teal800,
-                unselectedLabelColor: BigDoggTheme.lightTextSecondary,
-                indicatorColor: BigDoggTheme.teal800,
-                indicatorWeight: 3,
-                labelStyle: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'PlusJakartaSans'),
-                unselectedLabelStyle: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'PlusJakartaSans'),
-                tabs: [
-                  Tab(text: isNl ? 'Facturen' : 'Invoices'),
-                  Tab(text: isNl ? 'Offertes' : 'Quotes'),
-                ],
+            // ── Tab bar (only when quotes are enabled) ─────────
+            if (quotesEnabled)
+              Container(
+                color: BigDoggTheme.lightSurface,
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: BigDoggTheme.teal800,
+                  unselectedLabelColor: BigDoggTheme.lightTextSecondary,
+                  indicatorColor: BigDoggTheme.teal800,
+                  indicatorWeight: 3,
+                  labelStyle: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'PlusJakartaSans'),
+                  unselectedLabelStyle: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'PlusJakartaSans'),
+                  tabs: [
+                    Tab(text: isNl ? 'Facturen' : 'Invoices'),
+                    Tab(text: isNl ? 'Offertes' : 'Quotes'),
+                  ],
+                ),
               ),
-            ),
             // ── Body ───────────────────────────────────────────
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildInvoicesTab(isNl, filteredInvoices),
-                  _buildQuotesTab(isNl, filteredQuotes),
-                ],
-              ),
+              child: quotesEnabled
+                  ? TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildInvoicesTab(isNl, filteredInvoices),
+                        _buildQuotesTab(isNl, filteredQuotes),
+                      ],
+                    )
+                  : _buildInvoicesTab(isNl, filteredInvoices),
             ),
           ],
         ),
@@ -1632,7 +1640,30 @@ class _InvoicesScreenState extends State<InvoicesScreen>
             ),
           ),
         ],
-        if (isQuotesTab)
+        if (isQuotesTab) ...[
+          Positioned(
+            bottom: 88,
+            right: 16,
+            child: FloatingActionButton(
+              heroTag: 'ai_quote_fab',
+              onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const PromptQuoteScreen()))
+                  .then((result) {
+                if (result is String) {
+                  _loadQuotes();
+                  _navigateToQuote(result);
+                } else if (result == true) {
+                  _loadQuotes();
+                }
+              }),
+              backgroundColor: BigDoggTheme.teal800,
+              elevation: 2,
+              child: const Icon(Icons.smart_toy_outlined,
+                  color: Colors.white),
+            ),
+          ),
           Positioned(
             bottom: 16,
             right: 16,
@@ -1642,6 +1673,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
               child: const Icon(Icons.add),
             ),
           ),
+        ],
       ],
     );
   }

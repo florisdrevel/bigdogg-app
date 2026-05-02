@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/subscription_service.dart';
 import '../services/auth_service.dart';
 import '../services/referral_service.dart';
+import '../services/banking_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/payments_service.dart';
@@ -29,6 +30,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _connectingStripe = false;
   bool _openingDashboard = false;
 
+  // Bank (Tink) state
+  Map<String, dynamic>? _bankStatus;
+  bool _loadingBank = true;
+  bool _connectingBank = false;
+  bool _disconnectingBank = false;
+
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscureNew = true;
@@ -47,6 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadStatus();
     _loadStripeStatus();
     _loadReferralStats();
+    _loadBankStatus();
   }
 
   Future<void> _loadReferralStats() async {
@@ -93,7 +101,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         duration: const Duration(seconds: 8),
         backgroundColor: BigDoggTheme.error,
       ));
-      // Also dump to console so the browser devtools shows it
       // ignore: avoid_print
       print('[referral] generate failed: $detail');
     }
@@ -101,7 +108,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _copyReferralLink(bool isNl) async {
     final code = _referralStats?['code'] as String?;
-    // No code yet → generate one (which also copies on success)
     if (code == null) {
       await _generateReferralLink(isNl);
       return;
@@ -139,6 +145,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _loadingStripe = false;
       if (result['success']) _stripeStatus = result;
     });
+  }
+
+  Future<void> _loadBankStatus() async {
+    setState(() => _loadingBank = true);
+    final result = await BankingService.getStatus();
+    if (!mounted) return;
+    setState(() {
+      _loadingBank = false;
+      _bankStatus = result;
+    });
+  }
+
+  Future<void> _connectBank(bool isNl) async {
+    setState(() => _connectingBank = true);
+    final result = await BankingService.connect();
+    setState(() => _connectingBank = false);
+    if (result['success'] == true && result['link_url'] != null) {
+      final url = Uri.parse(result['link_url']);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result['message']?.toString() ??
+            (isNl
+                ? 'Kan bank koppeling niet starten'
+                : 'Could not start bank connection')),
+        backgroundColor: BigDoggTheme.error,
+      ));
+    }
+  }
+
+  Future<void> _disconnectBank(bool isNl) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isNl ? 'Koppeling verwijderen?' : 'Remove connection?'),
+        content: Text(isNl
+            ? 'Je bankrekening wordt losgekoppeld van BigDogg. Bestaande gegevens blijven bewaard.'
+            : 'Your bank account will be disconnected from BigDogg. Existing data is kept.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(isNl ? 'Annuleren' : 'Cancel')),
+          ElevatedButton(
+            style:
+                ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(isNl ? 'Verwijderen' : 'Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() => _disconnectingBank = true);
+    final result = await BankingService.disconnect();
+    if (!mounted) return;
+    setState(() => _disconnectingBank = false);
+    if (result['success'] == true) {
+      _loadBankStatus();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isNl ? 'Loskoppelen mislukt' : 'Disconnect failed'),
+        backgroundColor: BigDoggTheme.error,
+      ));
+    }
   }
 
   Future<void> _connectStripe(bool isNl) async {
@@ -395,6 +467,139 @@ For questions: info@bigdogg.nl''';
     ]),
   );
 
+  String _formatConnectedAt(String? raw, bool isNl) {
+    if (raw == null || raw.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(raw).toLocal();
+      String two(int v) => v.toString().padLeft(2, '0');
+      return '${dt.year}-${two(dt.month)}-${two(dt.day)}';
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  Widget _buildBankCard(bool isNl) {
+    final connected = _bankStatus?['connected'] == true;
+    final connectedAt = _bankStatus?['connected_at']?.toString();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: BigDoggTheme.lightSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: BigDoggTheme.lightBorder),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.account_balance_outlined,
+                size: 18, color: BigDoggTheme.teal800),
+            const SizedBox(width: 8),
+            Text(isNl ? 'Bankrekening' : 'Bank account',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: BigDoggTheme.teal800)),
+          ]),
+          const SizedBox(height: 4),
+          Text(
+            isNl
+                ? 'Koppel je Nederlandse bankrekening om transacties automatisch in te lezen.'
+                : 'Connect your Dutch bank account to import transactions automatically.',
+            style: const TextStyle(
+                fontSize: 13, color: BigDoggTheme.lightTextSecondary),
+          ),
+          const SizedBox(height: 12),
+          if (_loadingBank)
+            const Center(child: CircularProgressIndicator())
+          else if (connected) ...[
+            Row(children: [
+              const Icon(Icons.check_circle,
+                  color: BigDoggTheme.success, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isNl
+                          ? 'Bankrekening gekoppeld'
+                          : 'Bank account connected',
+                      style: const TextStyle(
+                          color: BigDoggTheme.success,
+                          fontWeight: FontWeight.w600),
+                    ),
+                    if (connectedAt != null && connectedAt.isNotEmpty)
+                      Text(
+                        '${isNl ? 'Sinds' : 'Since'} ${_formatConnectedAt(connectedAt, isNl)}',
+                        style: const TextStyle(
+                            fontSize: 11,
+                            color: BigDoggTheme.lightTextSecondary),
+                      ),
+                  ],
+                ),
+              ),
+            ]),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _disconnectingBank
+                    ? null
+                    : () => _disconnectBank(isNl),
+                icon: _disconnectingBank
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.link_off, size: 16),
+                label: Text(
+                    isNl ? 'Verwijder koppeling' : 'Remove connection'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: BigDoggTheme.error,
+                  side: const BorderSide(color: BigDoggTheme.error),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                ),
+              ),
+            ),
+          ] else
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed:
+                    _connectingBank ? null : () => _connectBank(isNl),
+                icon: _connectingBank
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.account_balance, color: Colors.white),
+                label: Text(
+                    isNl
+                        ? 'Koppel je bankrekening'
+                        : 'Connect your bank account',
+                    style: const TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: BigDoggTheme.teal800),
+              ),
+            ),
+          const SizedBox(height: 8),
+          Text(
+            isNl
+                ? 'Beveiligd via Tink (PSD2). BigDogg krijgt alleen leestoegang tot je transacties.'
+                : 'Secured via Tink (PSD2). BigDogg only gets read access to your transactions.',
+            style: const TextStyle(
+                fontSize: 11, color: BigDoggTheme.lightTextHint),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
@@ -479,7 +684,7 @@ For questions: info@bigdogg.nl''';
                     Text('Alles voor de moderne ZZP\'er', style: TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13)),
                   ])),
                   Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    const Text('\u20ac9,99', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 26, color: BigDoggTheme.teal800)),
+                    const Text('€9,99', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 26, color: BigDoggTheme.teal800)),
                     Text(isNl ? 'per maand' : 'per month', style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 12)),
                   ]),
                 ]),
@@ -493,28 +698,28 @@ For questions: info@bigdogg.nl''';
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 8),
-                _feature('\u2713 ${isNl ? 'Onbeperkt facturen' : 'Unlimited invoices'}'),
-                _feature('\u2713 ${isNl ? 'AI factuur assistent' : 'AI invoice assistant'}'),
-                _feature('\u2713 ${isNl ? 'Historische factuurimport' : 'Historical invoice import'}'),
-                _feature('\u2713 ${isNl ? 'Klantenbeheer' : 'Client management'}'),
-                _feature('\u2713 ${isNl ? 'Uitgaven bijhouden' : 'Expense tracking'}'),
-                _feature('\u2713 ${isNl ? 'Kwartaal BTW overzicht' : 'Quarterly VAT overview'}'),
-                _feature('\u2713 ${isNl ? 'Jaaroverzicht financiën' : 'Annual financial overview'}'),
-                _feature('\u2713 ${isNl ? 'Bonnen scannen' : 'Receipt scanning'}'),
-                _feature('\u2713 ${isNl ? 'Betalen via Stripe (iDEAL, creditcard)' : 'Pay via Stripe (iDEAL, credit card)'}'),
+                _feature('✓ ${isNl ? 'Onbeperkt facturen' : 'Unlimited invoices'}'),
+                _feature('✓ ${isNl ? 'AI factuur assistent' : 'AI invoice assistant'}'),
+                _feature('✓ ${isNl ? 'Historische factuurimport' : 'Historical invoice import'}'),
+                _feature('✓ ${isNl ? 'Klantenbeheer' : 'Client management'}'),
+                _feature('✓ ${isNl ? 'Uitgaven bijhouden' : 'Expense tracking'}'),
+                _feature('✓ ${isNl ? 'Kwartaal BTW overzicht' : 'Quarterly VAT overview'}'),
+                _feature('✓ ${isNl ? 'Jaaroverzicht financiën' : 'Annual financial overview'}'),
+                _feature('✓ ${isNl ? 'Bonnen scannen' : 'Receipt scanning'}'),
+                _feature('✓ ${isNl ? 'Betalen via Stripe (iDEAL, creditcard)' : 'Pay via Stripe (iDEAL, credit card)'}'),
                 const SizedBox(height: 16),
                 SizedBox(width: double.infinity, height: 46,
                   child: ElevatedButton(
                     onPressed: _checkingOut ? null : _startCheckout,
                     child: _checkingOut
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(isNl ? 'Start abonnement — \u20ac9,99/maand' : 'Start subscription — \u20ac9.99/month',
+                        : Text(isNl ? 'Start abonnement — €9,99/maand' : 'Start subscription — €9.99/month',
                             style: const TextStyle(fontSize: 15)),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Center(child: Text(
-                  isNl ? 'Altijd opzegbaar \u00b7 iDEAL en creditcard via Stripe' : 'Cancel anytime \u00b7 iDEAL and credit card via Stripe',
+                  isNl ? 'Altijd opzegbaar · iDEAL en creditcard via Stripe' : 'Cancel anytime · iDEAL and credit card via Stripe',
                   style: const TextStyle(color: BigDoggTheme.lightTextHint, fontSize: 12),
                 )),
               ]),
@@ -523,7 +728,25 @@ For questions: info@bigdogg.nl''';
 
           const SizedBox(height: 16),
 
-          // ── 2. PROJECTS TOGGLE ────────────────────────────────────
+          // ── 2a. QUOTES TOGGLE ─────────────────────────────────────
+          Container(
+            decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
+            padding: const EdgeInsets.all(16),
+            child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(isNl ? 'Offertes' : 'Quotes',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: BigDoggTheme.lightTextPrimary)),
+                const SizedBox(height: 2),
+                Text(isNl ? 'Toon de offertes-tab naast je facturen.' : 'Show the quotes tab next to your invoices.',
+                    style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
+              ])),
+              Switch(value: appProvider.quotesEnabled, onChanged: (val) => appProvider.setQuotesEnabled(val), activeColor: BigDoggTheme.teal800),
+            ]),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── 2b. PROJECTS TOGGLE ───────────────────────────────────
           Container(
             decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
             padding: const EdgeInsets.all(16),
@@ -675,6 +898,11 @@ For questions: info@bigdogg.nl''';
 
           const SizedBox(height: 16),
 
+          // ── 3b. BANK CONNECTION (Tink) ─────────────────────────────
+          _buildBankCard(isNl),
+
+          const SizedBox(height: 16),
+
           // ── 4. CHANGE PASSWORD ────────────────────────────────────
           Container(
             decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
@@ -800,7 +1028,7 @@ For questions: info@bigdogg.nl''';
                 style: const TextStyle(color: BigDoggTheme.lightTextSecondary, fontSize: 13)),
           )),
           const SizedBox(height: 8),
-          Center(child: Text('BigDogg v1.0 \u00b7 info@bigdogg.nl',
+          Center(child: Text('BigDogg v1.0 · info@bigdogg.nl',
               style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextHint))),
           const SizedBox(height: 32),
         ],
@@ -819,7 +1047,6 @@ For questions: info@bigdogg.nl''';
     final signups = (_referralStats?['signups'] as int?) ?? 0;
     final bonusEarned = (_referralStats?['bonus_months_earned'] as int?) ?? 0;
     final bonusMax = (_referralStats?['bonus_months_max'] as int?) ?? 3;
-    // 6 successful signups = max bonus (3 months); next bonus needs 2 more
     final nextThreshold = (bonusEarned >= bonusMax) ? null : ((bonusEarned + 1) * 2);
     final link = hasCode ? 'https://bigdogg.nl/#/register?ref=$code' : null;
 
@@ -871,7 +1098,6 @@ For questions: info@bigdogg.nl''';
           const SizedBox(height: 14),
 
           if (hasCode) ...[
-            // Link box + copy button
             Container(
               padding: const EdgeInsets.symmetric(
                   horizontal: 12, vertical: 10),
@@ -958,7 +1184,6 @@ For questions: info@bigdogg.nl''';
               ),
             ],
           ] else ...[
-            // No code yet — single big actionable button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
