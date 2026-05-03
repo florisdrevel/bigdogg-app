@@ -24,6 +24,7 @@ class ExpensesScreen extends StatefulWidget {
 class _ExpensesScreenState extends State<ExpensesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late final AppProvider _appProvider;
 
   List<dynamic> _expenses = [];
   bool _loading = true;
@@ -59,14 +60,27 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _appProvider = context.read<AppProvider>();
+    final initialSubTab = _appProvider.expensesSubTab.clamp(0, 1);
+    _tabController = TabController(
+        length: 2, vsync: this, initialIndex: initialSubTab);
+    _appProvider.addListener(_onAppProviderChange);
     _filterQuarter = _currentQuarter;
     _loadExpenses();
     _loadInvestments();
   }
 
+  void _onAppProviderChange() {
+    if (!mounted) return;
+    final desired = _appProvider.expensesSubTab.clamp(0, 1);
+    if (_tabController.index != desired) {
+      _tabController.animateTo(desired);
+    }
+  }
+
   @override
   void dispose() {
+    _appProvider.removeListener(_onAppProviderChange);
     _tabController.dispose();
     super.dispose();
   }

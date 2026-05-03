@@ -25,6 +25,7 @@ class InvoicesScreen extends StatefulWidget {
 class _InvoicesScreenState extends State<InvoicesScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  late final AppProvider _appProvider;
 
   // ─── Invoices state ──────────────────────────────────────
   List<dynamic> _invoices = [];
@@ -56,18 +57,32 @@ class _InvoicesScreenState extends State<InvoicesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _appProvider = context.read<AppProvider>();
+    // Honor any sub-tab the walkthrough requested before this screen mounted.
+    final initialSubTab = _appProvider.invoicesSubTab.clamp(0, 1);
+    _tabController = TabController(
+        length: 2, vsync: this, initialIndex: initialSubTab);
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
+    _appProvider.addListener(_onAppProviderChange);
     _filterQuarter = _currentQuarter;
     _loadInvoices();
     _loadDismissedOverdue();
     _loadQuotes();
   }
 
+  void _onAppProviderChange() {
+    if (!mounted) return;
+    final desired = _appProvider.invoicesSubTab.clamp(0, 1);
+    if (_tabController.index != desired) {
+      _tabController.animateTo(desired);
+    }
+  }
+
   @override
   void dispose() {
+    _appProvider.removeListener(_onAppProviderChange);
     _tabController.dispose();
     super.dispose();
   }

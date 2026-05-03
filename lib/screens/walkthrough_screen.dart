@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 import '../theme.dart';
 
 class WalkthroughOverlay extends StatefulWidget {
@@ -100,6 +102,7 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
       ),
       _Step(
         tabIndex: 0,
+        subTab: 0,
         icon: Icons.receipt_long_outlined,
         titleNl: 'Facturen — Aanmaken',
         titleEn: 'Invoices — Create',
@@ -109,19 +112,30 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
       if (quotes)
         _Step(
           tabIndex: 0,
+          subTab: 1,
           icon: Icons.description_outlined,
           titleNl: 'Offertes',
           titleEn: 'Quotes',
-          bodyNl: 'Bovenin staat een Offertes-tab naast Facturen. Maak een offerte met de robot-knop (AI) of de + knop, verstuur per e-mail en zet hem met één tik om naar een factuur zodra de klant akkoord is. Heb je geen offertes nodig? Zet ze uit in Instellingen.',
-          bodyEn: 'There\'s a Quotes tab next to Invoices at the top. Create a quote via the robot (AI) or + button, send by email, and convert it to an invoice with one tap when the client accepts. Don\'t need quotes? Turn them off in Settings.',
+          bodyNl: 'Maak een offerte met de robot-knop (AI) of de + knop, verstuur per e-mail en zet hem met één tik om naar een factuur zodra de klant akkoord is. Heb je geen offertes nodig? Zet ze uit in Instellingen.',
+          bodyEn: 'Create a quote via the robot (AI) or + button, send by email, and convert it to an invoice with one tap when the client accepts. Don\'t need quotes? Turn them off in Settings.',
         ),
       _Step(
         tabIndex: 3,
+        subTab: 0,
         icon: Icons.account_balance_wallet_outlined,
         titleNl: 'Kosten',
         titleEn: 'Expenses',
-        bodyNl: 'Voeg kosten toe via de camera (foto van je bon) of handmatig met de + knop. Gebruik het map-icoon voor afschrijvingen op investeringen. BTW wordt automatisch berekend. Bovenaan kun je per kwartaal filteren — zo zie je alleen de kosten van het lopende kwartaal.',
-        bodyEn: 'Add expenses via camera (photo of your receipt) or manually with the + button. Use the folder icon for depreciation on investments. VAT is calculated automatically. The selector at the top filters per quarter — handy to focus on the running quarter.',
+        bodyNl: 'Voeg kosten toe via de camera (foto van je bon) of handmatig met de + knop. BTW wordt automatisch berekend. Bovenaan kun je per kwartaal filteren — zo zie je alleen de kosten van het lopende kwartaal.',
+        bodyEn: 'Add expenses via camera (photo of your receipt) or manually with the + button. VAT is calculated automatically. The selector at the top filters per quarter — handy to focus on the running quarter.',
+      ),
+      _Step(
+        tabIndex: 3,
+        subTab: 1,
+        icon: Icons.trending_up_outlined,
+        titleNl: 'Investeringen & Afschrijvingen',
+        titleEn: 'Investments & Depreciation',
+        bodyNl: 'Investeringen vanaf €450 schrijf je af over meerdere jaren (NL belastingwet). Voeg ze hier toe met de + knop — BigDogg berekent het afschrijvingsschema automatisch en neemt het mee in je jaarrapport.',
+        bodyEn: 'Investments of €450 or more are depreciated over multiple years (Dutch tax law). Add them here with the + button — BigDogg calculates the depreciation schedule and rolls it into your annual report.',
       ),
       _Step(
         tabIndex: 4,
@@ -182,12 +196,29 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
   int _resolvedTab(_Step step) {
     if (step.isSettings) return widget.projectsEnabled ? 7 : 6;
     if (step.isProjectsTab) return 4;
+    // step.tabIndex is written for the projects-OFF layout
+    // (Overview=4, Profile=5). When Projects is enabled, the Projects
+    // screen inserts at index 4 and shifts everything from 4 upward by +1.
+    if (widget.projectsEnabled && step.tabIndex >= 4) {
+      return step.tabIndex + 1;
+    }
     return step.tabIndex;
   }
 
   void _applyTab(_Step step) {
     final idx = _resolvedTab(step);
     if (widget.currentTabIndex != idx) widget.onTabChange(idx);
+    // If the step also targets an inner sub-tab, push it through AppProvider
+    // so the affected screen (Invoices or Expenses) animates its TabController.
+    final sub = step.subTab;
+    if (sub != null) {
+      final app = context.read<AppProvider>();
+      if (step.tabIndex == 0) {
+        app.setInvoicesSubTab(sub);
+      } else if (step.tabIndex == 3) {
+        app.setExpensesSubTab(sub);
+      }
+    }
   }
 
   void _animateToNext(VoidCallback after) {
@@ -460,6 +491,10 @@ class _Step {
   final String titleNl, titleEn, bodyNl, bodyEn;
   final bool isProjectsTab;
   final bool isSettings;
+  // Optional: switch the inner sub-tab inside the parent screen.
+  // Used so the walkthrough lands on Offertes (1) inside Invoices and
+  // Investeringen (1) inside Expenses, instead of always the first sub-tab.
+  final int? subTab;
 
   const _Step({
     required this.tabIndex,
@@ -470,5 +505,6 @@ class _Step {
     required this.bodyEn,
     this.isProjectsTab = false,
     this.isSettings = false,
+    this.subTab,
   });
 }

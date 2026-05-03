@@ -14,6 +14,12 @@ class AppProvider extends ChangeNotifier {
   // straight to the new Projects tab.
   int? _navigateToTab;
 
+  // Sub-tab requests consumed by InvoicesScreen and ExpensesScreen.
+  // Lets the walkthrough land on Offertes (1) inside Invoices, or
+  // Investeringen (1) inside Expenses, instead of always the first sub-tab.
+  int _invoicesSubTab = 0;
+  int _expensesSubTab = 0;
+
   ThemeMode get themeMode => _themeMode;
   String get language => _language;
   bool get isDark => _themeMode == ThemeMode.dark;
@@ -22,6 +28,8 @@ class AppProvider extends ChangeNotifier {
   bool get hasSeenWalkthrough => _hasSeenWalkthrough;
   bool get prefsLoaded => _prefsLoaded;
   int? get navigateToTab => _navigateToTab;
+  int get invoicesSubTab => _invoicesSubTab;
+  int get expensesSubTab => _expensesSubTab;
 
   AppProvider() {
     _loadPreferences();
@@ -75,6 +83,19 @@ class AppProvider extends ChangeNotifier {
 
   void consumeNavigateToTab() {
     _navigateToTab = null;
+  }
+
+  // Always notify even if value is unchanged, so screens whose internal
+  // TabController has drifted (user manually swiped) can re-snap to the
+  // walkthrough's intended sub-tab.
+  void setInvoicesSubTab(int idx) {
+    _invoicesSubTab = idx;
+    notifyListeners();
+  }
+
+  void setExpensesSubTab(int idx) {
+    _expensesSubTab = idx;
+    notifyListeners();
   }
 
   Future<void> setQuotesEnabled(bool enabled) async {
