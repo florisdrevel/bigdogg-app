@@ -101,6 +101,8 @@ class _PromptInvoiceScreenState extends State<PromptInvoiceScreen>
 
   Future<void> _parse(bool isNl) async {
     if (_promptController.text.isEmpty) return;
+    // Drop the on-screen keyboard so the parsed-result card is visible.
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() { _loading = true; _error = null; _parsed = null; });
     final result = await AiService.parseInvoicePrompt(_promptController.text);
     setState(() {

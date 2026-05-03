@@ -399,9 +399,10 @@ class _Banner extends StatelessWidget {
               isNl ? step.bodyNl : step.bodyEn,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 18,
-                height: 1.55,
+                fontSize: 14,
+                height: 1.45,
                 fontWeight: FontWeight.w400,
+                fontFamily: 'PlusJakartaSans',
                 decoration: _noDecoration,
                 decorationColor: Colors.transparent,
               ),

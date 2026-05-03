@@ -270,22 +270,26 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
                       style: const TextStyle(
                           color: BigDoggTheme.lightTextSecondary)),
                 )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _statusBadge(q['status'] ?? 'draft', isNl),
-                      const SizedBox(height: 16),
-                      _infoCard(q, isNl),
-                      const SizedBox(height: 16),
-                      _linesCard(isNl),
-                      const SizedBox(height: 16),
-                      _totalsCard(q, isNl),
-                      const SizedBox(height: 24),
-                      _actionsBlock(q, isNl),
-                      const SizedBox(height: 24),
-                    ],
+              : SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(16, 16, 16,
+                        16 + MediaQuery.of(context).viewPadding.bottom),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _statusBadge(q['status'] ?? 'draft', isNl),
+                        const SizedBox(height: 16),
+                        _infoCard(q, isNl),
+                        const SizedBox(height: 16),
+                        _linesCard(isNl),
+                        const SizedBox(height: 16),
+                        _totalsCard(q, isNl),
+                        const SizedBox(height: 24),
+                        _actionsBlock(q, isNl),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                 ),
     );

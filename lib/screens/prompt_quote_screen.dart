@@ -30,6 +30,8 @@ class _PromptQuoteScreenState extends State<PromptQuoteScreen> {
 
   Future<void> _parse(bool isNl) async {
     if (_promptController.text.isEmpty) return;
+    // Drop the on-screen keyboard so the parsed-result card is visible.
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _loading = true;
       _error = null;

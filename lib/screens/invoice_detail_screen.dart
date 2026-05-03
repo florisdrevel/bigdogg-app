@@ -347,11 +347,14 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+              16, 16, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             _card([
               Text(isNl ? 'Klant' : 'Client',
                   style: const TextStyle(
@@ -703,6 +706,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                 ),
             ],
           ],
+          ),
         ),
       ),
     );

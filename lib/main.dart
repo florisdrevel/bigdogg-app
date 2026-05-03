@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -35,14 +36,18 @@ void main() async {
 final _router = GoRouter(
   initialLocation: '/',
   redirect: (context, state) async {
-    // Auto-skip the landing page when the user has a saved session AND
-    // had Remember-me ticked. Anything else (login, register, password
-    // reset, public quote, onboard) should NOT be hijacked.
+    // Only intercept the bare landing route — login, register, password
+    // reset, public quote, onboard etc. must NOT be hijacked.
     if (state.uri.path != '/') return null;
+
     final prefs = await SharedPreferences.getInstance();
     final hasToken = (prefs.getString('access_token') ?? '').isNotEmpty;
     final remember = prefs.getBool('remember_me') ?? false;
     if (hasToken && remember) return '/dashboard';
+
+    // The landing page is a marketing page for the website. Native
+    // (Android / iOS) builds skip straight to the login screen.
+    if (!kIsWeb) return '/login';
     return null;
   },
   errorBuilder: (context, state) {
