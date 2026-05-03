@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../theme.dart';
@@ -41,7 +42,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _refreshUnreadCount();
-    _notifTimer = Timer.periodic(const Duration(seconds: 60),
+    // Poll every 15 seconds so the bell badge feels live while the app
+    // is in the foreground. Real OS-level pings when the phone is locked
+    // require FCM (separate session).
+    _notifTimer = Timer.periodic(const Duration(seconds: 15),
         (_) => _refreshUnreadCount());
     // Show a snackbar when Tink redirects back to /dashboard?bank=success
     // (or ?bank_error=...). Done once per session — flag prevents repeats
@@ -77,7 +81,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _refreshUnreadCount() async {
     final n = await NotificationsService.unreadCount();
     if (!mounted) return;
-    if (_unreadCount != n) setState(() => _unreadCount = n);
+    final increased = n > _unreadCount;
+    if (_unreadCount != n) {
+      setState(() => _unreadCount = n);
+    }
+    // Notify the user when something new just landed: subtle haptic
+    // tap + snackbar with the latest title.
+    if (increased) {
+      HapticFeedback.mediumImpact();
+      SystemSound.play(SystemSoundType.click);
+      final list = await NotificationsService.list(limit: 1);
+      if (!mounted || list.isEmpty) return;
+      final latest = list.first as Map;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: BigDoggTheme.teal800,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+          content: Row(
+            children: [
+              const Icon(Icons.notifications_active_rounded,
+                  color: BigDoggTheme.gold500, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  latest['title']?.toString() ?? 'Nieuwe melding',
+                  style: const TextStyle(color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          action: SnackBarAction(
+            label: 'Bekijk',
+            textColor: BigDoggTheme.gold500,
+            onPressed: () {
+              // Tapping action just opens the bell sheet — same UX as
+              // tapping the bell icon directly.
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) {
+                  final isNl = context.read<AppProvider>().language == 'nl';
+                  return _NotificationsSheet(isNl: isNl);
+                },
+              ).then((_) => _refreshUnreadCount());
+            },
+          ),
+        ),
+      );
+    }
   }
 
   void _completeWalkthrough() {
