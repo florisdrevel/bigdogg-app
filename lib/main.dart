@@ -8,6 +8,7 @@ import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/client_onboarding_screen.dart';
 import 'screens/landing_screen.dart';
+import 'screens/quote_public_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'theme.dart';
 import 'providers/app_provider.dart';
@@ -67,6 +68,13 @@ final _router = GoRouter(
       builder: (context, state) {
         final token = state.pathParameters['token'] ?? '';
         return ClientOnboardingScreen(token: token);
+      },
+    ),
+    GoRoute(
+      path: '/q/:token',
+      builder: (context, state) {
+        final token = state.pathParameters['token'] ?? '';
+        return QuotePublicScreen(token: token);
       },
     ),
   ],

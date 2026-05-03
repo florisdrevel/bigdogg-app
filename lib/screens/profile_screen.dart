@@ -47,10 +47,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Uint8List> _expenseFilesBytes = [];
   Map<String, dynamic>? _expenseImportResult;
 
-  // Imported files (unified — invoices + expenses)
-  List<dynamic> _fileImports = [];
-  bool _loadingFileImports = false;
-
   String? _success;
   String? _error;
 
@@ -58,7 +54,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadProfile();
-    _loadFileImports();
   }
 
   bool _isMobile() {
@@ -88,43 +83,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _logoUrl = p['logo_url'];
       }
     });
-  }
-
-  Future<void> _loadFileImports() async {
-    setState(() => _loadingFileImports = true);
-    final result = await InvoicesService.getFileImports();
-    if (!mounted) return;
-    setState(() {
-      _loadingFileImports = false;
-      _fileImports = result['file_imports'] ?? [];
-    });
-  }
-
-  Future<void> _deleteFileImport(String id, bool isNl) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isNl ? 'Verwijderen?' : 'Delete?'),
-        content: Text(isNl
-            ? 'Verwijder dit item uit je importgeschiedenis? De geïmporteerde gegevens zelf blijven bewaard.'
-            : 'Remove this entry from your import history? The imported data itself stays in place.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(isNl ? 'Annuleren' : 'Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.error),
-            child: Text(isNl ? 'Verwijderen' : 'Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirm == true) {
-      await InvoicesService.deleteFileImport(id);
-      _loadFileImports();
-    }
   }
 
   Future<void> _pickAndUploadLogo(bool isNl) async {
@@ -231,7 +189,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _error = result['message'];
       }
     });
-    _loadFileImports();
   }
 
   Future<void> _runExpenseImport(bool isNl) async {
@@ -263,7 +220,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _error = result['message'];
       }
     });
-    _loadFileImports();
   }
 
   void _showPaywallDialog(bool isNl) {
@@ -603,65 +559,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ── Imported files row helpers ───────────────────────────────
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'success':
-        return BigDoggTheme.success;
-      case 'partial':
-        return BigDoggTheme.warning;
-      case 'failed':
-      default:
-        return BigDoggTheme.error;
-    }
-  }
-
-  IconData _statusIcon(String status) {
-    switch (status) {
-      case 'success':
-        return Icons.check_circle;
-      case 'partial':
-        return Icons.warning_amber_rounded;
-      case 'failed':
-      default:
-        return Icons.error_outline;
-    }
-  }
-
-  String _statusLabel(String status, bool isNl) {
-    switch (status) {
-      case 'success':
-        return isNl ? 'Gelukt' : 'Success';
-      case 'partial':
-        return isNl ? 'Gedeeltelijk' : 'Partial';
-      case 'failed':
-      default:
-        return isNl ? 'Mislukt' : 'Failed';
-    }
-  }
-
-  String _typeLabel(String type, bool isNl) {
-    switch (type) {
-      case 'invoice':
-        return isNl ? 'Factuur' : 'Invoice';
-      case 'expense':
-        return isNl ? 'Kosten' : 'Expense';
-      default:
-        return type;
-    }
-  }
-
-  String _formatImportedAt(String? raw) {
-    if (raw == null || raw.isEmpty) return '';
-    try {
-      final dt = DateTime.parse(raw).toLocal();
-      String two(int v) => v.toString().padLeft(2, '0');
-      return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
-    } catch (_) {
-      return raw;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
@@ -913,167 +810,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             forExpenses: true,
             onImport: () => _runExpenseImport(isNl),
           ),
-          const SizedBox(height: 12),
-
-          // ── Imported files (unified history) ─────────────────────
-          Container(
-            decoration: BoxDecoration(
-              color: BigDoggTheme.lightSurface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: BigDoggTheme.lightBorder),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        isNl ? 'Geïmporteerde bestanden' : 'Imported files',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: BigDoggTheme.teal800),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.refresh,
-                          color: BigDoggTheme.teal700),
-                      onPressed: _loadFileImports,
-                    ),
-                  ],
-                ),
-                Text(
-                  isNl
-                      ? 'Geschiedenis van alle geüploade facturen en bonnen.'
-                      : 'History of every uploaded invoice and receipt.',
-                  style: const TextStyle(
-                      fontSize: 12, color: BigDoggTheme.lightTextSecondary),
-                ),
-                const SizedBox(height: 12),
-                if (_loadingFileImports)
-                  const Center(child: CircularProgressIndicator())
-                else if (_fileImports.isEmpty)
-                  Text(
-                    isNl
-                        ? 'Nog geen bestanden geïmporteerd.'
-                        : 'No files imported yet.',
-                    style: const TextStyle(
-                        fontSize: 13,
-                        color: BigDoggTheme.lightTextSecondary),
-                  )
-                else
-                  ...(_fileImports.map((row) {
-                    final status = (row['status'] ?? 'failed').toString();
-                    final type = (row['import_type'] ?? '').toString();
-                    final imp = (row['records_imported'] ?? 0) as num;
-                    final dup = (row['records_duplicate'] ?? 0) as num;
-                    final fail = (row['records_failed'] ?? 0) as num;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: BigDoggTheme.lightBg,
-                        borderRadius: BorderRadius.circular(8),
-                        border:
-                            Border.all(color: BigDoggTheme.lightBorder),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(_statusIcon(status),
-                                  size: 16, color: _statusColor(status)),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  row['filename']?.toString() ?? '',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                      color: BigDoggTheme.teal800),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: _statusColor(status)
-                                      .withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  _statusLabel(status, isNl),
-                                  style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: _statusColor(status)),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              IconButton(
-                                visualDensity: VisualDensity.compact,
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                    minWidth: 28, minHeight: 28),
-                                icon: const Icon(Icons.delete_outline,
-                                    size: 18,
-                                    color: BigDoggTheme.lightTextHint),
-                                onPressed: () => _deleteFileImport(
-                                    row['id'].toString(), isNl),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: BigDoggTheme.teal100,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  _typeLabel(type, isNl),
-                                  style: const TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: BigDoggTheme.teal800),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _formatImportedAt(
-                                      row['imported_at']?.toString()),
-                                  style: const TextStyle(
-                                      fontSize: 11,
-                                      color: BigDoggTheme.lightTextHint),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            isNl
-                                ? '${imp.toInt()} geïmporteerd · ${dup.toInt()} dubbel · ${fail.toInt()} mislukt'
-                                : '${imp.toInt()} imported · ${dup.toInt()} duplicate · ${fail.toInt()} failed',
-                            style: const TextStyle(
-                                fontSize: 11,
-                                color: BigDoggTheme.lightTextSecondary),
-                          ),
-                        ],
-                      ),
-                    );
-                  })),
-              ],
-            ),
-          ),
-
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
