@@ -1093,70 +1093,23 @@ class _ExpensesScreenState extends State<ExpensesScreen>
                     ),
                   ),
                   const Divider(height: 1),
-                  // ── Totals card (filtered) ───────────────────────
+                  // ── Totals strip (compact, gives the list more room) ──
                   if (filtered.isNotEmpty)
                     Container(
-                      margin: const EdgeInsets.all(16),
-                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.fromLTRB(12, 6, 12, 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                           color: BigDoggTheme.teal800,
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(10)),
                       child: Row(
                         children: [
-                          Expanded(
-                              child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                Text(
-                                    isNl
-                                        ? 'Totaal ex BTW'
-                                        : 'Total ex VAT',
-                                    style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12)),
-                                Text(
-                                    '€${totalExBtw.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18)),
-                              ])),
-                          Expanded(
-                              child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                const Text('BTW / VAT',
-                                    style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12)),
-                                Text(
-                                    '€${totalBtw.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18)),
-                              ])),
-                          Expanded(
-                              child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                Text(
-                                    isNl
-                                        ? 'Totaal incl BTW'
-                                        : 'Total incl VAT',
-                                    style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12)),
-                                Text(
-                                    '€${(totalExBtw + totalBtw).toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18)),
-                              ])),
+                          _miniTotal(isNl ? 'ex BTW' : 'ex VAT',
+                              '€${totalExBtw.toStringAsFixed(2)}'),
+                          _miniTotal('BTW',
+                              '€${totalBtw.toStringAsFixed(2)}'),
+                          _miniTotal(isNl ? 'incl BTW' : 'incl VAT',
+                              '€${(totalExBtw + totalBtw).toStringAsFixed(2)}'),
                         ],
                       ),
                     ),
@@ -1205,8 +1158,10 @@ class _ExpensesScreenState extends State<ExpensesScreen>
                             ],
                           ))
                         : ListView.builder(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16),
+                            // Bottom padding clears the stack of FABs so the
+                            // last entry's delete icon stays tappable.
+                            padding: const EdgeInsets.fromLTRB(
+                                12, 4, 12, 220),
                             itemCount: filtered.length,
                             itemBuilder: (_, i) {
                               final exp = filtered[i];
@@ -1396,50 +1351,21 @@ class _ExpensesScreenState extends State<ExpensesScreen>
                 children: [
                   if (_investments.isNotEmpty)
                     Container(
-                      margin: const EdgeInsets.all(16),
-                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.fromLTRB(12, 6, 12, 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                           color: BigDoggTheme.teal800,
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(10)),
                       child: Row(
                         children: [
-                          Expanded(
-                              child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                Text(
-                                    isNl
-                                        ? 'Investeringen'
-                                        : 'Investments',
-                                    style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12)),
-                                Text('${_investments.length}',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18)),
-                              ])),
-                          Expanded(
-                              child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                Text(
-                                    isNl
-                                        ? 'Afschrijving $currentYear'
-                                        : 'Depreciation $currentYear',
-                                    style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12)),
-                                Text(
-                                    '€${totalThisYear.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18)),
-                              ])),
+                          _miniTotal(isNl ? 'Investeringen' : 'Investments',
+                              '${_investments.length}'),
+                          _miniTotal(
+                              isNl
+                                  ? 'Afschr. $currentYear'
+                                  : 'Depr. $currentYear',
+                              '€${totalThisYear.toStringAsFixed(2)}'),
                         ],
                       ),
                     ),
@@ -1472,8 +1398,10 @@ class _ExpensesScreenState extends State<ExpensesScreen>
                             ],
                           ))
                         : ListView.builder(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16),
+                            // Bottom padding clears the stack of FABs so the
+                            // last entry's delete icon stays tappable.
+                            padding: const EdgeInsets.fromLTRB(
+                                12, 4, 12, 220),
                             itemCount: _investments.length,
                             itemBuilder: (_, i) {
                               final inv = _investments[i];
@@ -1679,6 +1607,28 @@ class _ExpensesScreenState extends State<ExpensesScreen>
           ),
         ),
       ],
+    );
+  }
+
+  /// Compact label/value cell used inside the totals strip on the
+  /// Kosten and Investeringen tabs. Designed to fit three across without
+  /// dominating vertical real estate.
+  Widget _miniTotal(String label, String value) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label,
+              style: const TextStyle(color: Colors.white70, fontSize: 10)),
+          const SizedBox(height: 1),
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14)),
+        ],
+      ),
     );
   }
 }
