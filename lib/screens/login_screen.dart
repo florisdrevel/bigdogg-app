@@ -82,89 +82,94 @@ class _LoginScreenState extends State<LoginScreen> {
             left: 0, top: 0, bottom: 0, width: 5,
             child: Container(color: BigDoggTheme.gold500),
           ),
-          SizedBox(
-            width: double.infinity,
-            height: double.infinity,
-            child: SingleChildScrollView(
-              padding: EdgeInsets.only(bottom: bottomInset),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: MediaQuery.of(context).size.height - bottomInset,
-                ),
-                child: IntrinsicHeight(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Spacer(),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, viewport) {
+                // Shrink the logo on shorter viewports so the whole login
+                // card stays in view without scrolling. 140px on most
+                // phones, 200px on a desktop browser.
+                final tallEnough = viewport.maxHeight > 760;
+                final mediumEnough = viewport.maxHeight > 600;
+                final logoSize = tallEnough ? 200.0 : (mediumEnough ? 140.0 : 96.0);
+
+                return SingleChildScrollView(
+                  padding: EdgeInsets.only(bottom: bottomInset),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: viewport.maxHeight - bottomInset,
+                    ),
+                    child: IntrinsicHeight(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            GestureDetector(
-                              onTap: () => setState(() => _isNl = !_isNl),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: BigDoggTheme.gold500.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
-                                ),
-                                child: Text(
-                                  _isNl ? 'EN' : 'NL',
-                                  style: const TextStyle(color: BigDoggTheme.gold600, fontWeight: FontWeight.w700, fontSize: 12),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Image.asset('assets/images/logo.png', width: 280, height: 280),
-                      const SizedBox(height: 12),
-                      Container(
-                        width: 420,
-                        constraints: const BoxConstraints(maxWidth: 420),
-                        margin: const EdgeInsets.symmetric(horizontal: 24),
-                        decoration: BoxDecoration(
-                          color: isDark ? BigDoggTheme.darkSurface : BigDoggTheme.lightSurface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isDark ? BigDoggTheme.darkBorder : BigDoggTheme.lightBorder,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
-                              blurRadius: 32,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: AutofillGroup(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                Text(
-                                  t('Welkom', 'Welcome'),
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark ? BigDoggTheme.darkTextPrimary : BigDoggTheme.lightTextPrimary,
-                                    letterSpacing: -0.5,
+                                GestureDetector(
+                                  onTap: () => setState(() => _isNl = !_isNl),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: BigDoggTheme.gold500.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.4)),
+                                    ),
+                                    child: Text(
+                                      _isNl ? 'EN' : 'NL',
+                                      style: const TextStyle(color: BigDoggTheme.gold600, fontWeight: FontWeight.w700, fontSize: 12),
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  t('Inloggen op je account', 'Sign in to your account'),
-                                  style: TextStyle(
-                                    color: isDark ? BigDoggTheme.darkTextSecondary : BigDoggTheme.lightTextSecondary,
-                                    fontSize: 14,
-                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Image.asset('assets/images/logo.png', width: logoSize, height: logoSize),
+                            const SizedBox(height: 8),
+                            Container(
+                              width: 420,
+                              constraints: const BoxConstraints(maxWidth: 420),
+                              margin: const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                color: isDark ? BigDoggTheme.darkSurface : BigDoggTheme.lightSurface,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDark ? BigDoggTheme.darkBorder : BigDoggTheme.lightBorder,
                                 ),
-                                const SizedBox(height: 24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+                                    blurRadius: 32,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: AutofillGroup(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        t('Welkom', 'Welcome'),
+                                        style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w700,
+                                          color: isDark ? BigDoggTheme.darkTextPrimary : BigDoggTheme.lightTextPrimary,
+                                          letterSpacing: -0.5,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        t('Inloggen op je account', 'Sign in to your account'),
+                                        style: TextStyle(
+                                          color: isDark ? BigDoggTheme.darkTextSecondary : BigDoggTheme.lightTextSecondary,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
                                 if (_error != null)
                                   Container(
                                     padding: const EdgeInsets.all(12),
@@ -221,53 +226,52 @@ class _LoginScreenState extends State<LoginScreen> {
                                   },
                                 ),
                                 const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: () => setState(() => _rememberMe = !_rememberMe),
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(vertical: 4),
-                                          child: Row(
-                                            children: [
-                                              SizedBox(
-                                                width: 22,
-                                                height: 22,
-                                                child: Checkbox(
-                                                  value: _rememberMe,
-                                                  onChanged: (v) => setState(() => _rememberMe = v ?? true),
-                                                  visualDensity: VisualDensity.compact,
-                                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                t('Ingelogd blijven', 'Keep me logged in'),
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  color: BigDoggTheme.lightTextSecondary,
-                                                ),
-                                              ),
-                                            ],
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: _forgotPassword,
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: const Size(0, 28),
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: Text(
+                                      t('Wachtwoord vergeten?', 'Forgot password?'),
+                                      style: const TextStyle(color: BigDoggTheme.teal700, fontSize: 13),
+                                    ),
+                                  ),
+                                ),
+                                InkWell(
+                                  onTap: () => setState(() => _rememberMe = !_rememberMe),
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: Checkbox(
+                                            value: _rememberMe,
+                                            onChanged: (v) => setState(() => _rememberMe = v ?? true),
+                                            visualDensity: VisualDensity.compact,
+                                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                           ),
                                         ),
-                                      ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          t('Ingelogd blijven', 'Keep me logged in'),
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: BigDoggTheme.lightTextSecondary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    TextButton(
-                                      onPressed: _forgotPassword,
-                                      style: TextButton.styleFrom(
-                                        padding: EdgeInsets.zero,
-                                        minimumSize: const Size(0, 32),
-                                      ),
-                                      child: Text(
-                                        t('Wachtwoord vergeten?', 'Forgot password?'),
-                                        style: const TextStyle(color: BigDoggTheme.teal700, fontSize: 13),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 12),
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton(
@@ -292,11 +296,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                      const Spacer(),
-                    ],
+                            const Spacer(),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ],
