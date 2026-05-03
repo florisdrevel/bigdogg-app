@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../providers/app_provider.dart';
+import '../services/api_cache.dart';
+import '../services/auth_service.dart';
+import '../services/notifications_service.dart';
 import 'products_screen.dart';
 import 'clients_screen.dart';
 import 'invoices_screen.dart';
@@ -28,9 +32,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _welcomeShown = false;
   bool _bankReturnHandled = false;
 
+  // Notifications bell state — unread count is polled every 60 seconds
+  // and refreshed manually after the sheet is closed.
+  int _unreadCount = 0;
+  Timer? _notifTimer;
+
   @override
   void initState() {
     super.initState();
+    _refreshUnreadCount();
+    _notifTimer = Timer.periodic(const Duration(seconds: 60),
+        (_) => _refreshUnreadCount());
     // Show a snackbar when Tink redirects back to /dashboard?bank=success
     // (or ?bank_error=...). Done once per session — flag prevents repeats
     // when the user navigates between tabs.
@@ -54,6 +66,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ));
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _notifTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshUnreadCount() async {
+    final n = await NotificationsService.unreadCount();
+    if (!mounted) return;
+    if (_unreadCount != n) setState(() => _unreadCount = n);
   }
 
   void _completeWalkthrough() {
@@ -288,6 +312,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         actions: [
+          AnimatedBuilder(
+            animation: OfflineState.instance,
+            builder: (context, _) {
+              if (!OfflineState.instance.offline) {
+                return const SizedBox.shrink();
+              }
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: BigDoggTheme.warningBg,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: BigDoggTheme.warning.withOpacity(0.6)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.cloud_off_outlined,
+                        size: 12, color: Color(0xFF92400E)),
+                    const SizedBox(width: 4),
+                    Text(
+                      isNl ? 'Offline' : 'Offline',
+                      style: const TextStyle(
+                        color: Color(0xFF92400E),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           GestureDetector(
             onTap: () => appProvider.setLanguage(isNl ? 'en' : 'nl'),
             child: Container(
@@ -308,9 +365,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
+          _NotificationsBell(
+            unreadCount: _unreadCount,
+            isNl: isNl,
+            onChanged: _refreshUnreadCount,
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: BigDoggTheme.lightTextSecondary),
-            onPressed: () => context.go('/login'),
+            onPressed: () async {
+              await AuthService.logout();
+              if (!mounted) return;
+              context.go('/login');
+            },
             tooltip: isNl ? 'Uitloggen' : 'Log out',
           ),
         ],
@@ -349,6 +415,357 @@ class _DashboardScreenState extends State<DashboardScreen> {
       projectsEnabled: projectsEnabled,
       quotesEnabled: appProvider.quotesEnabled,
       child: scaffold,
+    );
+  }
+}
+
+
+// ─── Notifications bell + sheet ──────────────────────────────────
+class _NotificationsBell extends StatelessWidget {
+  final int unreadCount;
+  final bool isNl;
+  final VoidCallback onChanged;
+
+  const _NotificationsBell({
+    required this.unreadCount,
+    required this.isNl,
+    required this.onChanged,
+  });
+
+  Future<void> _open(BuildContext context) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _NotificationsSheet(isNl: isNl),
+    );
+    // Refresh badge after the sheet is closed; the sheet may have
+    // marked items as read.
+    onChanged();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          tooltip: isNl ? 'Meldingen' : 'Notifications',
+          icon: const Icon(Icons.notifications_none_rounded,
+              color: BigDoggTheme.lightTextSecondary),
+          onPressed: () => _open(context),
+        ),
+        if (unreadCount > 0)
+          Positioned(
+            top: 8,
+            right: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              decoration: BoxDecoration(
+                color: BigDoggTheme.error,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: BigDoggTheme.lightSurface, width: 1.5),
+              ),
+              child: Text(
+                unreadCount > 9 ? '9+' : '$unreadCount',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+
+class _NotificationsSheet extends StatefulWidget {
+  final bool isNl;
+  const _NotificationsSheet({required this.isNl});
+
+  @override
+  State<_NotificationsSheet> createState() => _NotificationsSheetState();
+}
+
+class _NotificationsSheetState extends State<_NotificationsSheet> {
+  List<dynamic> _items = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final list = await NotificationsService.list(limit: 50);
+    if (!mounted) return;
+    setState(() {
+      _items = list;
+      _loading = false;
+    });
+  }
+
+  Future<void> _markAllRead() async {
+    await NotificationsService.markAllRead();
+    if (!mounted) return;
+    setState(() {
+      _items = _items.map((n) {
+        final m = Map<String, dynamic>.from(n as Map);
+        m['read_at'] ??= DateTime.now().toUtc().toIso8601String();
+        return m;
+      }).toList();
+    });
+  }
+
+  Future<void> _onTap(Map<String, dynamic> item) async {
+    if (item['read_at'] == null) {
+      await NotificationsService.markRead(item['id'].toString());
+      if (!mounted) return;
+      setState(() {
+        item['read_at'] = DateTime.now().toUtc().toIso8601String();
+      });
+    }
+    // We could deep-link to invoice/quote/client here using item['data'],
+    // but the dashboard's tab structure makes that non-trivial. For now,
+    // just mark as read and let the user navigate normally.
+  }
+
+  Future<void> _delete(String id) async {
+    await NotificationsService.deleteNotification(id);
+    if (!mounted) return;
+    setState(() => _items.removeWhere((n) => n['id'].toString() == id));
+  }
+
+  IconData _iconFor(String type) {
+    switch (type) {
+      case 'invoice_paid':     return Icons.payments_rounded;
+      case 'quote_accepted':   return Icons.check_circle_rounded;
+      case 'quote_declined':   return Icons.cancel_rounded;
+      case 'client_onboarded': return Icons.person_add_rounded;
+      default:                 return Icons.notifications_rounded;
+    }
+  }
+
+  Color _colorFor(String type) {
+    switch (type) {
+      case 'invoice_paid':     return BigDoggTheme.success;
+      case 'quote_accepted':   return BigDoggTheme.success;
+      case 'quote_declined':   return BigDoggTheme.error;
+      case 'client_onboarded': return BigDoggTheme.teal700;
+      default:                 return BigDoggTheme.teal700;
+    }
+  }
+
+  String _formatTime(String? raw) {
+    if (raw == null) return '';
+    try {
+      final dt = DateTime.parse(raw).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inMinutes < 1) {
+        return widget.isNl ? 'zojuist' : 'just now';
+      }
+      if (diff.inMinutes < 60) {
+        return widget.isNl ? '${diff.inMinutes} min geleden' : '${diff.inMinutes}m ago';
+      }
+      if (diff.inHours < 24) {
+        return widget.isNl ? '${diff.inHours} u geleden' : '${diff.inHours}h ago';
+      }
+      if (diff.inDays < 7) {
+        return widget.isNl ? '${diff.inDays} d geleden' : '${diff.inDays}d ago';
+      }
+      String two(int v) => v.toString().padLeft(2, '0');
+      return '${dt.year}-${two(dt.month)}-${two(dt.day)}';
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isNl = widget.isNl;
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, scrollController) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 12, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      isNl ? 'Meldingen' : 'Notifications',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: BigDoggTheme.teal800,
+                        fontFamily: 'PlusJakartaSans',
+                      ),
+                    ),
+                  ),
+                  if (_items.any((n) => n['read_at'] == null))
+                    TextButton(
+                      onPressed: _markAllRead,
+                      child: Text(
+                        isNl ? 'Alles gelezen' : 'Mark all read',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _items.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.notifications_off_outlined,
+                                  size: 56,
+                                  color: Colors.grey[300]),
+                              const SizedBox(height: 12),
+                              Text(
+                                isNl
+                                    ? 'Nog geen meldingen.'
+                                    : 'No notifications yet.',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: BigDoggTheme.lightTextSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.separated(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          itemCount: _items.length,
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 1, indent: 64),
+                          itemBuilder: (_, i) {
+                            final n = Map<String, dynamic>.from(
+                                _items[i] as Map);
+                            final type = (n['type'] ?? '').toString();
+                            final unread = n['read_at'] == null;
+                            final color = _colorFor(type);
+                            return InkWell(
+                              onTap: () => _onTap(n),
+                              child: Container(
+                                color: unread
+                                    ? color.withOpacity(0.05)
+                                    : Colors.transparent,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: color.withOpacity(0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(_iconFor(type),
+                                          color: color, size: 20),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  n['title']?.toString() ??
+                                                      '',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: unread
+                                                        ? FontWeight.w700
+                                                        : FontWeight.w500,
+                                                    color: BigDoggTheme
+                                                        .teal800,
+                                                  ),
+                                                ),
+                                              ),
+                                              Text(
+                                                _formatTime(n['created_at']
+                                                    ?.toString()),
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  color: BigDoggTheme
+                                                      .lightTextHint,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          if ((n['body'] ?? '')
+                                              .toString()
+                                              .isNotEmpty) ...[
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              n['body'].toString(),
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: BigDoggTheme
+                                                    .lightTextSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      visualDensity: VisualDensity.compact,
+                                      icon: const Icon(Icons.close,
+                                          size: 16,
+                                          color: BigDoggTheme.lightTextHint),
+                                      onPressed: () =>
+                                          _delete(n['id'].toString()),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
+import 'api_cache.dart';
 
 class AuthService {
   static const String baseUrl = ApiConfig.baseUrl;
@@ -160,6 +161,7 @@ class AuthService {
   }
 
   static Future<void> logout() async {
+    await ApiCache.clearAll();
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
   }

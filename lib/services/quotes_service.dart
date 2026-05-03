@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
+import 'api_cache.dart';
 
 class QuotesService {
   static const String baseUrl = ApiConfig.baseUrl;
@@ -14,47 +15,49 @@ class QuotesService {
   static Future<String?> getToken() => _getToken();
 
   static Future<Map<String, dynamic>> getQuotes() async {
-    final token = await _getToken();
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/v1/quotes/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'quotes': data['quotes']};
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return ApiCache.read(
+      key: 'quotes_list',
+      fetcher: () async {
+        final token = await _getToken();
+        final response = await http.get(
+          Uri.parse('$baseUrl/api/v1/quotes/'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        );
+        final data = jsonDecode(response.body);
+        if (response.statusCode == 200) {
+          return {'success': true, 'quotes': data['quotes']};
+        }
+        return {'success': false, 'message': data['detail']};
+      },
+    );
   }
 
   static Future<Map<String, dynamic>> getQuote(String quoteId) async {
-    final token = await _getToken();
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/v1/quotes/$quoteId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'quote': data['quote'],
-          'lines': data['lines']
-        };
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return ApiCache.read(
+      key: 'quote:$quoteId',
+      fetcher: () async {
+        final token = await _getToken();
+        final response = await http.get(
+          Uri.parse('$baseUrl/api/v1/quotes/$quoteId'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        );
+        final data = jsonDecode(response.body);
+        if (response.statusCode == 200) {
+          return {
+            'success': true,
+            'quote': data['quote'],
+            'lines': data['lines']
+          };
+        }
+        return {'success': false, 'message': data['detail']};
+      },
+    );
   }
 
   static Future<Map<String, dynamic>> createQuote({

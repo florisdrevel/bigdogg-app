@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
+import 'api_cache.dart';
 import 'dart:typed_data';
 import 'package:http_parser/http_parser.dart';
 
@@ -19,23 +20,24 @@ class InvoicesService {
   }
 
   static Future<Map<String, dynamic>> getInvoices() async {
-    final token = await _getToken();
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/v1/invoices/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'invoices': data['invoices']};
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return ApiCache.read(
+      key: 'invoices_list',
+      fetcher: () async {
+        final token = await _getToken();
+        final response = await http.get(
+          Uri.parse('$baseUrl/api/v1/invoices/'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        );
+        final data = jsonDecode(response.body);
+        if (response.statusCode == 200) {
+          return {'success': true, 'invoices': data['invoices']};
+        }
+        return {'success': false, 'message': data['detail']};
+      },
+    );
   }
 
   static Future<Map<String, dynamic>> createInvoice({
@@ -70,27 +72,28 @@ class InvoicesService {
   }
 
   static Future<Map<String, dynamic>> getInvoice(String invoiceId) async {
-    final token = await _getToken();
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/v1/invoices/$invoiceId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'invoice': data['invoice'],
-          'lines': data['lines']
-        };
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return ApiCache.read(
+      key: 'invoice:$invoiceId',
+      fetcher: () async {
+        final token = await _getToken();
+        final response = await http.get(
+          Uri.parse('$baseUrl/api/v1/invoices/$invoiceId'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        );
+        final data = jsonDecode(response.body);
+        if (response.statusCode == 200) {
+          return {
+            'success': true,
+            'invoice': data['invoice'],
+            'lines': data['lines']
+          };
+        }
+        return {'success': false, 'message': data['detail']};
+      },
+    );
   }
 
   static Future<Map<String, dynamic>> updateStatus(

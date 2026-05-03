@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
+import 'api_cache.dart';
 
 class OverviewService {
   static const String baseUrl = ApiConfig.baseUrl;
@@ -12,44 +13,47 @@ class OverviewService {
   }
 
   static Future<Map<String, dynamic>> getQuarterlyOverview() async {
-    final token = await _getToken();
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/v1/overview/quarterly'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'overview': data};
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return ApiCache.read(
+      key: 'overview_quarterly',
+      fetcher: () async {
+        final token = await _getToken();
+        final response = await http.get(
+          Uri.parse('$baseUrl/api/v1/overview/quarterly'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        );
+        final data = jsonDecode(response.body);
+        if (response.statusCode == 200) {
+          return {'success': true, 'overview': data};
+        }
+        return {'success': false, 'message': data['detail']};
+      },
+    );
   }
 
   static Future<Map<String, dynamic>> getAnnualOverview({int? year}) async {
-    final token = await _getToken();
-    try {
-      final yearParam = year != null ? '?year=$year' : '';
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/v1/overview/annual$yearParam'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'overview': data};
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    final y = year ?? DateTime.now().year;
+    return ApiCache.read(
+      key: 'overview_annual:$y',
+      fetcher: () async {
+        final token = await _getToken();
+        final yearParam = year != null ? '?year=$year' : '';
+        final response = await http.get(
+          Uri.parse('$baseUrl/api/v1/overview/annual$yearParam'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        );
+        final data = jsonDecode(response.body);
+        if (response.statusCode == 200) {
+          return {'success': true, 'overview': data};
+        }
+        return {'success': false, 'message': data['detail']};
+      },
+    );
   }
   // ─────────────────────────────────────────────────────────────────────────────
 // ADD THESE TWO METHODS TO YOUR EXISTING OverviewService CLASS
@@ -62,21 +66,26 @@ class OverviewService {
     required int quarter,
     required int year,
   }) async {
-    try {
-      final token = await _getToken();
-      final response = await http.get(
-        Uri.parse(
-            '${ApiConfig.baseUrl}/api/v1/reports/quarter-detail?quarter=$quarter&year=$year'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return {'success': true, 'invoices': data['invoices'] ?? [], 'expenses': data['expenses'] ?? []};
-      }
-      return {'success': false};
-    } catch (e) {
-      return {'success': false};
-    }
+    return ApiCache.read(
+      key: 'quarter_detail:$year:$quarter',
+      fetcher: () async {
+        final token = await _getToken();
+        final response = await http.get(
+          Uri.parse(
+              '${ApiConfig.baseUrl}/api/v1/reports/quarter-detail?quarter=$quarter&year=$year'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return {
+            'success': true,
+            'invoices': data['invoices'] ?? [],
+            'expenses': data['expenses'] ?? []
+          };
+        }
+        return {'success': false};
+      },
+    );
   }
 
   /// Triggers async generation of the annual PDF report on the server side.
