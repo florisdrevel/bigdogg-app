@@ -282,6 +282,19 @@ class _InvoicesScreenState extends State<InvoicesScreen>
       _filterQuarter != _currentQuarter ||
       _sortBy != 'date_desc';
 
+  /// Display name for a client. `??` alone isn't enough because the
+  /// onboarding form leaves company_name as an empty string when the
+  /// client is a private individual — pick the first non-blank value.
+  String _clientLabel(Map c) {
+    final company = (c['company_name'] ?? '').toString().trim();
+    if (company.isNotEmpty) return company;
+    final contact = (c['contact_name'] ?? '').toString().trim();
+    if (contact.isNotEmpty) return contact;
+    final email = (c['email'] ?? '').toString().trim();
+    if (email.isNotEmpty) return email;
+    return '?';
+  }
+
   String _periodLabel(bool isNl) {
     if (_filterMonth != null) {
       final months = isNl
@@ -740,8 +753,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                   items: clients
                       .map((c) => DropdownMenuItem<String>(
                             value: c['id'] as String,
-                            child: Text(
-                                c['company_name'] ?? c['contact_name']),
+                            child: Text(_clientLabel(c)),
                           ))
                       .toList(),
                   onChanged: (val) =>
@@ -885,7 +897,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                   items: clients
                       .map((c) => DropdownMenuItem<String>(
                             value: c['id'] as String,
-                            child: Text(c['company_name'] ?? c['contact_name']),
+                            child: Text(_clientLabel(c)),
                           ))
                       .toList(),
                   onChanged: (val) =>
