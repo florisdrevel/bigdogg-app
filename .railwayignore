@@ -1,8 +1,7 @@
-# Railway CLI uses this file (NOT .gitignore, NOT .dockerignore) to decide
-# which files to upload to the build context. Keep build/web in — that's the
-# Flutter bundle the nginx Dockerfile needs to copy. Drop heavy/unrelated
-# trees so the upload stays small.
-
+# Railway CLI uses this file to decide which files to upload to the build
+# context. The Dockerfile is now multi-stage: stage 1 runs `flutter build
+# web` from source, so we no longer need to ship build/web (or any of
+# build/) — leave the entire build/ tree out.
 .git/
 .dart_tool/
 .flutter-plugins
@@ -21,9 +20,4 @@ test/
 integration_test/
 screenshots/
 coverage/
-build/cache/
-build/native_assets/
-build/3.4.0-9.0.pre.38/
-build/flutter_assets/
-build/macos/
-build/web_amd64/
+build/

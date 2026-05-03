@@ -1,6 +1,6 @@
-# Keep the build context tight. Anchor every top-level dir with a leading
-# slash so we don't accidentally exclude same-named subdirectories — e.g.
-# unanchored `web/` would also match `build/web/` (the one thing we DO need).
+# Now that the Dockerfile builds Flutter inside the image (multi-stage),
+# stage 1 needs lib/, web/, assets/, fonts/, pubspec — leave those in.
+# Drop the heavy/unrelated trees to keep the upload small.
 /.dart_tool/
 /.flutter-plugins
 /.flutter-plugins-dependencies
@@ -17,11 +17,9 @@
 /linux/
 /macos/
 /windows/
-/web/
 /test/
 /integration_test/
-/lib/
-/assets/
-/fonts/
 /screenshots/
 /coverage/
+# We no longer ship a prebuilt build/ — Stage 1 generates it fresh.
+/build/
