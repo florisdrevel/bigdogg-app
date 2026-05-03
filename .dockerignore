@@ -1,0 +1,27 @@
+# Keep the build context tight. Anchor every top-level dir with a leading
+# slash so we don't accidentally exclude same-named subdirectories — e.g.
+# unanchored `web/` would also match `build/web/` (the one thing we DO need).
+/.dart_tool/
+/.flutter-plugins
+/.flutter-plugins-dependencies
+/.pub-cache/
+/.pub/
+/.idea/
+/.vscode/
+/.git/
+/.gitignore
+/.gitattributes
+/.claude/
+/android/
+/ios/
+/linux/
+/macos/
+/windows/
+/web/
+/test/
+/integration_test/
+/lib/
+/assets/
+/fonts/
+/screenshots/
+/coverage/
