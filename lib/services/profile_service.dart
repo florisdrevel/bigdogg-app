@@ -45,6 +45,8 @@ class ProfileService {
     String? iban,
     String? language,
     bool? onboardingComplete,
+    String? invoicePrimaryColor,
+    String? invoiceAccentColor,
   }) async {
     final token = await _getToken();
     try {
@@ -66,6 +68,8 @@ class ProfileService {
           'iban': iban,
           'language': language,
           'onboarding_complete': onboardingComplete,
+          'invoice_primary_color': invoicePrimaryColor,
+          'invoice_accent_color': invoiceAccentColor,
         }),
       );
       final data = jsonDecode(response.body);

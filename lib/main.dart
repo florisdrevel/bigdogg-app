@@ -34,6 +34,17 @@ void main() async {
 
 final _router = GoRouter(
   initialLocation: '/',
+  redirect: (context, state) async {
+    // Auto-skip the landing page when the user has a saved session AND
+    // had Remember-me ticked. Anything else (login, register, password
+    // reset, public quote, onboard) should NOT be hijacked.
+    if (state.uri.path != '/') return null;
+    final prefs = await SharedPreferences.getInstance();
+    final hasToken = (prefs.getString('access_token') ?? '').isNotEmpty;
+    final remember = prefs.getBool('remember_me') ?? false;
+    if (hasToken && remember) return '/dashboard';
+    return null;
+  },
   errorBuilder: (context, state) {
     final location = state.uri.toString();
     if (location.contains('type=recovery')) {

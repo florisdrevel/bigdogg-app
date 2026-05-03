@@ -19,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   bool _obscurePassword = true;
   bool _isNl = true;
+  bool _rememberMe = true;
   String? _error;
   String? _resetMessage;
 
@@ -38,6 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final result = await AuthService.login(
       _emailController.text.trim(),
       _passwordController.text.trim(),
+      rememberMe: _rememberMe,
     );
     setState(() { _loading = false; });
     if (result['success']) {
@@ -218,20 +220,52 @@ class _LoginScreenState extends State<LoginScreen> {
                                     _login();
                                   },
                                 ),
-                                const SizedBox(height: 8),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: _forgotPassword,
-                                    style: TextButton.styleFrom(
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: const Size(0, 32),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => setState(() => _rememberMe = !_rememberMe),
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 4),
+                                          child: Row(
+                                            children: [
+                                              SizedBox(
+                                                width: 22,
+                                                height: 22,
+                                                child: Checkbox(
+                                                  value: _rememberMe,
+                                                  onChanged: (v) => setState(() => _rememberMe = v ?? true),
+                                                  visualDensity: VisualDensity.compact,
+                                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                t('Ingelogd blijven', 'Keep me logged in'),
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  color: BigDoggTheme.lightTextSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                    child: Text(
-                                      t('Wachtwoord vergeten?', 'Forgot password?'),
-                                      style: const TextStyle(color: BigDoggTheme.teal700, fontSize: 13),
+                                    TextButton(
+                                      onPressed: _forgotPassword,
+                                      style: TextButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                        minimumSize: const Size(0, 32),
+                                      ),
+                                      child: Text(
+                                        t('Wachtwoord vergeten?', 'Forgot password?'),
+                                        style: const TextStyle(color: BigDoggTheme.teal700, fontSize: 13),
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
                                 const SizedBox(height: 16),
                                 SizedBox(

@@ -35,6 +35,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _logoUrl;
   bool _uploadingLogo = false;
 
+  // Invoice colors — null means "use BigDogg defaults". Stored as #RRGGBB.
+  static const String _defaultPrimary = '#1B3A4B';
+  static const String _defaultAccent = '#C9A96E';
+  String _invoicePrimary = _defaultPrimary;
+  String _invoiceAccent = _defaultAccent;
+
   // Invoice import
   bool _importingInvoices = false;
   List<String> _invoiceFileNames = [];
@@ -81,6 +87,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _btwController.text = p['btw_number'] ?? '';
         _ibanController.text = p['iban'] ?? '';
         _logoUrl = p['logo_url'];
+        _invoicePrimary = (p['invoice_primary_color']?.toString() ?? '').isNotEmpty
+            ? p['invoice_primary_color']
+            : _defaultPrimary;
+        _invoiceAccent = (p['invoice_accent_color']?.toString() ?? '').isNotEmpty
+            ? p['invoice_accent_color']
+            : _defaultAccent;
       }
     });
   }
@@ -123,6 +135,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       btwNumber: _btwController.text.trim(),
       iban: _ibanController.text.trim(),
       onboardingComplete: true,
+      invoicePrimaryColor: _invoicePrimary,
+      invoiceAccentColor: _invoiceAccent,
     );
     setState(() {
       _saving = false;
@@ -780,6 +794,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 12),
 
+          // ── Invoice colors ───────────────────────────────────────
+          _invoiceColorsCard(isNl),
+          const SizedBox(height: 12),
+
           // ── Import invoices ──────────────────────────────────────
           _importSection(
             isNl: isNl,
@@ -835,5 +853,232 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return TextField(
         controller: controller,
         decoration: InputDecoration(labelText: label));
+  }
+
+  // ─── Invoice colors ─────────────────────────────────────────
+  Color _hexToColor(String hex) {
+    var s = hex.trim();
+    if (s.startsWith('#')) s = s.substring(1);
+    if (s.length == 6) s = 'FF$s';
+    return Color(int.parse(s, radix: 16));
+  }
+
+  static const _swatches = <String>[
+    '#1B3A4B', // BigDogg teal (default primary)
+    '#C9A96E', // BigDogg gold (default accent)
+    '#0F172A', // slate near-black
+    '#1E40AF', // blue
+    '#0E7490', // cyan
+    '#15803D', // green
+    '#A16207', // amber
+    '#B91C1C', // red
+    '#9333EA', // purple
+    '#DB2777', // pink
+    '#475569', // grey
+    '#000000', // black
+  ];
+
+  Future<void> _pickColor(bool isNl,
+      {required String current, required void Function(String) onPicked}) async {
+    final ctrl = TextEditingController(text: current);
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) {
+          String selected = ctrl.text.trim();
+          return AlertDialog(
+            title: Text(isNl ? 'Kies een kleur' : 'Pick a color'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _swatches.map((hex) {
+                      final isSelected = hex.toLowerCase() == selected.toLowerCase();
+                      return GestureDetector(
+                        onTap: () {
+                          setSt(() => ctrl.text = hex);
+                          Navigator.pop(ctx, hex);
+                        },
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: _hexToColor(hex),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected ? Colors.black : Colors.black12,
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(isNl ? 'Of voer een hex-code in' : 'Or enter a hex code',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: BigDoggTheme.lightTextSecondary)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: ctrl,
+                    decoration: const InputDecoration(
+                      hintText: '#1B3A4B',
+                      isDense: true,
+                    ),
+                    onChanged: (v) => setSt(() {}),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, null),
+                  child: Text(isNl ? 'Annuleren' : 'Cancel')),
+              ElevatedButton(
+                onPressed: () {
+                  var v = ctrl.text.trim();
+                  if (v.isEmpty) {
+                    Navigator.pop(ctx, null);
+                    return;
+                  }
+                  if (!v.startsWith('#')) v = '#$v';
+                  // accept #RRGGBB only (6 hex digits after #)
+                  final ok = RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(v);
+                  Navigator.pop(ctx, ok ? v.toUpperCase() : null);
+                },
+                child: Text(isNl ? 'Opslaan' : 'Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (picked != null) {
+      setState(() => onPicked(picked));
+    }
+  }
+
+  Widget _colorSwatchRow({
+    required bool isNl,
+    required String label,
+    required String currentHex,
+    required void Function(String) onPick,
+  }) {
+    return InkWell(
+      onTap: () => _pickColor(isNl, current: currentHex, onPicked: onPick),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: _hexToColor(currentHex),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.black12),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600)),
+                  Text(currentHex,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'monospace',
+                          color: BigDoggTheme.lightTextSecondary)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right,
+                size: 18, color: BigDoggTheme.lightTextHint),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _invoiceColorsCard(bool isNl) {
+    final isCustom = _invoicePrimary.toUpperCase() != _defaultPrimary ||
+        _invoiceAccent.toUpperCase() != _defaultAccent;
+    return Container(
+      decoration: BoxDecoration(
+        color: BigDoggTheme.lightSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: BigDoggTheme.lightBorder),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(isNl ? 'Factuurkleuren' : 'Invoice colors',
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: BigDoggTheme.teal800)),
+          const SizedBox(height: 4),
+          Text(
+            isNl
+                ? 'Pas de kleuren op je facturen en offertes aan. Standaard zijn dit de BigDogg kleuren.'
+                : 'Customise the colors on your invoices and quotes. The defaults are the BigDogg colors.',
+            style: const TextStyle(
+                fontSize: 13, color: BigDoggTheme.lightTextSecondary),
+          ),
+          const SizedBox(height: 8),
+          _colorSwatchRow(
+            isNl: isNl,
+            label: isNl ? 'Hoofdkleur (regels)' : 'Primary (lines & text)',
+            currentHex: _invoicePrimary,
+            onPick: (v) => _invoicePrimary = v,
+          ),
+          const Divider(height: 1),
+          _colorSwatchRow(
+            isNl: isNl,
+            label: isNl ? 'Accentkleur (totaalstreep)' : 'Accent (totals line)',
+            currentHex: _invoiceAccent,
+            onPick: (v) => _invoiceAccent = v,
+          ),
+          if (isCustom) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => setState(() {
+                  _invoicePrimary = _defaultPrimary;
+                  _invoiceAccent = _defaultAccent;
+                }),
+                icon: const Icon(Icons.refresh, size: 16),
+                label: Text(
+                    isNl ? 'Herstel BigDogg kleuren' : 'Reset to BigDogg colors',
+                    style: const TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  foregroundColor: BigDoggTheme.teal700,
+                  minimumSize: const Size(0, 32),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 4),
+          Text(
+            isNl
+                ? 'Kleuren gelden voor de PDF van je facturen en offertes. Wijzigingen verschijnen op nieuwe verzendingen.'
+                : 'Colors apply to the PDF of your invoices and quotes. Changes show on the next send.',
+            style: const TextStyle(
+                fontSize: 11, color: BigDoggTheme.lightTextHint),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -329,15 +329,9 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
             style: const TextStyle(color: Colors.white)),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          // QR button in app bar if payment link exists and not paid
-          if (paymentLink != null && !isPaid)
-            IconButton(
-              icon: const Icon(Icons.qr_code, color: Colors.white),
-              onPressed: () => _showQrDialog(isNl, paymentLink),
-              tooltip: isNl ? 'QR Code' : 'QR Code',
-            ),
+          // Status pill only — PDF and QR live in the body to avoid duplicates.
           Container(
-            margin: const EdgeInsets.only(right: 8),
+            margin: const EdgeInsets.only(right: 12),
             padding: const EdgeInsets.symmetric(
                 horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
@@ -350,12 +344,6 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   color: _statusColor(status),
                   fontWeight: FontWeight.w600),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined,
-                color: Colors.white),
-            onPressed: () => _downloadPdf(isNl),
-            tooltip: 'PDF',
           ),
         ],
       ),

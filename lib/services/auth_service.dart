@@ -48,8 +48,9 @@ class AuthService {
 
   static Future<Map<String, dynamic>> login(
     String email,
-    String password,
-  ) async {
+    String password, {
+    bool rememberMe = true,
+  }) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/v1/auth/login'),
@@ -64,6 +65,10 @@ class AuthService {
         await prefs.setString('user_id', data['user']['id']);
         await prefs.setString('full_name', data['user']['full_name']);
         await prefs.setString('user_email', data['user']['email']);
+        // Remember-me drives the auto-redirect on app start. When false,
+        // the user will land on /login again next visit even though the
+        // token is still in storage — same as a session-only login.
+        await prefs.setBool('remember_me', rememberMe);
         return {'success': true, 'data': data};
       }
       return {'success': false, 'message': data['detail'] ?? 'Invalid email or password'};
