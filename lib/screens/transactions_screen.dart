@@ -80,7 +80,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isNl ? 'Banktransacties' : 'Bank transactions'),
+        title: Text(isNl ? 'Transacties' : 'Transactions'),
         backgroundColor: BigDoggTheme.lightSurface,
         foregroundColor: BigDoggTheme.teal800,
         elevation: 0,
