@@ -565,6 +565,24 @@ For questions: info@bigdogg.nl''';
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => context.push('/transactions'),
+                icon: const Icon(Icons.receipt_long, size: 16, color: Colors.white),
+                label: Text(
+                  isNl ? 'Bekijk transacties' : 'View transactions',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: BigDoggTheme.teal800,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: _disconnectingBank
                     ? null

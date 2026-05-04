@@ -11,6 +11,7 @@ import 'screens/client_onboarding_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/quote_public_screen.dart';
 import 'screens/reset_password_screen.dart';
+import 'screens/transactions_screen.dart';
 import 'theme.dart';
 import 'providers/app_provider.dart';
 
@@ -92,6 +93,10 @@ final _router = GoRouter(
         final token = state.pathParameters['token'] ?? '';
         return QuotePublicScreen(token: token);
       },
+    ),
+    GoRoute(
+      path: '/transactions',
+      builder: (context, state) => const TransactionsScreen(),
     ),
   ],
 );
