@@ -737,14 +737,14 @@ class _TransactionSheetState extends State<_TransactionSheet> {
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (_, i) {
                     final inv = unpaid[i] as Map<String, dynamic>;
-                    final num = inv['invoice_number']?.toString() ?? '';
+                    final invNum = inv['invoice_number']?.toString() ?? '';
                     final clientName = inv['client_name']?.toString() ?? '';
                     final clientCo = inv['client_company']?.toString() ?? '';
                     final total = (inv['total_incl_btw'] as num?)?.toDouble() ?? 0;
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
-                        num,
+                        invNum,
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       subtitle: Text(
