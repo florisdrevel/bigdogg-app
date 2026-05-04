@@ -160,37 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _connectBank(bool isNl) async {
     setState(() => _connectingBank = true);
-
-    // Step 1: load the institution list. The user has to pick a bank
-    // before GoCardless can mint a requisition link for it.
-    final institutionsResult = await BankingService.getInstitutions();
-    if (!mounted) {
-      setState(() => _connectingBank = false);
-      return;
-    }
-    if (institutionsResult['success'] != true) {
-      setState(() => _connectingBank = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        duration: const Duration(seconds: 6),
-        content: Text(institutionsResult['message']?.toString() ??
-            (isNl
-                ? 'Kon banken niet ophalen'
-                : 'Could not load banks')),
-        backgroundColor: BigDoggTheme.error,
-      ));
-      return;
-    }
-
-    final institutions = (institutionsResult['institutions'] as List?) ?? [];
-    setState(() => _connectingBank = false);
-
-    // Step 2: present the picker.
-    final picked = await _pickInstitution(isNl, institutions);
-    if (!mounted || picked == null) return;
-
-    // Step 3: ask backend for a link URL targeting that bank.
-    setState(() => _connectingBank = true);
-    final result = await BankingService.connect(institutionId: picked['id'].toString());
+    final result = await BankingService.connect();
     setState(() => _connectingBank = false);
     if (!mounted) return;
 
@@ -226,86 +196,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: BigDoggTheme.error,
       ));
     }
-  }
-
-  Future<Map<String, dynamic>?> _pickInstitution(
-    bool isNl,
-    List<dynamic> institutions,
-  ) async {
-    final searchCtrl = TextEditingController();
-    return showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(builder: (ctx, setLocal) {
-          final query = searchCtrl.text.trim().toLowerCase();
-          final filtered = query.isEmpty
-              ? institutions
-              : institutions.where((i) =>
-                  ((i['name'] ?? '') as String).toLowerCase().contains(query)).toList();
-          return AlertDialog(
-            title: Text(isNl ? 'Kies je bank' : 'Pick your bank'),
-            content: SizedBox(
-              width: 360,
-              height: 420,
-              child: Column(
-                children: [
-                  TextField(
-                    controller: searchCtrl,
-                    onChanged: (_) => setLocal(() {}),
-                    decoration: InputDecoration(
-                      hintText: isNl ? 'Zoek bank…' : 'Search bank…',
-                      prefixIcon: const Icon(Icons.search),
-                      isDense: true,
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? Center(
-                            child: Text(isNl
-                                ? 'Geen banken gevonden'
-                                : 'No banks found'),
-                          )
-                        : ListView.separated(
-                            itemCount: filtered.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1),
-                            itemBuilder: (_, i) {
-                              final inst = filtered[i] as Map<String, dynamic>;
-                              final logoUrl = inst['logo']?.toString();
-                              return ListTile(
-                                leading: logoUrl != null && logoUrl.isNotEmpty
-                                    ? Image.network(
-                                        logoUrl,
-                                        width: 36,
-                                        height: 36,
-                                        errorBuilder: (_, __, ___) =>
-                                            const Icon(Icons.account_balance),
-                                      )
-                                    : const Icon(Icons.account_balance),
-                                title: Text(inst['name']?.toString() ?? ''),
-                                subtitle: inst['bic'] != null
-                                    ? Text(inst['bic'].toString(),
-                                        style: const TextStyle(fontSize: 11))
-                                    : null,
-                                onTap: () => Navigator.pop(ctx, inst),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(isNl ? 'Annuleren' : 'Cancel'),
-              ),
-            ],
-          );
-        });
-      },
-    );
   }
 
   Future<void> _disconnectBank(bool isNl) async {
