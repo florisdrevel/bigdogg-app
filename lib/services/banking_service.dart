@@ -81,7 +81,16 @@ class BankingService {
       if (response.statusCode == 200) {
         return {'success': true, 'data': jsonDecode(response.body)};
       }
-      return {'success': false};
+      try {
+        final err = jsonDecode(response.body);
+        return {
+          'success': false,
+          'status': response.statusCode,
+          'message': err['detail']?.toString(),
+        };
+      } catch (_) {
+        return {'success': false, 'status': response.statusCode};
+      }
     } catch (e) {
       return {'success': false, 'message': 'Connection error'};
     }
