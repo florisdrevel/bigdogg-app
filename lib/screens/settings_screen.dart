@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -161,13 +162,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _connectingBank = true);
     final result = await BankingService.connect();
     setState(() => _connectingBank = false);
+    if (!mounted) return;
+
     if (result['success'] == true && result['link_url'] != null) {
       final url = Uri.parse(result['link_url']);
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
+      // canLaunchUrl returns false-negatives on web for valid https URLs, so
+      // we skip the gate and call launchUrl directly. On web we use
+      // platformDefault (same tab) — externalApplication can be popup-blocked.
+      try {
+        await launchUrl(
+          url,
+          mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+          webOnlyWindowName: kIsWeb ? '_self' : null,
+        );
+      } catch (e) {
+        if (!mounted) return;
+        await Clipboard.setData(ClipboardData(text: url.toString()));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          duration: const Duration(seconds: 8),
+          content: Text(isNl
+              ? 'Kon de bankpagina niet openen — link is gekopieerd, plak in browser'
+              : 'Could not open the bank page — link copied, paste in your browser'),
+          backgroundColor: BigDoggTheme.error,
+        ));
       }
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        duration: const Duration(seconds: 6),
         content: Text(result['message']?.toString() ??
             (isNl
                 ? 'Kan bank koppeling niet starten'
