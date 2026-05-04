@@ -70,6 +70,79 @@ class BankingService {
     }
   }
 
+  /// Confirm or change a transaction link.
+  /// linkType: 'invoice' | 'expense' | 'private' | null (null unlinks)
+  static Future<Map<String, dynamic>> setTransactionLink({
+    required String txId,
+    String? linkType,
+    String? linkedId,
+  }) async {
+    final token = await _getToken();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/banking/transactions/$txId/link'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'link_type': linkType,
+          'linked_id': linkedId,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return {'success': true, ...jsonDecode(response.body)};
+      }
+      try {
+        final err = jsonDecode(response.body);
+        return {'success': false, 'message': err['detail']?.toString()};
+      } catch (_) {
+        return {'success': false};
+      }
+    } catch (_) {
+      return {'success': false, 'message': 'Connection error'};
+    }
+  }
+
+  /// Create an expense from this transaction and auto-link it.
+  static Future<Map<String, dynamic>> createExpenseFromTransaction({
+    required String txId,
+    required String description,
+    required double amountExBtw,
+    required double btwRate,
+    required String expenseDate,
+    String category = 'general',
+  }) async {
+    final token = await _getToken();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/banking/transactions/$txId/create-expense'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'description': description,
+          'amount_ex_btw': amountExBtw,
+          'btw_rate': btwRate,
+          'expense_date': expenseDate,
+          'category': category,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return {'success': true, ...jsonDecode(response.body)};
+      }
+      try {
+        final err = jsonDecode(response.body);
+        return {'success': false, 'message': err['detail']?.toString()};
+      } catch (_) {
+        return {'success': false};
+      }
+    } catch (_) {
+      return {'success': false, 'message': 'Connection error'};
+    }
+  }
+
   /// Last 90 days of transactions from the connected bank.
   static Future<Map<String, dynamic>> getTransactions({int pageSize = 100}) async {
     final token = await _getToken();
