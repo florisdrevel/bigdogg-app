@@ -27,7 +27,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
   bool _walkthroughStarted = false;
   bool _welcomeShown = false;
@@ -38,15 +39,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _unreadCount = 0;
   Timer? _notifTimer;
 
+  // Keep the Supabase access token fresh. Default lifetime is ~1 hour;
+  // we refresh every 30 minutes from anywhere the app stays open so
+  // tokens never silently expire on the user.
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _refreshUnreadCount();
     // Poll every 15 seconds so the bell badge feels live while the app
     // is in the foreground. Real OS-level pings when the phone is locked
     // require FCM (separate session).
     _notifTimer = Timer.periodic(const Duration(seconds: 15),
         (_) => _refreshUnreadCount());
+    // Refresh the access token immediately on mount — this catches the
+    // case where the app was backgrounded for a while and the cached
+    // access token has already expired before the user got back to it.
+    AuthService.refreshToken();
+    _refreshTimer = Timer.periodic(const Duration(minutes: 30),
+        (_) => AuthService.refreshToken());
     // Show a snackbar when Tink redirects back to /dashboard?bank=success
     // (or ?bank_error=...). Done once per session — flag prevents repeats
     // when the user navigates between tabs.
@@ -74,8 +87,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _notifTimer?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // When the user brings the app back from the background, refresh
+    // the access token + bell count immediately. Avoids the "I just
+    // opened the app and there's no data" experience when the access
+    // token has silently expired during the suspension.
+    if (state == AppLifecycleState.resumed) {
+      AuthService.refreshToken();
+      _refreshUnreadCount();
+    }
   }
 
   Future<void> _refreshUnreadCount() async {
