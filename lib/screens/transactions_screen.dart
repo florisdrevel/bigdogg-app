@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../services/banking_service.dart';
@@ -203,6 +204,58 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   Widget _buildError(bool isNl) {
+    final isExpired = (_error ?? '').contains('bank_session_expired');
+    if (isExpired) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        children: [
+          const SizedBox(height: 60),
+          const Icon(Icons.timer_off_outlined,
+              size: 64, color: BigDoggTheme.warning),
+          const SizedBox(height: 16),
+          Text(
+            isNl
+                ? 'Bank-koppeling verlopen'
+                : 'Bank connection expired',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: BigDoggTheme.teal800),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              isNl
+                  ? 'Tink-toegang in sandbox is ~1 uur geldig. Koppel je bankrekening opnieuw om de meest recente transacties op te halen.'
+                  : 'Tink sandbox access is ~1 hour. Reconnect your bank to fetch the latest transactions.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 13, color: BigDoggTheme.lightTextSecondary),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: ElevatedButton.icon(
+              onPressed: () => context.go('/dashboard?tab=settings'),
+              icon: const Icon(Icons.account_balance, color: Colors.white, size: 16),
+              label: Text(
+                isNl ? 'Ga naar instellingen' : 'Go to settings',
+                style: const TextStyle(color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: BigDoggTheme.teal800,
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(24),
