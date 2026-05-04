@@ -170,11 +170,22 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final isNl = context.watch<AppProvider>().language == 'nl';
 
     return Scaffold(
+      backgroundColor: BigDoggTheme.lightBg,
       appBar: AppBar(
-        title: Text(isNl ? 'Transacties' : 'Transactions'),
+        title: Text(
+          isNl ? 'Transacties' : 'Transactions',
+          style: const TextStyle(
+            color: BigDoggTheme.teal800,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
         backgroundColor: BigDoggTheme.lightSurface,
         foregroundColor: BigDoggTheme.teal800,
+        iconTheme: const IconThemeData(color: BigDoggTheme.teal800),
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        centerTitle: false,
       ),
       body: SafeArea(
         child: _loading
@@ -397,213 +408,366 @@ class _TransactionSheetState extends State<_TransactionSheet> {
     final amount = (tx['amount'] as num?)?.toDouble() ?? 0;
     final desc = (tx['description'] as String?) ?? '';
     final merchant = (tx['merchant'] as String?) ?? '';
+    final txDate = (tx['date'] as String?) ?? '';
     final link = tx['link'] as Map<String, dynamic>?;
     final linkType = link?['type']?.toString();
     final isIncome = amount > 0;
 
+    final heroTitle = merchant.isNotEmpty ? merchant : desc;
+    final heroSubtitle = (merchant.isNotEmpty && desc.isNotEmpty && desc != merchant) ? desc : '';
+    final amountColor = isIncome ? BigDoggTheme.success : BigDoggTheme.error;
+    final amountBg = isIncome ? BigDoggTheme.successBg : BigDoggTheme.errorBg;
+
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 16,
-          bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: BigDoggTheme.lightBorder,
-                  borderRadius: BorderRadius.circular(2),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: BigDoggTheme.lightBorder,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            Text(
-              merchant.isNotEmpty ? merchant : desc,
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: BigDoggTheme.teal800),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (merchant.isNotEmpty && desc.isNotEmpty && desc != merchant) ...[
-              const SizedBox(height: 4),
-              Text(
-                desc,
-                style: const TextStyle(
-                    fontSize: 12, color: BigDoggTheme.lightTextSecondary),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              const SizedBox(height: 16),
+
+              // ─── Hero card: merchant + amount ───
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: amountBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        isIncome ? Icons.south_west : Icons.north_east,
+                        color: amountColor,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            heroTitle.isEmpty ? (isNl ? 'Transactie' : 'Transaction') : heroTitle,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: BigDoggTheme.lightTextPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (heroSubtitle.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              heroSubtitle,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: BigDoggTheme.lightTextSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                          if (txDate.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              txDate,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: BigDoggTheme.lightTextHint,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '${isIncome ? '+' : '−'} € ${amount.abs().toStringAsFixed(2).replaceAll('.', ',')}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: amountColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(height: 16),
+
+              // ─── Body: actions ───
+              if (_busy)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else
+                ..._buildBody(linkType, isIncome, isNl),
+
+              const SizedBox(height: 12),
             ],
-            const SizedBox(height: 8),
-            Text(
-              '${amount >= 0 ? '+' : '−'} € ${amount.abs().toStringAsFixed(2).replaceAll('.', ',')}',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: amount >= 0
-                    ? BigDoggTheme.success
-                    : BigDoggTheme.error,
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (_busy)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else ...[
-              ..._buildActions(linkType, isIncome, isNl),
-            ],
-          ],
+          ),
         ),
       ),
     );
   }
 
-  List<Widget> _buildActions(String? linkType, bool isIncome, bool isNl) {
+  List<Widget> _buildBody(String? linkType, bool isIncome, bool isNl) {
     final tx = widget.tx;
     final link = tx['link'] as Map<String, dynamic>?;
     final widgets = <Widget>[];
 
-    // Already firmly linked → only allow unlink.
-    if (linkType == 'invoice' || linkType == 'expense' || linkType == 'private') {
-      final label = link?['linked_label']?.toString() ?? '';
-      String text;
-      if (linkType == 'invoice') {
-        text = isNl
-            ? 'Gekoppeld aan factuur $label'
-            : 'Linked to invoice $label';
-      } else if (linkType == 'expense') {
-        text = isNl ? 'Gekoppeld aan kosten · $label' : 'Linked to expense · $label';
-      } else {
-        text = isNl ? 'Gemarkeerd als privé' : 'Marked as private';
-      }
-      widgets.add(_infoBox(text));
-      widgets.add(const SizedBox(height: 12));
-      widgets.add(_btn(
-        outline: true,
-        color: BigDoggTheme.error,
-        icon: Icons.link_off,
-        label: isNl ? 'Ontkoppel' : 'Unlink',
-        onTap: () => _unlink(),
-      ));
-      return widgets;
-    }
-
-    // Suggestion → one-tap confirm.
+    // ── Suggestion banner: yellow card with "Ja"/"Nee" buttons. ──
     if (linkType == 'suggested_invoice' || linkType == 'suggested_expense') {
       final suggestedId = link?['linked_id']?.toString();
       final suggestedLabel = link?['linked_label']?.toString() ?? '';
       final firmType = linkType == 'suggested_invoice' ? 'invoice' : 'expense';
-      widgets.add(_btn(
-        color: BigDoggTheme.success,
-        icon: Icons.check_circle,
-        label: isNl
-            ? (firmType == 'invoice'
-                ? 'Bevestig: betaling van factuur $suggestedLabel'
-                : 'Bevestig: kosten · $suggestedLabel')
-            : (firmType == 'invoice'
-                ? 'Confirm: payment of invoice $suggestedLabel'
-                : 'Confirm: expense · $suggestedLabel'),
-        onTap: () => _confirmLink(firmType, suggestedId),
+      widgets.add(Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: BigDoggTheme.warningBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: BigDoggTheme.warning.withOpacity(0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(children: [
+              const Icon(Icons.bolt, size: 16, color: BigDoggTheme.warning),
+              const SizedBox(width: 6),
+              Text(
+                isNl ? 'Mogelijk match' : 'Possible match',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: BigDoggTheme.warning,
+                ),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Text(
+              firmType == 'invoice'
+                  ? (isNl
+                      ? 'Wij denken dat dit een betaling is van factuur $suggestedLabel.'
+                      : 'We think this is a payment of invoice $suggestedLabel.')
+                  : (isNl
+                      ? 'Wij denken dat dit hoort bij kosten · $suggestedLabel.'
+                      : 'We think this matches expense · $suggestedLabel.'),
+              style: const TextStyle(
+                fontSize: 13,
+                color: BigDoggTheme.lightTextPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _busy ? null : () => _confirmLink(firmType, suggestedId),
+                  icon: const Icon(Icons.check, size: 16, color: Colors.white),
+                  label: Text(isNl ? 'Klopt' : 'Confirm',
+                      style: const TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: BigDoggTheme.success,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _busy ? null : () => _unlink(silent: true),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: BigDoggTheme.lightTextSecondary,
+                    side: const BorderSide(color: BigDoggTheme.lightBorder),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: Text(isNl ? 'Anders' : 'Different'),
+                ),
+              ),
+            ]),
+          ],
+        ),
       ));
-      widgets.add(const SizedBox(height: 8));
+      widgets.add(const SizedBox(height: 16));
     }
 
+    // ── Already linked: status banner + only "Ontkoppel" row. ──
+    if (linkType == 'invoice' || linkType == 'expense' || linkType == 'private') {
+      final label = link?['linked_label']?.toString() ?? '';
+      String text;
+      IconData icon = Icons.check_circle;
+      Color color = BigDoggTheme.success;
+      Color bg = BigDoggTheme.successBg;
+      if (linkType == 'invoice') {
+        text = isNl ? 'Gekoppeld aan factuur $label' : 'Linked to invoice $label';
+      } else if (linkType == 'expense') {
+        text = isNl ? 'Gekoppeld aan kosten · $label' : 'Linked to expense · $label';
+      } else {
+        text = isNl ? 'Gemarkeerd als privé' : 'Marked as private';
+        icon = Icons.lock_outline;
+        color = BigDoggTheme.lightTextSecondary;
+        bg = BigDoggTheme.lightSurface2;
+      }
+      widgets.add(Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: color,
+              ),
+            ),
+          ),
+        ]),
+      ));
+      widgets.add(const SizedBox(height: 12));
+      widgets.add(_actionRow(
+        icon: Icons.link_off,
+        iconColor: BigDoggTheme.error,
+        title: isNl ? 'Ontkoppel' : 'Unlink',
+        subtitle: isNl
+            ? (linkType == 'invoice'
+                ? 'Factuur weer als verzonden markeren'
+                : 'Verwijder de koppeling')
+            : 'Remove the link',
+        onTap: _unlink,
+      ));
+      return widgets;
+    }
+
+    // ── Unlinked: primary action + Privé. ──
     if (isIncome) {
-      widgets.add(_btn(
-        color: BigDoggTheme.teal800,
-        icon: Icons.receipt,
-        label: isNl
-            ? 'Markeer als betaling van factuur…'
-            : 'Mark as payment of invoice…',
-        onTap: () => _pickInvoice(),
+      widgets.add(_actionRow(
+        icon: Icons.receipt_long,
+        iconColor: BigDoggTheme.teal800,
+        title: isNl ? 'Markeer als betaling van factuur' : 'Mark as invoice payment',
+        subtitle: isNl
+            ? 'Kies welke openstaande factuur is betaald'
+            : 'Pick which unpaid invoice this settles',
+        onTap: _pickInvoice,
       ));
     } else {
-      widgets.add(_btn(
-        color: BigDoggTheme.teal800,
+      widgets.add(_actionRow(
         icon: Icons.shopping_bag_outlined,
-        label: isNl ? 'Voeg toe als zakelijke kosten' : 'Add as business expense',
-        onTap: () => _createExpense(),
+        iconColor: BigDoggTheme.teal800,
+        title: isNl ? 'Voeg toe als zakelijke kosten' : 'Add as business expense',
+        subtitle: isNl
+            ? 'Maak een kostenpost aan met BTW'
+            : 'Create an expense entry with VAT',
+        onTap: _createExpense,
       ));
     }
-    widgets.add(const SizedBox(height: 8));
-    widgets.add(_btn(
-      outline: true,
-      color: BigDoggTheme.lightTextSecondary,
+    widgets.add(_actionRow(
       icon: Icons.lock_outline,
-      label: isNl ? 'Privé / negeren' : 'Private / ignore',
-      onTap: () => _markPrivate(),
+      iconColor: BigDoggTheme.lightTextSecondary,
+      title: isNl ? 'Privé / negeren' : 'Private / ignore',
+      subtitle: isNl
+          ? 'Hoort niet bij je administratie'
+          : 'Does not belong to your bookkeeping',
+      onTap: _markPrivate,
     ));
     return widgets;
   }
 
-  Widget _infoBox(String text) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: BigDoggTheme.successBg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(children: [
-        const Icon(Icons.check_circle, size: 16, color: BigDoggTheme.success),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: BigDoggTheme.success),
-          ),
-        ),
-      ]),
-    );
-  }
-
-  Widget _btn({
-    required Color color,
+  Widget _actionRow({
     required IconData icon,
-    required String label,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
     required VoidCallback onTap,
-    bool outline = false,
   }) {
-    if (outline) {
-      return SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
-          onPressed: _busy ? null : onTap,
-          icon: Icon(icon, size: 16),
-          label: Text(label),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: color,
-            side: BorderSide(color: color),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _busy ? null : onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: BigDoggTheme.lightSurface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: BigDoggTheme.lightBorder),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      color: iconColor.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, size: 18, color: iconColor),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: BigDoggTheme.lightTextPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: BigDoggTheme.lightTextSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right,
+                    color: BigDoggTheme.lightTextHint,
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      );
-    }
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: _busy ? null : onTap,
-        icon: Icon(icon, size: 16, color: Colors.white),
-        label: Text(label, style: const TextStyle(color: Colors.white)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8)),
         ),
       ),
     );
@@ -638,7 +802,7 @@ class _TransactionSheetState extends State<_TransactionSheet> {
     }
   }
 
-  Future<void> _unlink() async {
+  Future<void> _unlink({bool silent = false}) async {
     setState(() => _busy = true);
     // If the previous link was an auto-marked invoice, the backend will
     // revert the invoice status as part of the unlink call.
@@ -649,7 +813,12 @@ class _TransactionSheetState extends State<_TransactionSheet> {
     if (!mounted) return;
     if (result['success'] == true) {
       widget.onChanged({'link': null});
-      Navigator.pop(context);
+      // Mutate the local map so the sheet re-renders with no link.
+      widget.tx['link'] = null;
+      setState(() => _busy = false);
+      if (!silent) {
+        Navigator.pop(context);
+      }
     } else {
       setState(() => _busy = false);
     }
