@@ -10,8 +10,13 @@ import '../theme.dart';
 /// expenses. Each row renders a link badge (auto-matched, suggested,
 /// private, or unlinked) and a tap opens a bottom sheet with the
 /// available actions.
+///
+/// `focusTxId` (optional) is a deep-link target — when provided, after
+/// the list loads we auto-open the bottom sheet on that row so a user
+/// arriving from a notification lands directly on the actionable view.
 class TransactionsScreen extends StatefulWidget {
-  const TransactionsScreen({super.key});
+  final String? focusTxId;
+  const TransactionsScreen({super.key, this.focusTxId});
 
   @override
   State<TransactionsScreen> createState() => _TransactionsScreenState();
@@ -28,6 +33,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     _load();
   }
 
+  bool _focusHandled = false;
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -42,6 +49,24 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         _transactions = list.cast<Map<String, dynamic>>();
         _loading = false;
       });
+      // Deep-link: open the sheet on the requested transaction once.
+      if (!_focusHandled &&
+          widget.focusTxId != null &&
+          widget.focusTxId!.isNotEmpty) {
+        _focusHandled = true;
+        final isNl = context.read<AppProvider>().language == 'nl';
+        final tx = _transactions.firstWhere(
+          (t) => t['id'] == widget.focusTxId,
+          orElse: () => const {},
+        );
+        if (tx.isNotEmpty) {
+          // Schedule after build so the route transition completes
+          // before we push the bottom sheet on top.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _openSheet(tx, isNl);
+          });
+        }
+      }
     } else {
       setState(() {
         _error = result['message']?.toString() ?? 'transactions_error';

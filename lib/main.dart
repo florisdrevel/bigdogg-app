@@ -101,7 +101,10 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/transactions',
-      builder: (context, state) => const TransactionsScreen(),
+      builder: (context, state) {
+        final tx = state.uri.queryParameters['tx'];
+        return TransactionsScreen(focusTxId: tx);
+      },
     ),
   ],
 );

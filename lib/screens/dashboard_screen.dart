@@ -72,7 +72,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       // else just opens the dashboard which the user is already on.
       final type = (data['type'] ?? '');
       if (type == 'bank_auto_link' || type == 'bank_suggest') {
-        if (mounted) context.push('/transactions');
+        final txId = data['tx_id'] ?? '';
+        final url = txId.isEmpty ? '/transactions' : '/transactions?tx=$txId';
+        if (mounted) context.push(url);
       }
     });
     // Show a snackbar when Tink redirects back to /dashboard?bank=success
@@ -644,15 +646,20 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
       });
     }
     // Deep-link routing: bank-link notifications take the user straight
-    // to the Transactions screen so they can confirm or unlink.
+    // to the Transactions screen so they can confirm or unlink. If we
+    // know the specific tx_id, deep-link further so the bottom sheet
+    // pops open automatically on that row.
     final type = item['type']?.toString() ?? '';
     if (type == 'bank_auto_link' || type == 'bank_suggest') {
       if (!mounted) return;
+      final data = (item['data'] as Map?) ?? const {};
+      final txId = data['tx_id']?.toString() ?? '';
+      final url = txId.isEmpty ? '/transactions' : '/transactions?tx=$txId';
       Navigator.of(context).pop(); // close the sheet
       // Delay so the sheet finishes dismissing before navigation.
       Future.microtask(() {
         if (!mounted) return;
-        context.push('/transactions');
+        context.push(url);
       });
     }
   }
