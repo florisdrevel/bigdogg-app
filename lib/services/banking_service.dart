@@ -104,6 +104,45 @@ class BankingService {
     }
   }
 
+  /// Create an investment from this transaction and auto-link it.
+  static Future<Map<String, dynamic>> createInvestmentFromTransaction({
+    required String txId,
+    required String description,
+    required double amount,
+    required String purchaseDate,
+    int depreciationYears = 5,
+    String category = 'general',
+  }) async {
+    final token = await _getToken();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/banking/transactions/$txId/create-investment'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'description': description,
+          'amount': amount,
+          'purchase_date': purchaseDate,
+          'depreciation_years': depreciationYears,
+          'category': category,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return {'success': true, ...jsonDecode(response.body)};
+      }
+      try {
+        final err = jsonDecode(response.body);
+        return {'success': false, 'message': err['detail']?.toString()};
+      } catch (_) {
+        return {'success': false};
+      }
+    } catch (_) {
+      return {'success': false, 'message': 'Connection error'};
+    }
+  }
+
   /// Create an expense from this transaction and auto-link it.
   static Future<Map<String, dynamic>> createExpenseFromTransaction({
     required String txId,

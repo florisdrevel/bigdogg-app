@@ -97,6 +97,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         icon = Icons.check_circle;
         text = isNl ? 'Kosten · $label' : 'Expense · $label';
         break;
+      case 'investment':
+        bg = BigDoggTheme.successBg;
+        fg = BigDoggTheme.success;
+        icon = Icons.check_circle;
+        text = isNl ? 'Investering · $label' : 'Investment · $label';
+        break;
       case 'private':
         bg = BigDoggTheme.lightSurface2;
         fg = BigDoggTheme.lightTextSecondary;
@@ -104,12 +110,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         text = isNl ? 'Privé' : 'Private';
         break;
       case 'suggested_invoice':
-        bg = BigDoggTheme.warningBg;
-        fg = BigDoggTheme.warning;
-        icon = Icons.bolt;
-        text = isNl ? 'Match? $label' : 'Match? $label';
-        break;
       case 'suggested_expense':
+      case 'suggested_investment':
         bg = BigDoggTheme.warningBg;
         fg = BigDoggTheme.warning;
         icon = Icons.bolt;
@@ -591,10 +593,14 @@ class _TransactionSheetState extends State<_TransactionSheet> {
     final widgets = <Widget>[];
 
     // ── Suggestion banner: yellow card with "Ja"/"Nee" buttons. ──
-    if (linkType == 'suggested_invoice' || linkType == 'suggested_expense') {
+    if (linkType == 'suggested_invoice' ||
+        linkType == 'suggested_expense' ||
+        linkType == 'suggested_investment') {
       final suggestedId = link?['linked_id']?.toString();
       final suggestedLabel = link?['linked_label']?.toString() ?? '';
-      final firmType = linkType == 'suggested_invoice' ? 'invoice' : 'expense';
+      final firmType = linkType == 'suggested_invoice'
+          ? 'invoice'
+          : (linkType == 'suggested_investment' ? 'investment' : 'expense');
       widgets.add(Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
         padding: const EdgeInsets.all(14),
@@ -624,9 +630,13 @@ class _TransactionSheetState extends State<_TransactionSheet> {
                   ? (isNl
                       ? 'Wij denken dat dit een betaling is van factuur $suggestedLabel.'
                       : 'We think this is a payment of invoice $suggestedLabel.')
-                  : (isNl
-                      ? 'Wij denken dat dit hoort bij kosten · $suggestedLabel.'
-                      : 'We think this matches expense · $suggestedLabel.'),
+                  : firmType == 'investment'
+                      ? (isNl
+                          ? 'Wij denken dat dit hoort bij investering · $suggestedLabel.'
+                          : 'We think this matches investment · $suggestedLabel.')
+                      : (isNl
+                          ? 'Wij denken dat dit hoort bij kosten · $suggestedLabel.'
+                          : 'We think this matches expense · $suggestedLabel.'),
               style: const TextStyle(
                 fontSize: 13,
                 color: BigDoggTheme.lightTextPrimary,
@@ -670,7 +680,10 @@ class _TransactionSheetState extends State<_TransactionSheet> {
     }
 
     // ── Already linked: status banner + only "Ontkoppel" row. ──
-    if (linkType == 'invoice' || linkType == 'expense' || linkType == 'private') {
+    if (linkType == 'invoice' ||
+        linkType == 'expense' ||
+        linkType == 'investment' ||
+        linkType == 'private') {
       final label = link?['linked_label']?.toString() ?? '';
       String text;
       IconData icon = Icons.check_circle;
@@ -680,6 +693,8 @@ class _TransactionSheetState extends State<_TransactionSheet> {
         text = isNl ? 'Gekoppeld aan factuur $label' : 'Linked to invoice $label';
       } else if (linkType == 'expense') {
         text = isNl ? 'Gekoppeld aan kosten · $label' : 'Linked to expense · $label';
+      } else if (linkType == 'investment') {
+        text = isNl ? 'Gekoppeld aan investering · $label' : 'Linked to investment · $label';
       } else {
         text = isNl ? 'Gemarkeerd als privé' : 'Marked as private';
         icon = Icons.lock_outline;
@@ -743,6 +758,15 @@ class _TransactionSheetState extends State<_TransactionSheet> {
             ? 'Maak een kostenpost aan met BTW'
             : 'Create an expense entry with VAT',
         onTap: _createExpense,
+      ));
+      widgets.add(_actionRow(
+        icon: Icons.precision_manufacturing_outlined,
+        iconColor: BigDoggTheme.teal800,
+        title: isNl ? 'Voeg toe als investering' : 'Add as investment',
+        subtitle: isNl
+            ? 'Voor aankopen die je afschrijft over meerdere jaren'
+            : 'For purchases depreciated over multiple years',
+        onTap: _createInvestment,
       ));
     }
     widgets.add(_actionRow(
@@ -1095,6 +1119,113 @@ class _TransactionSheetState extends State<_TransactionSheet> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: BigDoggTheme.success,
         content: Text(isNl ? 'Kosten toegevoegd' : 'Expense added'),
+      ));
+    } else {
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.error,
+        content: Text(result['message']?.toString() ?? 'Error'),
+      ));
+    }
+  }
+
+  Future<void> _createInvestment() async {
+    final tx = widget.tx;
+    final isNl = widget.isNl;
+    final initialDescription =
+        (tx['merchant']?.toString() ?? tx['description']?.toString() ?? '').trim();
+    final amount = ((tx['amount'] as num?)?.toDouble() ?? 0).abs();
+    final txDate = (tx['date'] as String?) ?? DateTime.now().toIso8601String().split('T').first;
+
+    final descCtrl = TextEditingController(text: initialDescription);
+    int years = 5;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) {
+        return AlertDialog(
+          title: Text(isNl ? 'Nieuwe investering' : 'New investment'),
+          content: SizedBox(
+            width: 360,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: descCtrl,
+                  decoration: InputDecoration(
+                    labelText: isNl ? 'Omschrijving' : 'Description',
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Text(
+                    isNl ? 'Afschrijving:' : 'Depreciation:',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(width: 12),
+                  ...[3, 5, 10].map((y) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(isNl ? '$y jaar' : '$y yr'),
+                          selected: years == y,
+                          onSelected: (_) => setLocal(() => years = y),
+                        ),
+                      )),
+                ]),
+                const SizedBox(height: 12),
+                Text(
+                  '${isNl ? 'Aankoopbedrag' : 'Purchase amount'}: € ${amount.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                      fontSize: 12, color: BigDoggTheme.lightTextSecondary),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(isNl ? 'Annuleren' : 'Cancel')),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: BigDoggTheme.teal800),
+              child: Text(isNl ? 'Aanmaken' : 'Create',
+                  style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      }),
+    );
+    if (!mounted || ok != true) return;
+
+    setState(() => _busy = true);
+    final result = await BankingService.createInvestmentFromTransaction(
+      txId: tx['id'].toString(),
+      description: descCtrl.text.trim().isEmpty ? 'Bank transactie' : descCtrl.text.trim(),
+      amount: amount,
+      purchaseDate: txDate,
+      depreciationYears: years,
+    );
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final inv = result['investment'] as Map<String, dynamic>?;
+      widget.onChanged({
+        'link': {
+          'type': 'investment',
+          'linked_id': inv?['id']?.toString(),
+          'linked_label': (inv?['description']?.toString() ?? '').substring(
+              0,
+              ((inv?['description']?.toString() ?? '').length).clamp(0, 40)),
+          'auto': false,
+        }
+      });
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.success,
+        content: Text(isNl ? 'Investering toegevoegd' : 'Investment added'),
       ));
     } else {
       setState(() => _busy = false);
