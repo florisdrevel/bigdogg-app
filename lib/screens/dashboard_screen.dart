@@ -612,9 +612,18 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
         item['read_at'] = DateTime.now().toUtc().toIso8601String();
       });
     }
-    // We could deep-link to invoice/quote/client here using item['data'],
-    // but the dashboard's tab structure makes that non-trivial. For now,
-    // just mark as read and let the user navigate normally.
+    // Deep-link routing: bank-link notifications take the user straight
+    // to the Transactions screen so they can confirm or unlink.
+    final type = item['type']?.toString() ?? '';
+    if (type == 'bank_auto_link' || type == 'bank_suggest') {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // close the sheet
+      // Delay so the sheet finishes dismissing before navigation.
+      Future.microtask(() {
+        if (!mounted) return;
+        context.push('/transactions');
+      });
+    }
   }
 
   Future<void> _delete(String id) async {
@@ -629,6 +638,8 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
       case 'quote_accepted':   return Icons.check_circle_rounded;
       case 'quote_declined':   return Icons.cancel_rounded;
       case 'client_onboarded': return Icons.person_add_rounded;
+      case 'bank_auto_link':   return Icons.link_rounded;
+      case 'bank_suggest':     return Icons.bolt_rounded;
       default:                 return Icons.notifications_rounded;
     }
   }
@@ -639,6 +650,8 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
       case 'quote_accepted':   return BigDoggTheme.success;
       case 'quote_declined':   return BigDoggTheme.error;
       case 'client_onboarded': return BigDoggTheme.teal700;
+      case 'bank_auto_link':   return BigDoggTheme.success;
+      case 'bank_suggest':     return BigDoggTheme.warning;
       default:                 return BigDoggTheme.teal700;
     }
   }
