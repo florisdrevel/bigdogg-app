@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 
@@ -178,6 +180,45 @@ class BankingService {
         return {'success': false};
       }
     } catch (_) {
+      return {'success': false, 'message': 'Connection error'};
+    }
+  }
+
+  /// Upload an MT940 or CAMT.053 file to /banking/import. The backend
+  /// auto-detects the format, persists the entries to the
+  /// bank_transactions cache, runs the matcher, and returns a summary
+  /// `{format, imported, auto_linked, suggested}`.
+  static Future<Map<String, dynamic>> importStatement({
+    required Uint8List fileBytes,
+    required String fileName,
+  }) async {
+    final token = await _getToken();
+    try {
+      final uri = Uri.parse('$baseUrl/api/v1/banking/import');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+
+      // Best-effort content-type. The backend trusts the bytes, not the header.
+      String contentType = 'application/octet-stream';
+      final ext = fileName.toLowerCase().split('.').last;
+      if (ext == 'xml' || ext == 'camt') contentType = 'application/xml';
+      if (ext == 'sta' || ext == 'mt940' || ext == 'txt') contentType = 'text/plain';
+
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        fileBytes,
+        filename: fileName,
+        contentType: MediaType.parse(contentType),
+      ));
+
+      final response = await request.send();
+      final body = await response.stream.bytesToString();
+      final data = jsonDecode(body);
+      if (response.statusCode == 200) {
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': data['detail']?.toString() ?? 'import_failed'};
+    } catch (e) {
       return {'success': false, 'message': 'Connection error'};
     }
   }

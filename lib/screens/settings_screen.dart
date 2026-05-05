@@ -11,6 +11,7 @@ import '../services/banking_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/payments_service.dart';
+import '../services/web_io.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -36,6 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loadingBank = true;
   bool _connectingBank = false;
   bool _disconnectingBank = false;
+  bool _importingStatement = false;
 
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -230,6 +232,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(isNl ? 'Loskoppelen mislukt' : 'Disconnect failed'),
         backgroundColor: BigDoggTheme.error,
+      ));
+    }
+  }
+
+  Future<void> _importBankStatement(bool isNl) async {
+    if (!kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isNl
+            ? 'Importeren werkt momenteel via bigdogg.nl op je computer'
+            : 'Import currently works via bigdogg.nl on your computer'),
+      ));
+      return;
+    }
+    final picked = await pickFiles(
+      accept: '.sta,.940,.mt940,.txt,.xml,.camt,application/xml,text/plain',
+      multiple: false,
+    );
+    if (picked == null || picked.isEmpty) return;
+    final file = picked.first;
+
+    setState(() => _importingStatement = true);
+    final result = await BankingService.importStatement(
+      fileBytes: file.bytes,
+      fileName: file.name,
+    );
+    if (!mounted) return;
+    setState(() => _importingStatement = false);
+
+    if (result['success'] == true) {
+      final imported = result['imported'] ?? 0;
+      final autoLinked = result['auto_linked'] ?? 0;
+      final suggested = result['suggested'] ?? 0;
+      final fmt = (result['format'] ?? '').toString().toUpperCase();
+      final summary = isNl
+          ? '$fmt geïmporteerd: $imported transacties, $autoLinked automatisch gekoppeld, $suggested voorstellen'
+          : '$fmt imported: $imported transactions, $autoLinked auto-linked, $suggested suggestions';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.success,
+        duration: const Duration(seconds: 6),
+        content: Text(summary),
+      ));
+      _loadBankStatus();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.error,
+        duration: const Duration(seconds: 6),
+        content: Text(result['message']?.toString() ??
+            (isNl ? 'Import mislukt' : 'Import failed')),
       ));
     }
   }
@@ -633,6 +683,51 @@ For questions: info@bigdogg.nl''';
                 : 'Secured via Tink (PSD2). BigDogg only gets read access to your transactions.',
             style: const TextStyle(
                 fontSize: 11, color: BigDoggTheme.lightTextHint),
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: BigDoggTheme.lightBorder),
+          const SizedBox(height: 14),
+          Row(children: [
+            const Icon(Icons.upload_file_outlined,
+                size: 16, color: BigDoggTheme.teal800),
+            const SizedBox(width: 6),
+            Text(
+              isNl ? 'Of importeer een bankafschrift' : 'Or import a bank statement',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: BigDoggTheme.teal800,
+              ),
+            ),
+          ]),
+          const SizedBox(height: 4),
+          Text(
+            isNl
+                ? 'MT940 of CAMT.053 — direct te downloaden vanuit je internetbankieren.'
+                : 'MT940 or CAMT.053 — downloadable from your bank\'s online portal.',
+            style: const TextStyle(
+                fontSize: 12, color: BigDoggTheme.lightTextSecondary),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _importingStatement ? null : () => _importBankStatement(isNl),
+              icon: _importingStatement
+                  ? const SizedBox(
+                      width: 14, height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.attach_file, size: 16),
+              label: Text(isNl ? 'Bestand kiezen' : 'Choose file'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: BigDoggTheme.teal800,
+                side: const BorderSide(color: BigDoggTheme.teal700),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(vertical: 11),
+              ),
+            ),
           ),
         ],
       ),
