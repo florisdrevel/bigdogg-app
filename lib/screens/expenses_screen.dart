@@ -650,24 +650,58 @@ class _ExpensesScreenState extends State<ExpensesScreen>
                   : () async {
                       if (descCtrl.text.isEmpty ||
                           amtCtrl.text.isEmpty) return;
-                      setSt(() => uploading = true);
-                      final result =
-                          await ExpensesService.createExpense(
-                        description: descCtrl.text.trim(),
-                        amountExBtw: double.parse(amtCtrl.text),
-                        btwRate: btwRate,
-                        category: category,
-                        expenseDate: prefill?['expense_date'],
-                        projectId: projectId,
-                      );
-                      if (result['success'] && recBytes != null) {
-                        await ExpensesService.uploadReceipt(
-                            result['expense']['id'],
-                            recBytes!,
-                            recName ?? 'receipt.jpg');
+                      // Accept both comma and dot — NL users type commas.
+                      final amountStr = amtCtrl.text.trim().replaceAll(',', '.');
+                      final amount = double.tryParse(amountStr);
+                      if (amount == null || amount <= 0) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                          backgroundColor: BigDoggTheme.error,
+                          content: Text(isNl
+                              ? 'Vul een geldig bedrag in'
+                              : 'Enter a valid amount'),
+                        ));
+                        return;
                       }
-                      if (mounted) Navigator.pop(ctx);
-                      _loadExpenses();
+                      setSt(() => uploading = true);
+                      try {
+                        final result = await ExpensesService.createExpense(
+                          description: descCtrl.text.trim(),
+                          amountExBtw: amount,
+                          btwRate: btwRate,
+                          category: category,
+                          expenseDate: prefill?['expense_date'],
+                          projectId: projectId,
+                        );
+                        if (result['success'] != true) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                              backgroundColor: BigDoggTheme.error,
+                              content: Text(result['message']?.toString() ??
+                                  (isNl
+                                      ? 'Kon kostenpost niet aanmaken'
+                                      : 'Could not create expense')),
+                            ));
+                          }
+                          setSt(() => uploading = false);
+                          return;
+                        }
+                        if (recBytes != null) {
+                          await ExpensesService.uploadReceipt(
+                              result['expense']['id'],
+                              recBytes!,
+                              recName ?? 'receipt.jpg');
+                        }
+                        if (mounted) Navigator.pop(ctx);
+                        _loadExpenses();
+                      } catch (e) {
+                        setSt(() => uploading = false);
+                        if (mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                            backgroundColor: BigDoggTheme.error,
+                            content: Text('Error: $e'),
+                          ));
+                        }
+                      }
                     },
               child: uploading
                   ? const SizedBox(
@@ -848,25 +882,46 @@ class _ExpensesScreenState extends State<ExpensesScreen>
                     : () async {
                         if (descCtrl.text.trim().isEmpty ||
                             amtCtrl.text.isEmpty) return;
+                        final amountStr = amtCtrl.text.trim().replaceAll(',', '.');
+                        final amount = double.tryParse(amountStr);
+                        if (amount == null || amount <= 0) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                            backgroundColor: BigDoggTheme.error,
+                            content: Text(isNl
+                                ? 'Vul een geldig bedrag in'
+                                : 'Enter a valid amount'),
+                          ));
+                          return;
+                        }
                         setSt(() => saving = true);
-                        final token = await _getToken();
-                        await http.post(
-                          Uri.parse(
-                              '${ApiConfig.baseUrl}/api/v1/investments/'),
-                          headers: {
-                            'Authorization': 'Bearer $token',
-                            'Content-Type': 'application/json'
-                          },
-                          body: jsonEncode({
-                            'description': descCtrl.text.trim(),
-                            'amount': double.parse(amtCtrl.text),
-                            'purchase_date': date,
-                            'category': category,
-                            'depreciation_years': years,
-                          }),
-                        );
-                        if (mounted) Navigator.pop(ctx);
-                        _loadInvestments();
+                        try {
+                          final token = await _getToken();
+                          await http.post(
+                            Uri.parse(
+                                '${ApiConfig.baseUrl}/api/v1/investments/'),
+                            headers: {
+                              'Authorization': 'Bearer $token',
+                              'Content-Type': 'application/json'
+                            },
+                            body: jsonEncode({
+                              'description': descCtrl.text.trim(),
+                              'amount': amount,
+                              'purchase_date': date,
+                              'category': category,
+                              'depreciation_years': years,
+                            }),
+                          );
+                          if (mounted) Navigator.pop(ctx);
+                          _loadInvestments();
+                        } catch (e) {
+                          setSt(() => saving = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                              backgroundColor: BigDoggTheme.error,
+                              content: Text('Error: $e'),
+                            ));
+                          }
+                        }
                       },
                 child: saving
                     ? const SizedBox(

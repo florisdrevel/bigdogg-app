@@ -1113,13 +1113,24 @@ class _InvoicesScreenState extends State<InvoicesScreen>
               onPressed: () {
                 if (descController.text.isEmpty ||
                     priceController.text.isEmpty) return;
+                final qty = double.tryParse(
+                    qtyController.text.trim().replaceAll(',', '.'));
+                final price = double.tryParse(
+                    priceController.text.trim().replaceAll(',', '.'));
+                if (qty == null || price == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(isNl
+                        ? 'Vul geldige cijfers in'
+                        : 'Enter valid numbers'),
+                  ));
+                  return;
+                }
                 Navigator.pop(context);
                 onAdd({
                   'description': descController.text,
-                  'quantity': double.parse(qtyController.text),
+                  'quantity': qty,
                   'unit': unit,
-                  'unit_price_ex_btw':
-                      double.parse(priceController.text),
+                  'unit_price_ex_btw': price,
                   'btw_rate': btwRate,
                 });
               },
