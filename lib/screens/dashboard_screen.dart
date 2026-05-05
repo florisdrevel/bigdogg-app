@@ -645,22 +645,41 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
         item['read_at'] = DateTime.now().toUtc().toIso8601String();
       });
     }
-    // Deep-link routing: bank-link notifications take the user straight
-    // to the Transactions screen so they can confirm or unlink. If we
-    // know the specific tx_id, deep-link further so the bottom sheet
-    // pops open automatically on that row.
+    // Deep-link routing per notification type. Bank links go to the
+    // Transactions screen (with tx_id deep-link if known); invoice /
+    // quote / client notifications switch the dashboard tab to where
+    // the user can act on them.
     final type = item['type']?.toString() ?? '';
+    final data = (item['data'] as Map?) ?? const {};
+    final appProvider = context.read<AppProvider>();
+
+    void closeAndJump(int tab, {int? invoicesSub}) {
+      Navigator.of(context).pop();
+      Future.microtask(() {
+        if (!mounted) return;
+        if (invoicesSub != null) appProvider.setInvoicesSubTab(invoicesSub);
+        appProvider.requestNavigateToTab(tab);
+      });
+    }
+
     if (type == 'bank_auto_link' || type == 'bank_suggest') {
       if (!mounted) return;
-      final data = (item['data'] as Map?) ?? const {};
       final txId = data['tx_id']?.toString() ?? '';
       final url = txId.isEmpty ? '/transactions' : '/transactions?tx=$txId';
-      Navigator.of(context).pop(); // close the sheet
-      // Delay so the sheet finishes dismissing before navigation.
+      Navigator.of(context).pop();
       Future.microtask(() {
         if (!mounted) return;
         context.push(url);
       });
+    } else if (type == 'invoice_paid') {
+      // Invoices tab, Facturen sub-tab.
+      closeAndJump(0, invoicesSub: 0);
+    } else if (type == 'quote_accepted' || type == 'quote_declined') {
+      // Invoices tab, Offertes sub-tab.
+      closeAndJump(0, invoicesSub: 1);
+    } else if (type == 'client_onboarded') {
+      // Clients tab.
+      closeAndJump(1);
     }
   }
 

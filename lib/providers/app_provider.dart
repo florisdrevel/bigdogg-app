@@ -96,6 +96,14 @@ class AppProvider extends ChangeNotifier {
     _navigateToTab = null;
   }
 
+  /// Externally request a tab change — used by deep-links from the
+  /// notifications sheet so a tap on "Factuur betaald" lands on the
+  /// Invoices tab without the user having to find it.
+  void requestNavigateToTab(int idx) {
+    _navigateToTab = idx;
+    notifyListeners();
+  }
+
   // Always notify even if value is unchanged, so screens whose internal
   // TabController has drifted (user manually swiped) can re-snap to the
   // walkthrough's intended sub-tab.
