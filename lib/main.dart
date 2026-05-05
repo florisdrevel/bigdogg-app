@@ -12,6 +12,7 @@ import 'screens/landing_screen.dart';
 import 'screens/quote_public_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/transactions_screen.dart';
+import 'services/push_service.dart';
 import 'theme.dart';
 import 'providers/app_provider.dart';
 
@@ -25,6 +26,10 @@ void main() async {
       authFlowType: AuthFlowType.implicit,
     ),
   );
+
+  // Best-effort Firebase init for FCM push. Silently no-ops on web
+  // and on native builds where google-services.json is absent.
+  await PushService.initFirebase();
 
   runApp(
     ChangeNotifierProvider(

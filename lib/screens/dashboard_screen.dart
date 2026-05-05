@@ -8,6 +8,7 @@ import '../providers/app_provider.dart';
 import '../services/api_cache.dart';
 import '../services/auth_service.dart';
 import '../services/notifications_service.dart';
+import '../services/push_service.dart';
 import 'products_screen.dart';
 import 'clients_screen.dart';
 import 'invoices_screen.dart';
@@ -60,6 +61,20 @@ class _DashboardScreenState extends State<DashboardScreen>
     AuthService.refreshToken();
     _refreshTimer = Timer.periodic(const Duration(minutes: 30),
         (_) => AuthService.refreshToken());
+    // Make sure FCM is registered for this device. Idempotent: the
+    // backend upserts on (user_id, fcm_token), so calling this at
+    // every mount is fine. Also handles persistent-login users who
+    // skip the login screen entirely.
+    // ignore: unawaited_futures
+    PushService.registerWithBackend();
+    PushService.listen(onMessageOpened: (data) {
+      // Bank-link notifications jump to /transactions; everything
+      // else just opens the dashboard which the user is already on.
+      final type = (data['type'] ?? '');
+      if (type == 'bank_auto_link' || type == 'bank_suggest') {
+        if (mounted) context.push('/transactions');
+      }
+    });
     // Show a snackbar when Tink redirects back to /dashboard?bank=success
     // (or ?bank_error=...). Done once per session — flag prevents repeats
     // when the user navigates between tabs.
@@ -454,6 +469,9 @@ class _DashboardScreenState extends State<DashboardScreen>
           IconButton(
             icon: const Icon(Icons.logout, color: BigDoggTheme.lightTextSecondary),
             onPressed: () async {
+              // Unregister this device's push token first — the
+              // access_token is still around so the backend call works.
+              await PushService.unregisterFromBackend();
               await AuthService.logout();
               if (!mounted) return;
               context.go('/login');

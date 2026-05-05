@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../services/auth_service.dart';
+import '../services/push_service.dart';
 import '../theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -43,6 +44,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     setState(() { _loading = false; });
     if (result['success']) {
+      // Register this device's FCM token now that we have an
+      // access_token saved. Best-effort, never blocks the navigation.
+      // ignore: unawaited_futures
+      PushService.registerWithBackend();
       if (mounted) context.go('/dashboard');
     } else {
       setState(() { _error = result['message']; });

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "44513836024",
+    "project_id": "bigdogg-abbb4",
+    "storage_bucket": "bigdogg-abbb4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:44513836024:android:103127b7b8949dbe21740d",
+        "android_client_info": {
+          "package_name": "nl.bigdogg.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5BeuO71cUet60519zryI6IkdsVJt8QKA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
