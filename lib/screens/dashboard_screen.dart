@@ -140,11 +140,16 @@ class _DashboardScreenState extends State<DashboardScreen>
       final list = await NotificationsService.list(limit: 1);
       if (!mounted || list.isEmpty) return;
       final latest = list.first as Map;
+      // Make sure only one toast is on screen at a time — if a
+      // previous one was still hanging around (Material queues them),
+      // remove it so the new one appears immediately and doesn't tail
+      // an old toast for an extra few seconds.
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: BigDoggTheme.teal800,
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 2),
           content: Row(
             children: [
               const Icon(Icons.notifications_active_rounded,
@@ -537,6 +542,9 @@ class _NotificationsBell extends StatelessWidget {
   });
 
   Future<void> _open(BuildContext context) async {
+    // Pulling up the notifications sheet implicitly acknowledges the
+    // toast snackbar — kill it so it does not linger over the sheet.
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
