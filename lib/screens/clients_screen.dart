@@ -17,6 +17,7 @@ class ClientsScreen extends StatefulWidget {
 class _ClientsScreenState extends State<ClientsScreen> {
   List<dynamic> _clients = [];
   bool _loading = true;
+  int _lastDataVersion = -1;
 
   @override
   void initState() {
@@ -24,9 +25,20 @@ class _ClientsScreenState extends State<ClientsScreen> {
     _loadClients();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final v = context.watch<AppProvider>().dataVersion;
+    if (v != _lastDataVersion) {
+      _lastDataVersion = v;
+      if (v > 0) _loadClients(); // skip first run; initState already loaded
+    }
+  }
+
   Future<void> _loadClients() async {
     setState(() => _loading = true);
     final result = await ClientsService.getClients();
+    if (!mounted) return;
     setState(() {
       _loading = false;
       if (result['success']) _clients = result['clients'];

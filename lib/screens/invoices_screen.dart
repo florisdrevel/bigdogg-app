@@ -72,11 +72,22 @@ class _InvoicesScreenState extends State<InvoicesScreen>
     _loadQuotes();
   }
 
+  int _lastDataVersion = 0;
+
   void _onAppProviderChange() {
     if (!mounted) return;
     final desired = _appProvider.invoicesSubTab.clamp(0, 1);
     if (_tabController.index != desired) {
       _tabController.animateTo(desired);
+    }
+    // When a notification lands, AppProvider bumps dataVersion. We
+    // treat that as a signal to re-fetch invoices + quotes so anything
+    // newly paid / accepted / declined is visible without pull-to-refresh.
+    final v = _appProvider.dataVersion;
+    if (v != _lastDataVersion) {
+      _lastDataVersion = v;
+      _loadInvoices();
+      _loadQuotes();
     }
   }
 

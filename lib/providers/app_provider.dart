@@ -20,6 +20,17 @@ class AppProvider extends ChangeNotifier {
   int _invoicesSubTab = 0;
   int _expensesSubTab = 0;
 
+  // Monotonically increasing counter screens watch to know when their
+  // cached/local data is stale. Bumped every time a notification lands
+  // (so the bell-icon ping reflects in client lists, invoice lists,
+  // etc. without the user having to pull-to-refresh).
+  int _dataVersion = 0;
+  int get dataVersion => _dataVersion;
+  void bumpDataVersion() {
+    _dataVersion++;
+    notifyListeners();
+  }
+
   ThemeMode get themeMode => _themeMode;
   String get language => _language;
   bool get isDark => _themeMode == ThemeMode.dark;

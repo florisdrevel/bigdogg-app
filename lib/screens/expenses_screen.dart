@@ -70,11 +70,21 @@ class _ExpensesScreenState extends State<ExpensesScreen>
     _loadInvestments();
   }
 
+  int _lastDataVersion = 0;
+
   void _onAppProviderChange() {
     if (!mounted) return;
     final desired = _appProvider.expensesSubTab.clamp(0, 1);
     if (_tabController.index != desired) {
       _tabController.animateTo(desired);
+    }
+    // Reload when a notification triggers a global data bump (e.g.
+    // bank-tx-matched-as-expense should reflect immediately).
+    final v = _appProvider.dataVersion;
+    if (v != _lastDataVersion) {
+      _lastDataVersion = v;
+      _loadExpenses();
+      _loadInvestments();
     }
   }
 

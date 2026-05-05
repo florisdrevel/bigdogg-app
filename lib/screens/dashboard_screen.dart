@@ -128,10 +128,15 @@ class _DashboardScreenState extends State<DashboardScreen>
       setState(() => _unreadCount = n);
     }
     // Notify the user when something new just landed: subtle haptic
-    // tap + snackbar with the latest title.
+    // tap + snackbar with the latest title, AND bump the global
+    // dataVersion so screens with cached lists refresh themselves.
     if (increased) {
       HapticFeedback.mediumImpact();
       SystemSound.play(SystemSoundType.click);
+      // Invalidate cached reads so the next list-load comes from the network.
+      await ApiCache.clearAll();
+      // Tell every screen that listens to AppProvider to reload.
+      if (mounted) context.read<AppProvider>().bumpDataVersion();
       final list = await NotificationsService.list(limit: 1);
       if (!mounted || list.isEmpty) return;
       final latest = list.first as Map;
@@ -139,7 +144,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         SnackBar(
           backgroundColor: BigDoggTheme.teal800,
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
+          duration: const Duration(seconds: 3),
           content: Row(
             children: [
               const Icon(Icons.notifications_active_rounded,
