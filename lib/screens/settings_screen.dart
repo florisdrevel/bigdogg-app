@@ -8,6 +8,7 @@ import '../services/subscription_service.dart';
 import '../services/auth_service.dart';
 import '../services/referral_service.dart';
 import '../services/banking_service.dart';
+import '../services/accountants_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/payments_service.dart';
@@ -51,6 +52,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, dynamic>? _referralStats;
   bool _loadingReferral = true;
 
+  // Accountant portal state
+  List<Map<String, dynamic>> _accountantInvites = [];
+  List<Map<String, dynamic>> _activeAccountants = [];
+  List<Map<String, dynamic>> _myClientsAsAccountant = [];
+  bool _loadingAccountants = true;
+  bool _invitingAccountant = false;
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +66,146 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadStripeStatus();
     _loadReferralStats();
     _loadBankStatus();
+    _loadAccountants();
+  }
+
+  Future<void> _loadAccountants() async {
+    setState(() => _loadingAccountants = true);
+    final results = await Future.wait([
+      AccountantsService.listInvites(),
+      AccountantsService.listActive(),
+      AccountantsService.listClients(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _accountantInvites = (results[0] as List<Map<String, dynamic>>)
+          .where((r) => r['used'] != true)
+          .toList();
+      _activeAccountants = results[1] as List<Map<String, dynamic>>;
+      _myClientsAsAccountant = results[2] as List<Map<String, dynamic>>;
+      _loadingAccountants = false;
+    });
+  }
+
+  Future<void> _inviteAccountant(bool isNl) async {
+    final emailController = TextEditingController();
+    final email = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isNl ? 'Accountant uitnodigen' : 'Invite accountant'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isNl
+                  ? 'Vul het e-mailadres van je accountant in. Hij of zij krijgt een mail met een knop om de uitnodiging te accepteren.'
+                  : 'Enter your accountant\'s email. They will get a message with a button to accept the invitation.',
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: emailController,
+              autofocus: true,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: isNl ? 'E-mailadres' : 'Email',
+                hintText: 'naam@boekhouder.nl',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(isNl ? 'Annuleren' : 'Cancel')),
+          ElevatedButton(
+            onPressed: () =>
+                Navigator.pop(ctx, emailController.text.trim()),
+            child: Text(isNl ? 'Versturen' : 'Send'),
+          ),
+        ],
+      ),
+    );
+    if (email == null || email.isEmpty) return;
+    if (!email.contains('@')) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.error,
+        content: Text(isNl ? 'Ongeldig e-mailadres' : 'Invalid email'),
+      ));
+      return;
+    }
+    setState(() => _invitingAccountant = true);
+    final result = await AccountantsService.invite(email);
+    if (!mounted) return;
+    setState(() => _invitingAccountant = false);
+    if (result['ok'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.success,
+        duration: const Duration(seconds: 3),
+        content: Text(isNl
+            ? 'Uitnodiging verstuurd naar $email'
+            : 'Invitation sent to $email'),
+      ));
+      _loadAccountants();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.error,
+        content: Text(isNl
+            ? 'Kon uitnodiging niet versturen: ${result['error']}'
+            : 'Could not send invitation: ${result['error']}'),
+      ));
+    }
+  }
+
+  Future<void> _cancelAccountantInvite(String token, bool isNl) async {
+    final ok = await AccountantsService.cancelInvite(token);
+    if (!mounted) return;
+    if (ok) {
+      _loadAccountants();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.error,
+        content: Text(isNl ? 'Annuleren mislukt' : 'Cancel failed'),
+      ));
+    }
+  }
+
+  Future<void> _revokeAccountant(
+      String accountantId, String displayName, bool isNl) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isNl ? 'Toegang intrekken?' : 'Revoke access?'),
+        content: Text(
+          isNl
+              ? '${displayName.isEmpty ? 'Deze accountant' : displayName} kan je administratie hierna niet meer inzien.'
+              : '${displayName.isEmpty ? 'This accountant' : displayName} will no longer be able to view your administration.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(isNl ? 'Annuleren' : 'Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: BigDoggTheme.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(isNl ? 'Intrekken' : 'Revoke'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final ok = await AccountantsService.revoke(accountantId);
+    if (!mounted) return;
+    if (ok) {
+      _loadAccountants();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.error,
+        content: Text(isNl ? 'Intrekken mislukt' : 'Revoke failed'),
+      ));
+    }
   }
 
   Future<void> _loadReferralStats() async {
@@ -549,6 +697,211 @@ For questions: info@bigdogg.nl''';
     }
   }
 
+  Widget _buildAccountantCard(bool isNl) {
+    return Container(
+      decoration: BoxDecoration(
+        color: BigDoggTheme.lightSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: BigDoggTheme.lightBorder),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.support_agent_outlined,
+                size: 18, color: BigDoggTheme.teal800),
+            const SizedBox(width: 8),
+            Text(isNl ? 'Mijn accountant' : 'My accountant',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: BigDoggTheme.teal800)),
+          ]),
+          const SizedBox(height: 4),
+          Text(
+            isNl
+                ? 'Geef je accountant alleen-lezen toegang tot je facturen, kosten en BTW-overzicht. Niets te exporteren — alles direct inzichtelijk.'
+                : 'Give your accountant read-only access to your invoices, expenses and VAT overview. Nothing to export — everything visible directly.',
+            style: const TextStyle(
+                fontSize: 13, color: BigDoggTheme.lightTextSecondary),
+          ),
+          const SizedBox(height: 12),
+          if (_loadingAccountants)
+            const Center(child: CircularProgressIndicator())
+          else ...[
+            if (_activeAccountants.isNotEmpty) ...[
+              Text(
+                isNl ? 'Actieve accountants' : 'Active accountants',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: BigDoggTheme.lightTextSecondary),
+              ),
+              const SizedBox(height: 6),
+              ..._activeAccountants.map((a) {
+                final name = (a['display_name'] ?? '').toString();
+                final id = (a['accountant_id'] ?? '').toString();
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: BigDoggTheme.lightBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: BigDoggTheme.lightBorder),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.check_circle,
+                        size: 16, color: BigDoggTheme.success),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        name.isEmpty
+                            ? (isNl ? 'Accountant' : 'Accountant')
+                            : name,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            color: BigDoggTheme.lightTextPrimary,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => _revokeAccountant(id, name, isNl),
+                      style: TextButton.styleFrom(
+                          foregroundColor: BigDoggTheme.error,
+                          padding: const EdgeInsets.symmetric(horizontal: 8)),
+                      child: Text(isNl ? 'Intrekken' : 'Revoke',
+                          style: const TextStyle(fontSize: 12)),
+                    ),
+                  ]),
+                );
+              }),
+              const SizedBox(height: 8),
+            ],
+            if (_accountantInvites.isNotEmpty) ...[
+              Text(
+                isNl ? 'Openstaande uitnodigingen' : 'Pending invitations',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: BigDoggTheme.lightTextSecondary),
+              ),
+              const SizedBox(height: 6),
+              ..._accountantInvites.map((inv) {
+                final email = (inv['email'] ?? '').toString();
+                final token = (inv['token'] ?? '').toString();
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: BigDoggTheme.lightBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: BigDoggTheme.lightBorder),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.mail_outline,
+                        size: 16, color: BigDoggTheme.teal700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        email,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            color: BigDoggTheme.lightTextPrimary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => _cancelAccountantInvite(token, isNl),
+                      style: TextButton.styleFrom(
+                          foregroundColor: BigDoggTheme.lightTextSecondary,
+                          padding: const EdgeInsets.symmetric(horizontal: 8)),
+                      child: Text(isNl ? 'Annuleren' : 'Cancel',
+                          style: const TextStyle(fontSize: 12)),
+                    ),
+                  ]),
+                );
+              }),
+              const SizedBox(height: 8),
+            ],
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _invitingAccountant
+                    ? null
+                    : () => _inviteAccountant(isNl),
+                icon: _invitingAccountant
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.person_add_alt_1,
+                        size: 16, color: Colors.white),
+                label: Text(
+                  isNl ? 'Accountant uitnodigen' : 'Invite accountant',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: BigDoggTheme.teal800,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                ),
+              ),
+            ),
+            if (_myClientsAsAccountant.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              const Divider(height: 1, color: BigDoggTheme.lightBorder),
+              const SizedBox(height: 14),
+              Row(children: [
+                const Icon(Icons.folder_shared_outlined,
+                    size: 16, color: BigDoggTheme.teal800),
+                const SizedBox(width: 6),
+                Text(
+                  isNl
+                      ? 'Je bent ook accountant'
+                      : 'You are also an accountant',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: BigDoggTheme.teal800,
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 4),
+              Text(
+                isNl
+                    ? '${_myClientsAsAccountant.length} klant(en) heeft je toegang gegeven tot hun administratie.'
+                    : '${_myClientsAsAccountant.length} client(s) gave you access to their administration.',
+                style: const TextStyle(
+                    fontSize: 12, color: BigDoggTheme.lightTextSecondary),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push('/accountant'),
+                  icon: const Icon(Icons.arrow_forward, size: 16),
+                  label: Text(isNl ? 'Naar mijn klanten' : 'View my clients'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: BigDoggTheme.teal800,
+                    side: const BorderSide(color: BigDoggTheme.teal700),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildBankCard(bool isNl) {
     final connected = _bankStatus?['connected'] == true;
     final connectedAt = _bankStatus?['connected_at']?.toString();
@@ -1034,6 +1387,11 @@ For questions: info@bigdogg.nl''';
 
           // ── 3b. BANK CONNECTION (Tink) ─────────────────────────────
           _buildBankCard(isNl),
+
+          const SizedBox(height: 16),
+
+          // ── 3c. ACCOUNTANT PORTAL ─────────────────────────────────
+          _buildAccountantCard(isNl),
 
           const SizedBox(height: 16),
 

@@ -9,6 +9,8 @@ import '../services/api_cache.dart';
 import '../services/auth_service.dart';
 import '../services/notifications_service.dart';
 import '../services/push_service.dart';
+import '../services/accountants_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'products_screen.dart';
 import 'clients_screen.dart';
 import 'invoices_screen.dart';
@@ -77,6 +79,11 @@ class _DashboardScreenState extends State<DashboardScreen>
         if (mounted) context.push(url);
       }
     });
+    // If the user logged in after tapping an accountant-invite email,
+    // the invite token was stashed in prefs by AccountantAcceptScreen.
+    // Redeem it now and bounce them into the accountant clients view.
+    // ignore: unawaited_futures
+    _redeemPendingAccountantInvite();
     // Show a snackbar when Tink redirects back to /dashboard?bank=success
     // (or ?bank_error=...). Done once per session — flag prevents repeats
     // when the user navigates between tabs.
@@ -119,6 +126,31 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (state == AppLifecycleState.resumed) {
       AuthService.refreshToken();
       _refreshUnreadCount();
+    }
+  }
+
+  Future<void> _redeemPendingAccountantInvite() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('pending_accountant_invite');
+    if (token == null || token.isEmpty) return;
+    await prefs.remove('pending_accountant_invite');
+    final result = await AccountantsService.acceptInvite(token);
+    if (!mounted) return;
+    if (result['ok'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.success,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+        content: const Text('Uitnodiging geaccepteerd — je bent nu accountant.'),
+      ));
+      context.go('/accountant');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.error,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        content: Text('Uitnodiging niet geaccepteerd: ${result['error']}'),
+      ));
     }
   }
 
