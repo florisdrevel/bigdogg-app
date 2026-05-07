@@ -864,7 +864,19 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                       final result = await InvoicesService.createInvoice(
                           clientId: selectedClientId!, lines: lines,
                           projectId: selectedProjectId);
-                      if (result['success'] && mounted) {
+                      if (!mounted) return;
+                      if (result['offline'] == true) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          backgroundColor: BigDoggTheme.warning,
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 4),
+                          content: Text(isNl
+                              ? 'Geen verbinding — factuur wordt later aangemaakt.'
+                              : 'Offline — invoice will be created later.'),
+                        ));
+                        return;
+                      }
+                      if (result['success']) {
                         await _loadInvoices();
                         final invoiceId = result['invoice']['id'];
                         _navigateToInvoice(invoiceId);

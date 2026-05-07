@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'api_cache.dart';
+import 'offline_queue.dart';
 import 'dart:typed_data';
 import 'package:http_parser/http_parser.dart';
 
@@ -47,28 +48,20 @@ class InvoicesService {
     String? projectId,
   }) async {
     final token = await _getToken();
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/v1/invoices/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'client_id': clientId,
-          'lines': lines,
-          'notes': notes,
-          if (projectId != null) 'project_id': projectId,
-        }),
-      );
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'invoice': data['invoice']};
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.postOrEnqueue(
+      url: '$baseUrl/api/v1/invoices/',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: {
+        'client_id': clientId,
+        'lines': lines,
+        'notes': notes,
+        if (projectId != null) 'project_id': projectId,
+      },
+      label: 'Factuur (${lines.length} regel${lines.length == 1 ? '' : 's'})',
+    );
   }
 
   static Future<Map<String, dynamic>> getInvoice(String invoiceId) async {

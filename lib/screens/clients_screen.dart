@@ -111,7 +111,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                   city: cityController.text.trim(),
                 );
               } else {
-                await ClientsService.createClient(
+                final result = await ClientsService.createClient(
                   contactName: contactController.text.trim(),
                   email: emailController.text.trim(),
                   companyName: companyController.text.trim(),
@@ -120,6 +120,16 @@ class _ClientsScreenState extends State<ClientsScreen> {
                   postcode: postcodeController.text.trim(),
                   city: cityController.text.trim(),
                 );
+                if (result['offline'] == true && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    backgroundColor: BigDoggTheme.warning,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 4),
+                    content: Text(isNl
+                        ? 'Geen verbinding — klant wordt later verstuurd.'
+                        : 'Offline — client will be sent later.'),
+                  ));
+                }
               }
               _loadClients();
             },

@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../services/notifications_service.dart';
 import '../services/push_service.dart';
 import '../services/accountants_service.dart';
+import '../services/offline_queue.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'products_screen.dart';
 import 'clients_screen.dart';
@@ -79,6 +80,11 @@ class _DashboardScreenState extends State<DashboardScreen>
         if (mounted) context.push(url);
       }
     });
+    // Try to drain any pending offline writes — most app sessions
+    // start online so this usually no-ops, but if the user created
+    // anything during a network blip, this is when it gets sent.
+    // ignore: unawaited_futures
+    _drainOfflineQueue();
     // If the user logged in after tapping an accountant-invite email,
     // the invite token was stashed in prefs by AccountantAcceptScreen.
     // Redeem it now and bounce them into the accountant clients view.
@@ -126,7 +132,28 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (state == AppLifecycleState.resumed) {
       AuthService.refreshToken();
       _refreshUnreadCount();
+      // ignore: unawaited_futures
+      _drainOfflineQueue();
     }
+  }
+
+  Future<void> _drainOfflineQueue() async {
+    final n = await OfflineQueue.drain();
+    if (!mounted || n <= 0) return;
+    // Items did go through — the data they touch may now be on the
+    // server, so kick a refresh just like a notification would.
+    await ApiCache.clearAll();
+    if (!mounted) return;
+    context.read<AppProvider>().bumpDataVersion();
+    final isNl = context.read<AppProvider>().language == 'nl';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      backgroundColor: BigDoggTheme.success,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 3),
+      content: Text(isNl
+          ? '$n offline ${n == 1 ? 'wijziging' : 'wijzigingen'} verstuurd'
+          : '$n offline ${n == 1 ? 'change' : 'changes'} synced'),
+    ));
   }
 
   Future<void> _redeemPendingAccountantInvite() async {

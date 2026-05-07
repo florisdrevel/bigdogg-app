@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'api_cache.dart';
+import 'offline_queue.dart';
 
 class ClientsService {
   static const String baseUrl = ApiConfig.baseUrl;
@@ -43,31 +44,23 @@ class ClientsService {
     String? city,
   }) async {
     final token = await _getToken();
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/v1/clients/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'contact_name': contactName,
-          'email': email,
-          'company_name': companyName,
-          'phone': phone,
-          'address': address,
-          'postcode': postcode,
-          'city': city,
-        }),
-      );
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'client': data['client']};
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.postOrEnqueue(
+      url: '$baseUrl/api/v1/clients/',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: {
+        'contact_name': contactName,
+        'email': email,
+        'company_name': companyName,
+        'phone': phone,
+        'address': address,
+        'postcode': postcode,
+        'city': city,
+      },
+      label: 'Klant: $contactName',
+    );
   }
 
   static Future<Map<String, dynamic>> updateClient({

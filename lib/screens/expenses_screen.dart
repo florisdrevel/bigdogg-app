@@ -695,6 +695,21 @@ class _ExpensesScreenState extends State<ExpensesScreen>
                           setSt(() => uploading = false);
                           return;
                         }
+                        if (result['offline'] == true) {
+                          if (mounted) Navigator.pop(ctx);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(SnackBar(
+                              backgroundColor: BigDoggTheme.warning,
+                              behavior: SnackBarBehavior.floating,
+                              duration: const Duration(seconds: 4),
+                              content: Text(isNl
+                                  ? 'Geen verbinding — kosten worden later verstuurd.'
+                                  : 'Offline — expense will be sent later.'),
+                            ));
+                          }
+                          return;
+                        }
                         if (recBytes != null) {
                           await ExpensesService.uploadReceipt(
                               result['expense']['id'],
