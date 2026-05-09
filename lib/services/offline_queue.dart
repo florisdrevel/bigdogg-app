@@ -163,10 +163,70 @@ class OfflineQueue {
     required Map<String, String> headers,
     required Object body,
     required String label,
+  }) =>
+      _sendOrEnqueue(method: 'POST', url: url, headers: headers,
+          body: body, label: label);
+
+  /// PATCH counterpart — partial-update flows (e.g. invoice status).
+  static Future<Map<String, dynamic>> patchOrEnqueue({
+    required String url,
+    required Map<String, String> headers,
+    required Object body,
+    required String label,
+  }) =>
+      _sendOrEnqueue(method: 'PATCH', url: url, headers: headers,
+          body: body, label: label);
+
+  /// PUT counterpart — used by update flows.
+  static Future<Map<String, dynamic>> putOrEnqueue({
+    required String url,
+    required Map<String, String> headers,
+    required Object body,
+    required String label,
+  }) =>
+      _sendOrEnqueue(method: 'PUT', url: url, headers: headers,
+          body: body, label: label);
+
+  /// DELETE counterpart — body is optional, label is what shows up
+  /// in the offline snackbar / pending list.
+  static Future<Map<String, dynamic>> deleteOrEnqueue({
+    required String url,
+    required Map<String, String> headers,
+    required String label,
+    Object? body,
+  }) =>
+      _sendOrEnqueue(method: 'DELETE', url: url, headers: headers,
+          body: body, label: label);
+
+  static Future<Map<String, dynamic>> _sendOrEnqueue({
+    required String method,
+    required String url,
+    required Map<String, String> headers,
+    required String label,
+    Object? body,
   }) async {
+    final encoded = body == null
+        ? null
+        : (body is String ? body : jsonEncode(body));
     try {
-      final r = await http.post(Uri.parse(url),
-          headers: headers, body: body is String ? body : jsonEncode(body));
+      final uri = Uri.parse(url);
+      http.Response r;
+      switch (method) {
+        case 'POST':
+          r = await http.post(uri, headers: headers, body: encoded);
+          break;
+        case 'PUT':
+          r = await http.put(uri, headers: headers, body: encoded);
+          break;
+        case 'PATCH':
+          r = await http.patch(uri, headers: headers, body: encoded);
+          break;
+        case 'DELETE':
+          r = await http.delete(uri, headers: headers, body: encoded);
+          break;
+        default:
+          return {'success': false, 'message': 'Unsupported method'};
+      }
       Map<String, dynamic> data = {};
       try {
         data = jsonDecode(r.body) as Map<String, dynamic>;
@@ -179,7 +239,7 @@ class OfflineQueue {
         'message': data['detail']?.toString() ?? 'Server error',
       };
     } catch (_) {
-      await enqueue(method: 'POST', url: url, headers: headers,
+      await enqueue(method: method, url: url, headers: headers,
           body: body, label: label);
       return {'success': true, 'offline': true, 'queued_label': label};
     }

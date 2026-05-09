@@ -166,6 +166,17 @@ class _ClientsScreenState extends State<ClientsScreen> {
 
     if (confirm == true && mounted) {
       final result = await ClientsService.deleteClient(client['id']);
+      if (result['offline'] == true && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: BigDoggTheme.warning,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+          content: Text(isNl
+              ? 'Geen verbinding — klant wordt verwijderd zodra je online bent.'
+              : 'Offline — client will be deleted once you are back online.'),
+        ));
+        return;
+      }
       if (result['success']) {
         _loadClients();
       } else {

@@ -697,8 +697,19 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                         ),
                       );
                       if (confirm == true) {
-                        await InvoicesService.deleteInvoice(
+                        final result = await InvoicesService.deleteInvoice(
                             widget.invoiceId);
+                        if (result['offline'] == true && mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            backgroundColor: BigDoggTheme.warning,
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 4),
+                            content: Text(isNl
+                                ? 'Geen verbinding — factuur wordt verwijderd zodra je online bent.'
+                                : 'Offline — invoice will be deleted once you are back online.'),
+                          ));
+                          return;
+                        }
                         if (mounted) Navigator.pop(context, true);
                       }
                     },

@@ -41,6 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   // Notifications bell state — unread count is polled every 60 seconds
   // and refreshed manually after the sheet is closed.
   int _unreadCount = 0;
+  int _pendingOffline = 0;
   Timer? _notifTimer;
 
   // Keep the Supabase access token fresh. Default lifetime is ~1 hour;
@@ -56,8 +57,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     // Poll every 15 seconds so the bell badge feels live while the app
     // is in the foreground. Real OS-level pings when the phone is locked
     // require FCM (separate session).
-    _notifTimer = Timer.periodic(const Duration(seconds: 15),
-        (_) => _refreshUnreadCount());
+    _notifTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _refreshUnreadCount();
+      _refreshPendingCount();
+    });
+    _refreshPendingCount();
     // Refresh the access token immediately on mount — this catches the
     // case where the app was backgrounded for a while and the cached
     // access token has already expired before the user got back to it.
@@ -139,7 +143,12 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Future<void> _drainOfflineQueue() async {
     final n = await OfflineQueue.drain();
-    if (!mounted || n <= 0) return;
+    final remaining = await OfflineQueue.count();
+    if (!mounted) return;
+    if (_pendingOffline != remaining) {
+      setState(() => _pendingOffline = remaining);
+    }
+    if (n <= 0) return;
     // Items did go through — the data they touch may now be on the
     // server, so kick a refresh just like a notification would.
     await ApiCache.clearAll();
@@ -154,6 +163,12 @@ class _DashboardScreenState extends State<DashboardScreen>
           ? '$n offline ${n == 1 ? 'wijziging' : 'wijzigingen'} verstuurd'
           : '$n offline ${n == 1 ? 'change' : 'changes'} synced'),
     ));
+  }
+
+  Future<void> _refreshPendingCount() async {
+    final n = await OfflineQueue.count();
+    if (!mounted) return;
+    if (_pendingOffline != n) setState(() => _pendingOffline = n);
   }
 
   Future<void> _redeemPendingAccountantInvite() async {
@@ -532,6 +547,12 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ),
           ),
+          if (_pendingOffline > 0)
+            _OfflineQueueChip(
+              count: _pendingOffline,
+              isNl: isNl,
+              onTap: _drainOfflineQueue,
+            ),
           _NotificationsBell(
             unreadCount: _unreadCount,
             isNl: isNl,
@@ -585,6 +606,56 @@ class _DashboardScreenState extends State<DashboardScreen>
       projectsEnabled: projectsEnabled,
       quotesEnabled: appProvider.quotesEnabled,
       child: scaffold,
+    );
+  }
+}
+
+
+// ─── Pending-offline-writes chip ─────────────────────────────────
+class _OfflineQueueChip extends StatelessWidget {
+  final int count;
+  final bool isNl;
+  final VoidCallback onTap;
+
+  const _OfflineQueueChip({
+    required this.count,
+    required this.isNl,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: isNl
+          ? '$count offline wijziging${count == 1 ? '' : 'en'} wachten op verzenden — tik om opnieuw te proberen'
+          : '$count offline change${count == 1 ? '' : 's'} pending — tap to retry',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.cloud_off_outlined,
+                size: 18, color: BigDoggTheme.warning),
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: BigDoggTheme.warning,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
+              ),
+            ),
+          ]),
+        ),
+      ),
     );
   }
 }

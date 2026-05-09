@@ -74,48 +74,32 @@ class ClientsService {
     String? city,
   }) async {
     final token = await _getToken();
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/api/v1/clients/$clientId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'contact_name': contactName,
-          'email': email,
-          'company_name': companyName,
-          'phone': phone,
-          'address': address,
-          'postcode': postcode,
-          'city': city,
-        }),
-      );
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'client': data['client']};
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.putOrEnqueue(
+      url: '$baseUrl/api/v1/clients/$clientId',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: {
+        'contact_name': contactName,
+        'email': email,
+        'company_name': companyName,
+        'phone': phone,
+        'address': address,
+        'postcode': postcode,
+        'city': city,
+      },
+      label: 'Klant bijwerken: ${contactName ?? clientId}',
+    );
   }
 
   static Future<Map<String, dynamic>> deleteClient(String clientId) async {
     final token = await _getToken();
-    try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/api/v1/clients/$clientId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (response.statusCode == 200) {
-        return {'success': true};
-      }
-      final data = jsonDecode(response.body);
-      return {'success': false, 'message': data['detail'] ?? 'Delete failed'};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.deleteOrEnqueue(
+      url: '$baseUrl/api/v1/clients/$clientId',
+      headers: {'Authorization': 'Bearer $token'},
+      label: 'Klant verwijderen: $clientId',
+    );
   }
 
   static Future<Map<String, dynamic>> createInvite() async {

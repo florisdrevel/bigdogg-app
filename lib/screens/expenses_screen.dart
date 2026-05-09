@@ -138,7 +138,19 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   }
 
   Future<void> _deleteExpense(String id) async {
-    await ExpensesService.deleteExpense(id);
+    final isNl = context.read<AppProvider>().language == 'nl';
+    final result = await ExpensesService.deleteExpense(id);
+    if (result['offline'] == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.warning,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        content: Text(isNl
+            ? 'Geen verbinding — wordt verwijderd zodra je online bent.'
+            : 'Offline — will be deleted once you are back online.'),
+      ));
+      return;
+    }
     _loadExpenses();
   }
 

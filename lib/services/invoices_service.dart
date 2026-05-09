@@ -94,38 +94,24 @@ class InvoicesService {
     String status,
   ) async {
     final token = await _getToken();
-    try {
-      final response = await http.patch(
-        Uri.parse('$baseUrl/api/v1/invoices/$invoiceId/status'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'status': status}),
-      );
-      if (response.statusCode == 200) {
-        return {'success': true};
-      }
-      return {'success': false};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.patchOrEnqueue(
+      url: '$baseUrl/api/v1/invoices/$invoiceId/status',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: {'status': status},
+      label: 'Factuur status → $status',
+    );
   }
 
   static Future<Map<String, dynamic>> deleteInvoice(String invoiceId) async {
     final token = await _getToken();
-    try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/api/v1/invoices/$invoiceId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (response.statusCode == 200) {
-        return {'success': true};
-      }
-      return {'success': false};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.deleteOrEnqueue(
+      url: '$baseUrl/api/v1/invoices/$invoiceId',
+      headers: {'Authorization': 'Bearer $token'},
+      label: 'Factuur verwijderen: $invoiceId',
+    );
   }
 
   static Future<Map<String, dynamic>> importInvoices({

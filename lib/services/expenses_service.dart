@@ -136,17 +136,10 @@ class ExpensesService {
 
   static Future<Map<String, dynamic>> deleteExpense(String expenseId) async {
     final token = await _getToken();
-    try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/api/v1/expenses/$expenseId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (response.statusCode == 200) {
-        return {'success': true};
-      }
-      return {'success': false};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.deleteOrEnqueue(
+      url: '$baseUrl/api/v1/expenses/$expenseId',
+      headers: {'Authorization': 'Bearer $token'},
+      label: 'Kosten verwijderen: $expenseId',
+    );
   }
 }
