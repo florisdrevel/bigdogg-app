@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_config.dart';
+import '../services/offline_queue.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 
@@ -41,30 +42,78 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
 
   Future<void> _createProject(String name, String desc, String color) async {
     final token = await _getToken();
-    await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/v1/projects/'),
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-      body: jsonEncode({'name': name, 'description': desc, 'color': color}),
+    final result = await OfflineQueue.postOrEnqueue(
+      url: '${ApiConfig.baseUrl}/api/v1/projects/',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: {'name': name, 'description': desc, 'color': color},
+      label: 'Project: $name',
     );
+    if (result['offline'] == true && mounted) {
+      final isNl = context.read<AppProvider>().language == 'nl';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.warning,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        content: Text(isNl
+            ? 'Geen verbinding — project wordt later aangemaakt.'
+            : 'Offline — project will be created later.'),
+      ));
+    }
     _load();
   }
 
   Future<void> _deleteProject(String id) async {
     final token = await _getToken();
-    await http.delete(
-      Uri.parse('${ApiConfig.baseUrl}/api/v1/projects/$id'),
+    final result = await OfflineQueue.deleteOrEnqueue(
+      url: '${ApiConfig.baseUrl}/api/v1/projects/$id',
       headers: {'Authorization': 'Bearer $token'},
+      label: 'Project verwijderen: $id',
     );
+    if (result['offline'] == true && mounted) {
+      final isNl = context.read<AppProvider>().language == 'nl';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.warning,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        content: Text(isNl
+            ? 'Geen verbinding — wordt verwijderd zodra je online bent.'
+            : 'Offline — will be deleted once you are back online.'),
+      ));
+      return;
+    }
     _load();
   }
 
   Future<void> _addHoursToProject(String projectId, double hours, String date, String description) async {
     final token = await _getToken();
-    await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/v1/hours/'),
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-      body: jsonEncode({'hours': hours, 'date': date, 'description': description, 'project_id': projectId}),
+    final result = await OfflineQueue.postOrEnqueue(
+      url: '${ApiConfig.baseUrl}/api/v1/hours/',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: {
+        'hours': hours,
+        'date': date,
+        'description': description,
+        'project_id': projectId,
+      },
+      label: 'Uren bij project: ${hours}h $date',
     );
+    if (result['offline'] == true && mounted) {
+      final isNl = context.read<AppProvider>().language == 'nl';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.warning,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        content: Text(isNl
+            ? 'Geen verbinding — uren worden later verstuurd.'
+            : 'Offline — hours will be sent later.'),
+      ));
+    }
     _load();
   }
 

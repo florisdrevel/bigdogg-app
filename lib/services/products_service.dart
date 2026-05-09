@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'api_cache.dart';
+import 'offline_queue.dart';
 
 class ProductsService {
   static const String baseUrl = ApiConfig.baseUrl;
@@ -42,30 +43,22 @@ class ProductsService {
     bool vatIncluded = false,
   }) async {
     final token = await _getToken();
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/v1/products/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'name': name,
-          'description': description,
-          'unit_price': unitPrice,
-          'btw_rate': btwRate,
-          'unit': unit,
-          'vat_included': vatIncluded,
-        }),
-      );
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'product': data['product']};
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.postOrEnqueue(
+      url: '$baseUrl/api/v1/products/',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: {
+        'name': name,
+        'description': description,
+        'unit_price': unitPrice,
+        'btw_rate': btwRate,
+        'unit': unit,
+        'vat_included': vatIncluded,
+      },
+      label: 'Product: $name',
+    );
   }
 
   static Future<Map<String, dynamic>> updateProduct({
@@ -78,45 +71,30 @@ class ProductsService {
     bool vatIncluded = false,
   }) async {
     final token = await _getToken();
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/api/v1/products/$productId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'name': name,
-          'description': description,
-          'unit_price': unitPrice,
-          'btw_rate': btwRate,
-          'unit': unit,
-          'vat_included': vatIncluded,
-        }),
-      );
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'product': data['product']};
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.putOrEnqueue(
+      url: '$baseUrl/api/v1/products/$productId',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: {
+        'name': name,
+        'description': description,
+        'unit_price': unitPrice,
+        'btw_rate': btwRate,
+        'unit': unit,
+        'vat_included': vatIncluded,
+      },
+      label: 'Product bijwerken: ${name ?? productId}',
+    );
   }
 
   static Future<Map<String, dynamic>> deleteProduct(String productId) async {
     final token = await _getToken();
-    try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/api/v1/products/$productId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (response.statusCode == 200) {
-        return {'success': true};
-      }
-      return {'success': false};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.deleteOrEnqueue(
+      url: '$baseUrl/api/v1/products/$productId',
+      headers: {'Authorization': 'Bearer $token'},
+      label: 'Product verwijderen: $productId',
+    );
   }
 }

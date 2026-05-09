@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'api_cache.dart';
+import 'offline_queue.dart';
 
 class QuotesService {
   static const String baseUrl = ApiConfig.baseUrl;
@@ -68,29 +69,21 @@ class QuotesService {
     String? validUntil,
   }) async {
     final token = await _getToken();
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/v1/quotes/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'client_id': clientId,
-          'lines': lines,
-          'notes': notes,
-          if (projectId != null) 'project_id': projectId,
-          if (validUntil != null) 'valid_until': validUntil,
-        }),
-      );
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'quote': data['quote']};
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.postOrEnqueue(
+      url: '$baseUrl/api/v1/quotes/',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: {
+        'client_id': clientId,
+        'lines': lines,
+        'notes': notes,
+        if (projectId != null) 'project_id': projectId,
+        if (validUntil != null) 'valid_until': validUntil,
+      },
+      label: 'Offerte (${lines.length} regel${lines.length == 1 ? '' : 's'})',
+    );
   }
 
   static Future<Map<String, dynamic>> updateStatus(
@@ -98,35 +91,24 @@ class QuotesService {
     String status,
   ) async {
     final token = await _getToken();
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/api/v1/quotes/$quoteId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'status': status}),
-      );
-      if (response.statusCode == 200) return {'success': true};
-      return {'success': false};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.putOrEnqueue(
+      url: '$baseUrl/api/v1/quotes/$quoteId',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: {'status': status},
+      label: 'Offerte status → $status',
+    );
   }
 
   static Future<Map<String, dynamic>> deleteQuote(String quoteId) async {
     final token = await _getToken();
-    try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/api/v1/quotes/$quoteId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (response.statusCode == 200) return {'success': true};
-      final data = jsonDecode(response.body);
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
+    return OfflineQueue.deleteOrEnqueue(
+      url: '$baseUrl/api/v1/quotes/$quoteId',
+      headers: {'Authorization': 'Bearer $token'},
+      label: 'Offerte verwijderen: $quoteId',
+    );
   }
 
   static Future<Map<String, dynamic>> convertToInvoice(String quoteId) async {

@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/overview_service.dart';
 import '../services/invoices_service.dart';
 import '../services/api_config.dart';
+import '../services/offline_queue.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/subscription_service.dart';
@@ -429,20 +430,48 @@ class _OverviewScreenState extends State<OverviewScreen>
 
   Future<void> _addHours(double hours, String date, String description) async {
     final token = await _getToken();
-    await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/v1/hours/'),
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-      body: jsonEncode({'hours': hours, 'date': date, 'description': description}),
+    final result = await OfflineQueue.postOrEnqueue(
+      url: '${ApiConfig.baseUrl}/api/v1/hours/',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: {'hours': hours, 'date': date, 'description': description},
+      label: 'Uren: ${hours}h $date',
     );
+    if (result['offline'] == true && mounted) {
+      final isNl = context.read<AppProvider>().language == 'nl';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.warning,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        content: Text(isNl
+            ? 'Geen verbinding — uren worden later verstuurd.'
+            : 'Offline — hours will be sent later.'),
+      ));
+    }
     _loadHours();
   }
 
   Future<void> _deleteHoursEntry(String id) async {
     final token = await _getToken();
-    await http.delete(
-      Uri.parse('${ApiConfig.baseUrl}/api/v1/hours/$id'),
+    final result = await OfflineQueue.deleteOrEnqueue(
+      url: '${ApiConfig.baseUrl}/api/v1/hours/$id',
       headers: {'Authorization': 'Bearer $token'},
+      label: 'Uren verwijderen: $id',
     );
+    if (result['offline'] == true && mounted) {
+      final isNl = context.read<AppProvider>().language == 'nl';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.warning,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        content: Text(isNl
+            ? 'Geen verbinding — wordt verwijderd zodra je online bent.'
+            : 'Offline — will be deleted once you are back online.'),
+      ));
+      return;
+    }
     _loadHours();
   }
 
