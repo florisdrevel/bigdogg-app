@@ -41,7 +41,6 @@ class _AccountantAcceptScreenState extends State<AccountantAcceptScreen> {
     final hasToken = (prefs.getString('access_token') ?? '').isNotEmpty;
 
     if (hasToken) {
-      _loggedIn = true;
       final result = await AccountantsService.acceptInvite(widget.token);
       if (!mounted) return;
       if (result['ok'] == true) {
@@ -50,11 +49,18 @@ class _AccountantAcceptScreenState extends State<AccountantAcceptScreen> {
         context.go('/accountant');
         return;
       }
-      setState(() {
-        _processing = false;
-        _error = result['error']?.toString() ?? 'accept_failed';
-      });
-      return;
+      // 401 = stale / expired access_token → treat as not-logged-in
+      // and let the user re-authenticate via the landing card.
+      if (result['status'] == 401) {
+        await prefs.remove('access_token');
+      } else {
+        _loggedIn = true;
+        setState(() {
+          _processing = false;
+          _error = result['error']?.toString() ?? 'accept_failed';
+        });
+        return;
+      }
     }
 
     // Not logged in — look up the invite so we can show the inviter's name.

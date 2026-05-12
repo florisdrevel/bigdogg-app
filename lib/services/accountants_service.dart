@@ -119,7 +119,10 @@ class AccountantsService {
     }
   }
 
-  /// Returns `{ok, error?, owner_id?}`.
+  /// Returns `{ok, error?, owner_id?, status?}`. `status=401` is surfaced
+  /// distinctly so the caller can fall back to the logged-out landing
+  /// (stale/expired access_token is indistinguishable from no-auth at
+  /// the backend).
   static Future<Map<String, dynamic>> acceptInvite(String token) async {
     try {
       final r = await http.post(
@@ -134,7 +137,7 @@ class AccountantsService {
       try {
         detail = (jsonDecode(r.body) as Map)['detail']?.toString() ?? detail;
       } catch (_) {}
-      return {'ok': false, 'error': detail};
+      return {'ok': false, 'error': detail, 'status': r.statusCode};
     } catch (e) {
       return {'ok': false, 'error': e.toString()};
     }

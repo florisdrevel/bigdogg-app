@@ -151,8 +151,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         emailSent: emailSent,
       );
     } else {
+      // Long duration + an action so the user actually sees what broke —
+      // common case is the SQL migration not yet run in Supabase, which
+      // returns a postgrest "table not found" error.
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: BigDoggTheme.error,
+        duration: const Duration(seconds: 10),
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: Colors.white,
+          onPressed: () {},
+        ),
         content: Text(isNl
             ? 'Kon uitnodiging niet versturen: ${result['error']}'
             : 'Could not send invitation: ${result['error']}'),
