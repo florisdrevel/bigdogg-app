@@ -24,7 +24,6 @@ class AccountantsService {
 
   // ── Owner ─────────────────────────────────────────────────
 
-  /// Create a new access link. Returns `{ok, error?, accept_url?, email_sent?, email_error?}`.
   static Future<Map<String, dynamic>> invite(String email) async {
     try {
       final r = await http.post(
@@ -52,7 +51,6 @@ class AccountantsService {
     }
   }
 
-  /// List every link this owner has ever created (active, revoked, expired).
   static Future<List<Map<String, dynamic>>> listInvites() async {
     try {
       final r = await http.get(Uri.parse('$_base/invites'),
@@ -66,8 +64,6 @@ class AccountantsService {
     return [];
   }
 
-  /// Soft-revoke: marks the link as used so the token can never be opened
-  /// again. The portal endpoints return 403 link_revoked.
   static Future<bool> cancelInvite(String token) async {
     try {
       final r = await http.delete(Uri.parse('$_base/invites/$token'),
@@ -78,7 +74,6 @@ class AccountantsService {
     }
   }
 
-  /// Bump expiry +14 days from now.
   static Future<bool> extendInvite(String token) async {
     try {
       final r = await http.post(Uri.parse('$_base/invites/$token/extend'),
@@ -91,11 +86,14 @@ class AccountantsService {
 
   // ── Accountant portal — token-gated, public ───────────────
 
-  static Uri _portal(String token, [String? sub]) =>
-      Uri.parse('$_base/portal/$token${sub == null ? '' : '/$sub'}');
+  static Uri _portal(String token, [String? sub, Map<String, String>? query]) {
+    final base = '$_base/portal/$token${sub == null ? '' : '/$sub'}';
+    final uri = Uri.parse(base);
+    return query == null || query.isEmpty
+        ? uri
+        : uri.replace(queryParameters: query);
+  }
 
-  /// Returns `{ok, status?, error?, meta?}`. status mirrors HTTP code so
-  /// the screen can render "link expired" / "link revoked" / "not found".
   static Future<Map<String, dynamic>> portalMeta(String token) async {
     try {
       final r = await http.get(_portal(token), headers: _publicHeaders);
@@ -112,9 +110,25 @@ class AccountantsService {
     }
   }
 
-  static Future<Map<String, dynamic>?> portalOverview(String token) async {
+  static Future<List<int>> portalYears(String token) async {
     try {
-      final r = await http.get(_portal(token, 'overview'),
+      final r = await http.get(_portal(token, 'years'),
+          headers: _publicHeaders);
+      if (r.statusCode == 200) {
+        final data = jsonDecode(r.body) as Map<String, dynamic>;
+        return ((data['years'] as List?) ?? [])
+            .map((e) => (e as num).toInt())
+            .toList();
+      }
+    } catch (_) {}
+    return [DateTime.now().year];
+  }
+
+  static Future<Map<String, dynamic>?> portalOverview(
+      String token, int year) async {
+    try {
+      final r = await http.get(
+          _portal(token, 'overview', {'year': '$year'}),
           headers: _publicHeaders);
       if (r.statusCode == 200) {
         return jsonDecode(r.body) as Map<String, dynamic>;
@@ -123,9 +137,11 @@ class AccountantsService {
     return null;
   }
 
-  static Future<List<Map<String, dynamic>>> portalInvoices(String token) async {
+  static Future<List<Map<String, dynamic>>> portalInvoices(
+      String token, int year) async {
     try {
-      final r = await http.get(_portal(token, 'invoices'),
+      final r = await http.get(
+          _portal(token, 'invoices', {'year': '$year'}),
           headers: _publicHeaders);
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body) as Map<String, dynamic>;
@@ -136,9 +152,11 @@ class AccountantsService {
     return [];
   }
 
-  static Future<List<Map<String, dynamic>>> portalExpenses(String token) async {
+  static Future<List<Map<String, dynamic>>> portalExpenses(
+      String token, int year) async {
     try {
-      final r = await http.get(_portal(token, 'expenses'),
+      final r = await http.get(
+          _portal(token, 'expenses', {'year': '$year'}),
           headers: _publicHeaders);
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body) as Map<String, dynamic>;
@@ -149,9 +167,32 @@ class AccountantsService {
     return [];
   }
 
-  /// Returns the full URL the device should open in a browser to download
-  /// the invoice PDF. We let the browser/OS handle the download since
-  /// streaming bytes through Flutter on web is awkward.
+  static Future<Map<String, dynamic>?> portalInvestments(
+      String token, int year) async {
+    try {
+      final r = await http.get(
+          _portal(token, 'investments', {'year': '$year'}),
+          headers: _publicHeaders);
+      if (r.statusCode == 200) {
+        return jsonDecode(r.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> portalHours(
+      String token, int year) async {
+    try {
+      final r = await http.get(
+          _portal(token, 'hours', {'year': '$year'}),
+          headers: _publicHeaders);
+      if (r.statusCode == 200) {
+        return jsonDecode(r.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   static String portalInvoicePdfUrl(String token, String invoiceId) =>
       '$_base/portal/$token/invoices/$invoiceId/pdf';
 }
