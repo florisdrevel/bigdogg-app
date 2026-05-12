@@ -24,7 +24,9 @@ class AccountantsService {
 
   // ── Owner ─────────────────────────────────────────────────
 
-  /// Returns `{ok, error?, accept_url?}`. Backend sends the email.
+  /// Returns `{ok, error?, accept_url?, email_sent?, email_error?}`.
+  /// Backend tries to send the email; `email_sent=false` means the
+  /// owner should hand-deliver the accept_url manually.
   static Future<Map<String, dynamic>> invite(String email) async {
     try {
       final r = await http.post(
@@ -34,7 +36,12 @@ class AccountantsService {
       );
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body) as Map<String, dynamic>;
-        return {'ok': true, 'accept_url': data['accept_url']};
+        return {
+          'ok':          true,
+          'accept_url':  data['accept_url'],
+          'email_sent':  data['email_sent'] == true,
+          'email_error': data['email_error'],
+        };
       }
       String detail = 'invite_failed';
       try {
@@ -93,6 +100,24 @@ class AccountantsService {
   }
 
   // ── Accountant ────────────────────────────────────────────
+
+  /// Public (unauthenticated) lookup so the accountant landing page can
+  /// show the inviter's name even when the accountant doesn't have a
+  /// BigDogg account yet. Returns `{valid, reason?, inviter_name?, invite_email?, expires_at?}`.
+  static Future<Map<String, dynamic>> publicInviteInfo(String token) async {
+    try {
+      final r = await http.get(
+        Uri.parse('$_base/public-invite/$token'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      if (r.statusCode == 200) {
+        return jsonDecode(r.body) as Map<String, dynamic>;
+      }
+      return {'valid': false, 'reason': 'lookup_failed'};
+    } catch (e) {
+      return {'valid': false, 'reason': 'lookup_failed'};
+    }
+  }
 
   /// Returns `{ok, error?, owner_id?}`.
   static Future<Map<String, dynamic>> acceptInvite(String token) async {

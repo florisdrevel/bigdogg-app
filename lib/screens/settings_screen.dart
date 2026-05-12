@@ -141,14 +141,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     setState(() => _invitingAccountant = false);
     if (result['ok'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: BigDoggTheme.success,
-        duration: const Duration(seconds: 3),
-        content: Text(isNl
-            ? 'Uitnodiging verstuurd naar $email'
-            : 'Invitation sent to $email'),
-      ));
       _loadAccountants();
+      final emailSent = result['email_sent'] == true;
+      final acceptUrl = (result['accept_url'] ?? '').toString();
+      await _showInviteResultDialog(
+        isNl: isNl,
+        email: email,
+        acceptUrl: acceptUrl,
+        emailSent: emailSent,
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: BigDoggTheme.error,
@@ -157,6 +158,95 @@ class _SettingsScreenState extends State<SettingsScreen> {
             : 'Could not send invitation: ${result['error']}'),
       ));
     }
+  }
+
+  Future<void> _showInviteResultDialog({
+    required bool isNl,
+    required String email,
+    required String acceptUrl,
+    required bool emailSent,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(children: [
+          Icon(
+            emailSent ? Icons.check_circle : Icons.warning_amber_rounded,
+            color: emailSent ? BigDoggTheme.success : BigDoggTheme.warning,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(emailSent
+                ? (isNl ? 'Uitnodiging verstuurd' : 'Invitation sent')
+                : (isNl ? 'Uitnodiging aangemaakt' : 'Invitation created')),
+          ),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              emailSent
+                  ? (isNl
+                      ? 'We hebben een e-mail gestuurd naar $email met een knop om de uitnodiging te accepteren.'
+                      : 'We sent an email to $email with a button to accept the invitation.')
+                  : (isNl
+                      ? 'De uitnodiging is aangemaakt, maar de e-mail kon niet verstuurd worden. Deel de onderstaande link direct met je accountant:'
+                      : 'The invitation was created, but the email could not be sent. Share the link below directly with your accountant:'),
+              style: const TextStyle(fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: BigDoggTheme.lightBg,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: BigDoggTheme.lightBorder),
+              ),
+              child: Row(children: [
+                Expanded(
+                  child: SelectableText(
+                    acceptUrl,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: BigDoggTheme.teal800,
+                        fontFamily: 'monospace'),
+                  ),
+                ),
+                IconButton(
+                  tooltip: isNl ? 'Kopiëren' : 'Copy',
+                  icon: const Icon(Icons.copy, size: 18),
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: acceptUrl));
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      backgroundColor: BigDoggTheme.success,
+                      duration: const Duration(seconds: 2),
+                      content: Text(isNl ? 'Link gekopieerd' : 'Link copied'),
+                    ));
+                  },
+                ),
+              ]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isNl
+                  ? 'De link is 14 dagen geldig.'
+                  : 'The link is valid for 14 days.',
+              style: const TextStyle(
+                  fontSize: 11, color: BigDoggTheme.lightTextSecondary),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(isNl ? 'Sluiten' : 'Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _cancelAccountantInvite(String token, bool isNl) async {
