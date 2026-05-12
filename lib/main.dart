@@ -12,9 +12,7 @@ import 'screens/landing_screen.dart';
 import 'screens/quote_public_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/transactions_screen.dart';
-import 'screens/accountant_accept_screen.dart';
-import 'screens/accountant_clients_screen.dart';
-import 'screens/accountant_view_screen.dart';
+import 'screens/accountant_portal_screen.dart';
 import 'services/push_service.dart';
 import 'theme.dart';
 import 'providers/app_provider.dart';
@@ -110,25 +108,10 @@ final _router = GoRouter(
       },
     ),
     GoRoute(
-      path: '/accountant/accept/:token',
+      path: '/accountant/portal/:token',
       builder: (context, state) {
         final token = state.pathParameters['token'] ?? '';
-        return AccountantAcceptScreen(token: token);
-      },
-    ),
-    GoRoute(
-      path: '/accountant',
-      builder: (context, state) => const AccountantClientsScreen(),
-    ),
-    GoRoute(
-      path: '/accountant/view/:userId',
-      builder: (context, state) {
-        final userId = state.pathParameters['userId'] ?? '';
-        final name = state.uri.queryParameters['name'] ?? '';
-        return AccountantViewScreen(
-          clientUserId: userId,
-          clientDisplayName: name,
-        );
+        return AccountantPortalScreen(token: token);
       },
     ),
   ],

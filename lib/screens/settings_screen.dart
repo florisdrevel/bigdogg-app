@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../services/referral_service.dart';
 import '../services/banking_service.dart';
 import '../services/accountants_service.dart';
+import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/payments_service.dart';
@@ -52,10 +53,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, dynamic>? _referralStats;
   bool _loadingReferral = true;
 
-  // Accountant portal state
-  List<Map<String, dynamic>> _accountantInvites = [];
-  List<Map<String, dynamic>> _activeAccountants = [];
-  List<Map<String, dynamic>> _myClientsAsAccountant = [];
+  // Accountant access-link state (links the owner created to grant
+  // accountants temporary read-only access — no accountant account needed).
+  List<Map<String, dynamic>> _accountantLinks = [];
   bool _loadingAccountants = true;
   bool _invitingAccountant = false;
 
@@ -71,18 +71,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadAccountants() async {
     setState(() => _loadingAccountants = true);
-    final results = await Future.wait([
-      AccountantsService.listInvites(),
-      AccountantsService.listActive(),
-      AccountantsService.listClients(),
-    ]);
+    final all = await AccountantsService.listInvites();
     if (!mounted) return;
+    final now = DateTime.now();
+    // Active = not revoked, not expired.
+    final active = all.where((r) {
+      if (r['used'] == true) return false;
+      final expStr = r['expires_at']?.toString();
+      if (expStr == null) return true;
+      try {
+        return DateTime.parse(expStr).isAfter(now);
+      } catch (_) {
+        return true;
+      }
+    }).toList();
     setState(() {
-      _accountantInvites = (results[0] as List<Map<String, dynamic>>)
-          .where((r) => r['used'] != true)
-          .toList();
-      _activeAccountants = results[1] as List<Map<String, dynamic>>;
-      _myClientsAsAccountant = results[2] as List<Map<String, dynamic>>;
+      _accountantLinks = active;
       _loadingAccountants = false;
     });
   }
@@ -92,15 +96,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final email = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isNl ? 'Accountant uitnodigen' : 'Invite accountant'),
+        title: Text(isNl ? 'Accountant toegang geven' : 'Grant accountant access'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               isNl
-                  ? 'Vul het e-mailadres van je accountant in. Hij of zij krijgt een mail met een knop om de uitnodiging te accepteren.'
-                  : 'Enter your accountant\'s email. They will get a message with a button to accept the invitation.',
+                  ? 'Vul het e-mailadres van je accountant in. Hij of zij krijgt een mail met een directe link naar een leesbare portal — 14 dagen geldig, geen BigDogg-account nodig.'
+                  : 'Enter your accountant\'s email. They get a direct link to a read-only portal — 14 days valid, no BigDogg account needed.',
               style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 12),
@@ -258,29 +262,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _cancelAccountantInvite(String token, bool isNl) async {
-    final ok = await AccountantsService.cancelInvite(token);
-    if (!mounted) return;
-    if (ok) {
-      _loadAccountants();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: BigDoggTheme.error,
-        content: Text(isNl ? 'Annuleren mislukt' : 'Cancel failed'),
-      ));
-    }
-  }
-
-  Future<void> _revokeAccountant(
-      String accountantId, String displayName, bool isNl) async {
+  Future<void> _revokeAccountantLink(
+      String token, String emailLabel, bool isNl) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isNl ? 'Toegang intrekken?' : 'Revoke access?'),
+        title: Text(isNl ? 'Link intrekken?' : 'Revoke link?'),
         content: Text(
           isNl
-              ? '${displayName.isEmpty ? 'Deze accountant' : displayName} kan je administratie hierna niet meer inzien.'
-              : '${displayName.isEmpty ? 'This accountant' : displayName} will no longer be able to view your administration.',
+              ? 'De portal-link naar $emailLabel werkt hierna niet meer. Deze actie kan niet ongedaan gemaakt worden — geef opnieuw toegang door een nieuwe uitnodiging te versturen.'
+              : 'The portal link to $emailLabel will stop working. This cannot be undone — send a fresh invite to grant access again.',
         ),
         actions: [
           TextButton(
@@ -295,7 +286,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (confirm != true) return;
-    final ok = await AccountantsService.revoke(accountantId);
+    final ok = await AccountantsService.cancelInvite(token);
     if (!mounted) return;
     if (ok) {
       _loadAccountants();
@@ -305,6 +296,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: Text(isNl ? 'Intrekken mislukt' : 'Revoke failed'),
       ));
     }
+  }
+
+  Future<void> _extendAccountantLink(String token, bool isNl) async {
+    final ok = await AccountantsService.extendInvite(token);
+    if (!mounted) return;
+    if (ok) {
+      _loadAccountants();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.success,
+        duration: const Duration(seconds: 2),
+        content: Text(
+            isNl ? 'Link verlengd met 14 dagen' : 'Link extended by 14 days'),
+      ));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.error,
+        content: Text(isNl ? 'Verlengen mislukt' : 'Extend failed'),
+      ));
+    }
+  }
+
+  Future<void> _copyAccountantLink(String url, bool isNl) async {
+    await Clipboard.setData(ClipboardData(text: url));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      backgroundColor: BigDoggTheme.success,
+      duration: const Duration(seconds: 2),
+      content: Text(isNl ? 'Link gekopieerd' : 'Link copied'),
+    ));
   }
 
   Future<void> _loadReferralStats() async {
@@ -820,8 +840,8 @@ For questions: info@bigdogg.nl''';
           const SizedBox(height: 4),
           Text(
             isNl
-                ? 'Geef je accountant alleen-lezen toegang tot je facturen, kosten en BTW-overzicht. Niets te exporteren — alles direct inzichtelijk.'
-                : 'Give your accountant read-only access to your invoices, expenses and VAT overview. Nothing to export — everything visible directly.',
+                ? 'Stuur je accountant een directe portal-link — geen BigDogg-account nodig, 14 dagen geldig, alleen-lezen toegang tot facturen, kosten en BTW.'
+                : 'Send your accountant a direct portal link — no BigDogg account needed, 14 days valid, read-only access to invoices, expenses and VAT.',
             style: const TextStyle(
                 fontSize: 13, color: BigDoggTheme.lightTextSecondary),
           ),
@@ -829,100 +849,17 @@ For questions: info@bigdogg.nl''';
           if (_loadingAccountants)
             const Center(child: CircularProgressIndicator())
           else ...[
-            if (_activeAccountants.isNotEmpty) ...[
+            if (_accountantLinks.isNotEmpty) ...[
               Text(
-                isNl ? 'Actieve accountants' : 'Active accountants',
+                isNl ? 'Actieve toegangslinks' : 'Active access links',
                 style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                     color: BigDoggTheme.lightTextSecondary),
               ),
               const SizedBox(height: 6),
-              ..._activeAccountants.map((a) {
-                final name = (a['display_name'] ?? '').toString();
-                final id = (a['accountant_id'] ?? '').toString();
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: BigDoggTheme.lightBg,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: BigDoggTheme.lightBorder),
-                  ),
-                  child: Row(children: [
-                    const Icon(Icons.check_circle,
-                        size: 16, color: BigDoggTheme.success),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        name.isEmpty
-                            ? (isNl ? 'Accountant' : 'Accountant')
-                            : name,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            color: BigDoggTheme.lightTextPrimary,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => _revokeAccountant(id, name, isNl),
-                      style: TextButton.styleFrom(
-                          foregroundColor: BigDoggTheme.error,
-                          padding: const EdgeInsets.symmetric(horizontal: 8)),
-                      child: Text(isNl ? 'Intrekken' : 'Revoke',
-                          style: const TextStyle(fontSize: 12)),
-                    ),
-                  ]),
-                );
-              }),
-              const SizedBox(height: 8),
-            ],
-            if (_accountantInvites.isNotEmpty) ...[
-              Text(
-                isNl ? 'Openstaande uitnodigingen' : 'Pending invitations',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    color: BigDoggTheme.lightTextSecondary),
-              ),
-              const SizedBox(height: 6),
-              ..._accountantInvites.map((inv) {
-                final email = (inv['email'] ?? '').toString();
-                final token = (inv['token'] ?? '').toString();
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: BigDoggTheme.lightBg,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: BigDoggTheme.lightBorder),
-                  ),
-                  child: Row(children: [
-                    const Icon(Icons.mail_outline,
-                        size: 16, color: BigDoggTheme.teal700),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        email,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            color: BigDoggTheme.lightTextPrimary),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => _cancelAccountantInvite(token, isNl),
-                      style: TextButton.styleFrom(
-                          foregroundColor: BigDoggTheme.lightTextSecondary,
-                          padding: const EdgeInsets.symmetric(horizontal: 8)),
-                      child: Text(isNl ? 'Annuleren' : 'Cancel',
-                          style: const TextStyle(fontSize: 12)),
-                    ),
-                  ]),
-                );
-              }),
+              ..._accountantLinks.map((link) =>
+                  _accountantLinkTile(link, isNl)),
               const SizedBox(height: 8),
             ],
             SizedBox(
@@ -940,7 +877,9 @@ For questions: info@bigdogg.nl''';
                     : const Icon(Icons.person_add_alt_1,
                         size: 16, color: Colors.white),
                 label: Text(
-                  isNl ? 'Accountant uitnodigen' : 'Invite accountant',
+                  isNl
+                      ? 'Accountant toegang geven'
+                      : 'Grant accountant access',
                   style: const TextStyle(color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -951,51 +890,101 @@ For questions: info@bigdogg.nl''';
                 ),
               ),
             ),
-            if (_myClientsAsAccountant.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              const Divider(height: 1, color: BigDoggTheme.lightBorder),
-              const SizedBox(height: 14),
-              Row(children: [
-                const Icon(Icons.folder_shared_outlined,
-                    size: 16, color: BigDoggTheme.teal800),
-                const SizedBox(width: 6),
-                Text(
-                  isNl
-                      ? 'Je bent ook accountant'
-                      : 'You are also an accountant',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: BigDoggTheme.teal800,
-                  ),
-                ),
-              ]),
-              const SizedBox(height: 4),
-              Text(
-                isNl
-                    ? '${_myClientsAsAccountant.length} klant(en) heeft je toegang gegeven tot hun administratie.'
-                    : '${_myClientsAsAccountant.length} client(s) gave you access to their administration.',
-                style: const TextStyle(
-                    fontSize: 12, color: BigDoggTheme.lightTextSecondary),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => context.push('/accountant'),
-                  icon: const Icon(Icons.arrow_forward, size: 16),
-                  label: Text(isNl ? 'Naar mijn klanten' : 'View my clients'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: BigDoggTheme.teal800,
-                    side: const BorderSide(color: BigDoggTheme.teal700),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(vertical: 11),
-                  ),
-                ),
-              ),
-            ],
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _accountantLinkTile(Map<String, dynamic> link, bool isNl) {
+    final email = (link['email'] ?? '').toString();
+    final token = (link['token'] ?? '').toString();
+    final expRaw = link['expires_at']?.toString();
+    String daysLabel = '';
+    if (expRaw != null && expRaw.isNotEmpty) {
+      try {
+        final exp = DateTime.parse(expRaw);
+        final diff = exp.difference(DateTime.now()).inDays;
+        if (diff < 0) {
+          daysLabel = isNl ? 'Verlopen' : 'Expired';
+        } else if (diff == 0) {
+          daysLabel = isNl ? 'Verloopt vandaag' : 'Expires today';
+        } else {
+          daysLabel = isNl
+              ? 'Nog $diff dag${diff == 1 ? '' : 'en'}'
+              : '$diff day${diff == 1 ? '' : 's'} left';
+        }
+      } catch (_) {}
+    }
+    final portalUrl = '${ApiConfig.baseUrl}/a/$token';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: BigDoggTheme.lightBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: BigDoggTheme.lightBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.link, size: 16, color: BigDoggTheme.teal700),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                email,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: BigDoggTheme.lightTextPrimary),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (daysLabel.isNotEmpty)
+              Text(daysLabel,
+                  style: const TextStyle(
+                      fontSize: 11,
+                      color: BigDoggTheme.lightTextSecondary)),
+          ]),
+          const SizedBox(height: 6),
+          Row(children: [
+            TextButton.icon(
+              onPressed: () => _copyAccountantLink(portalUrl, isNl),
+              style: TextButton.styleFrom(
+                  foregroundColor: BigDoggTheme.teal700,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  minimumSize: const Size(0, 28),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              icon: const Icon(Icons.copy, size: 14),
+              label: Text(isNl ? 'Kopieer' : 'Copy',
+                  style: const TextStyle(fontSize: 11)),
+            ),
+            TextButton.icon(
+              onPressed: () => _extendAccountantLink(token, isNl),
+              style: TextButton.styleFrom(
+                  foregroundColor: BigDoggTheme.teal700,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  minimumSize: const Size(0, 28),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              icon: const Icon(Icons.schedule, size: 14),
+              label: Text(isNl ? '+14d' : '+14d',
+                  style: const TextStyle(fontSize: 11)),
+            ),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: () =>
+                  _revokeAccountantLink(token, email, isNl),
+              style: TextButton.styleFrom(
+                  foregroundColor: BigDoggTheme.error,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  minimumSize: const Size(0, 28),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              icon: const Icon(Icons.block, size: 14),
+              label: Text(isNl ? 'Intrekken' : 'Revoke',
+                  style: const TextStyle(fontSize: 11)),
+            ),
+          ]),
         ],
       ),
     );

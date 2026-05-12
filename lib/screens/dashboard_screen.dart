@@ -9,7 +9,6 @@ import '../services/api_cache.dart';
 import '../services/auth_service.dart';
 import '../services/notifications_service.dart';
 import '../services/push_service.dart';
-import '../services/accountants_service.dart';
 import '../services/offline_queue.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'products_screen.dart';
@@ -89,12 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     // anything during a network blip, this is when it gets sent.
     // ignore: unawaited_futures
     _drainOfflineQueue();
-    // If the user logged in after tapping an accountant-invite email,
-    // the invite token was stashed in prefs by AccountantAcceptScreen.
-    // Redeem it now and bounce them into the accountant clients view.
-    // ignore: unawaited_futures
-    _redeemPendingAccountantInvite();
-    // Show a snackbar when Tink redirects back to /dashboard?bank=success
+// Show a snackbar when Tink redirects back to /dashboard?bank=success
     // (or ?bank_error=...). Done once per session — flag prevents repeats
     // when the user navigates between tabs.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -171,32 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (_pendingOffline != n) setState(() => _pendingOffline = n);
   }
 
-  Future<void> _redeemPendingAccountantInvite() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('pending_accountant_invite');
-    if (token == null || token.isEmpty) return;
-    await prefs.remove('pending_accountant_invite');
-    final result = await AccountantsService.acceptInvite(token);
-    if (!mounted) return;
-    if (result['ok'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: BigDoggTheme.success,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-        content: const Text('Uitnodiging geaccepteerd — je bent nu accountant.'),
-      ));
-      context.go('/accountant');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: BigDoggTheme.error,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 5),
-        content: Text('Uitnodiging niet geaccepteerd: ${result['error']}'),
-      ));
-    }
-  }
-
-  Future<void> _refreshUnreadCount() async {
+Future<void> _refreshUnreadCount() async {
     final n = await NotificationsService.unreadCount();
     if (!mounted) return;
     final increased = n > _unreadCount;

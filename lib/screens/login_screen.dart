@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/push_service.dart';
 import '../theme.dart';
@@ -49,19 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // access_token saved. Best-effort, never blocks the navigation.
       // ignore: unawaited_futures
       PushService.registerWithBackend();
-      // If the user arrived from an accountant-invitation email, jump
-      // straight to /accountant/accept/<token> so the token gets
-      // redeemed before they hit the dashboard.
-      final prefs = await SharedPreferences.getInstance();
-      final pendingInvite =
-          prefs.getString('pending_accountant_invite') ?? '';
-      if (mounted) {
-        if (pendingInvite.isNotEmpty) {
-          context.go('/accountant/accept/$pendingInvite');
-        } else {
-          context.go('/dashboard');
-        }
-      }
+      if (mounted) context.go('/dashboard');
     } else {
       setState(() { _error = result['message']; });
     }
