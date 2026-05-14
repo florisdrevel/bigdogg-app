@@ -193,6 +193,33 @@ class AccountantsService {
     return null;
   }
 
+  static Future<Map<String, dynamic>?> portalAging(String token) async {
+    try {
+      final r = await http.get(_portal(token, 'aging'),
+          headers: _publicHeaders);
+      if (r.statusCode == 200) {
+        return jsonDecode(r.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> portalBtwBreakdown(
+      String token, int year) async {
+    try {
+      final r = await http.get(
+          _portal(token, 'btw-breakdown', {'year': '$year'}),
+          headers: _publicHeaders);
+      if (r.statusCode == 200) {
+        return jsonDecode(r.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   static String portalInvoicePdfUrl(String token, String invoiceId) =>
       '$_base/portal/$token/invoices/$invoiceId/pdf';
+
+  static String portalCsvExportUrl(String token, int year) =>
+      '$_base/portal/$token/export.csv?year=$year';
 }
