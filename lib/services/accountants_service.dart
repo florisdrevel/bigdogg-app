@@ -222,4 +222,13 @@ class AccountantsService {
 
   static String portalCsvExportUrl(String token, int year) =>
       '$_base/portal/$token/export.csv?year=$year';
+
+  /// Full annual report PDF (same one the user themselves can download —
+  /// with AI tax tips). Pass `lang='nl'` or `'en'`.
+  static String portalAnnualReportPdfUrl(
+    String token,
+    int year,
+    String lang,
+  ) =>
+      '$_base/portal/$token/annual-report.pdf?year=$year&lang=$lang';
 }
