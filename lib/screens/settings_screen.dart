@@ -286,11 +286,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (confirm != true) return;
+    // Optimistic UI: drop the row from local state immediately so the
+    // user sees it disappear. If the backend call later fails, we
+    // restore the row and surface an error.
+    final removedRow = _accountantLinks.firstWhere(
+      (r) => r['token']?.toString() == token,
+      orElse: () => <String, dynamic>{},
+    );
+    final removedIndex = _accountantLinks.indexOf(removedRow);
+    if (removedIndex >= 0) {
+      setState(() => _accountantLinks.removeAt(removedIndex));
+    }
     final ok = await AccountantsService.cancelInvite(token);
     if (!mounted) return;
     if (ok) {
       _loadAccountants();
     } else {
+      // Restore the row at its original position and tell the user.
+      if (removedIndex >= 0 && removedRow.isNotEmpty) {
+        setState(() => _accountantLinks.insert(removedIndex, removedRow));
+      }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: BigDoggTheme.error,
         content: Text(isNl ? 'Intrekken mislukt' : 'Revoke failed'),
