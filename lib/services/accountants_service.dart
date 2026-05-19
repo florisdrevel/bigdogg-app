@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
+import 'auth_service.dart';
 
 /// Owner-side: create / list / revoke / extend access links.
 /// Accountant-side: token-gated public portal endpoints — no auth header,
@@ -9,13 +10,38 @@ import 'api_config.dart';
 class AccountantsService {
   static const String _base = '${ApiConfig.baseUrl}/api/v1/accountants';
 
+  /// Build auth headers, proactively refreshing the access_token if it
+  /// is missing or within five minutes of expiry. Without this, a stale
+  /// JWT in prefs would cause every authed call to return 401
+  /// "Invalid or expired token" — visible to the user as a failed
+  /// invite/revoke/extend.
   static Future<Map<String, String>> _authHeaders() async {
+    await AuthService.refreshTokenIfNeeded();
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token') ?? '';
     return {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
     };
+  }
+
+  /// Wraps an authed HTTP call so a 401 from a stale token triggers
+  /// exactly one refresh + retry. The proactive refresh in
+  /// [_authHeaders] handles the common case; this catches the edge
+  /// case where the JWT expired between header-build and request-land.
+  static Future<http.Response> _authedSend(
+    Future<http.Response> Function(Map<String, String> headers) sender,
+  ) async {
+    var headers = await _authHeaders();
+    var response = await sender(headers);
+    if (response.statusCode == 401) {
+      final refreshed = await AuthService.refreshToken();
+      if (refreshed) {
+        headers = await _authHeaders();
+        response = await sender(headers);
+      }
+    }
+    return response;
   }
 
   static const Map<String, String> _publicHeaders = {
@@ -26,11 +52,11 @@ class AccountantsService {
 
   static Future<Map<String, dynamic>> invite(String email) async {
     try {
-      final r = await http.post(
-        Uri.parse('$_base/invite'),
-        headers: await _authHeaders(),
-        body: jsonEncode({'email': email}),
-      );
+      final r = await _authedSend((headers) => http.post(
+            Uri.parse('$_base/invite'),
+            headers: headers,
+            body: jsonEncode({'email': email}),
+          ));
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body) as Map<String, dynamic>;
         return {
@@ -45,7 +71,7 @@ class AccountantsService {
       try {
         detail = (jsonDecode(r.body) as Map)['detail']?.toString() ?? detail;
       } catch (_) {}
-      return {'ok': false, 'error': detail};
+      return {'ok': false, 'error': detail, 'status': r.statusCode};
     } catch (e) {
       return {'ok': false, 'error': e.toString()};
     }
@@ -53,8 +79,10 @@ class AccountantsService {
 
   static Future<List<Map<String, dynamic>>> listInvites() async {
     try {
-      final r = await http.get(Uri.parse('$_base/invites'),
-          headers: await _authHeaders());
+      final r = await _authedSend((headers) => http.get(
+            Uri.parse('$_base/invites'),
+            headers: headers,
+          ));
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body) as Map<String, dynamic>;
         return ((data['invites'] as List?) ?? [])
@@ -66,8 +94,10 @@ class AccountantsService {
 
   static Future<bool> cancelInvite(String token) async {
     try {
-      final r = await http.delete(Uri.parse('$_base/invites/$token'),
-          headers: await _authHeaders());
+      final r = await _authedSend((headers) => http.delete(
+            Uri.parse('$_base/invites/$token'),
+            headers: headers,
+          ));
       return r.statusCode == 200;
     } catch (_) {
       return false;
@@ -76,8 +106,10 @@ class AccountantsService {
 
   static Future<bool> extendInvite(String token) async {
     try {
-      final r = await http.post(Uri.parse('$_base/invites/$token/extend'),
-          headers: await _authHeaders());
+      final r = await _authedSend((headers) => http.post(
+            Uri.parse('$_base/invites/$token/extend'),
+            headers: headers,
+          ));
       return r.statusCode == 200;
     } catch (_) {
       return false;
