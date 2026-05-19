@@ -64,9 +64,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     // Refresh the access token immediately on mount — this catches the
     // case where the app was backgrounded for a while and the cached
     // access token has already expired before the user got back to it.
-    AuthService.refreshToken();
-    _refreshTimer = Timer.periodic(const Duration(minutes: 30),
-        (_) => AuthService.refreshToken());
+    // refreshTokenIfNeeded() skips the network call when the JWT still
+    // has >5 min left, which avoids rotating the refresh_token on every
+    // app open and prevents the race that used to log users out.
+    AuthService.refreshTokenIfNeeded();
+    _refreshTimer = Timer.periodic(const Duration(minutes: 20),
+        (_) => AuthService.refreshTokenIfNeeded());
     // Make sure FCM is registered for this device. Idempotent: the
     // backend upserts on (user_id, fcm_token), so calling this at
     // every mount is fine. Also handles persistent-login users who
@@ -128,7 +131,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     // opened the app and there's no data" experience when the access
     // token has silently expired during the suspension.
     if (state == AppLifecycleState.resumed) {
-      AuthService.refreshToken();
+      AuthService.refreshTokenIfNeeded();
       _refreshUnreadCount();
       // ignore: unawaited_futures
       _drainOfflineQueue();

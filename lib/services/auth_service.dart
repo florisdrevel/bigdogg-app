@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,6 +7,12 @@ import 'api_cache.dart';
 
 class AuthService {
   static const String baseUrl = ApiConfig.baseUrl;
+
+  // Single-flight guard for refreshToken(). Supabase rotates refresh
+  // tokens on each use, so concurrent refreshes race — one rotation
+  // invalidates the others and the user ends up silently logged out.
+  // Every caller awaits the same in-flight Completer.
+  static Completer<bool>? _refreshInFlight;
 
   static Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -78,25 +85,65 @@ class AuthService {
     }
   }
 
+  /// Force-refresh the Supabase session. Concurrent callers share one
+  /// in-flight refresh — see [_refreshInFlight].
   static Future<bool> refreshToken() async {
+    final pending = _refreshInFlight;
+    if (pending != null) return pending.future;
+    final completer = Completer<bool>();
+    _refreshInFlight = completer;
     try {
       final prefs = await SharedPreferences.getInstance();
       final refreshToken = prefs.getString('refresh_token');
-      if (refreshToken == null) return false;
+      if (refreshToken == null || refreshToken.isEmpty) {
+        completer.complete(false);
+        return false;
+      }
       final response = await http.post(
         Uri.parse('$baseUrl/api/v1/auth/refresh'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'refresh_token': refreshToken}),
-      );
+      ).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         await prefs.setString('access_token', data['access_token']);
         await prefs.setString('refresh_token', data['refresh_token']);
+        completer.complete(true);
         return true;
       }
+      completer.complete(false);
       return false;
-    } catch (e) {
+    } catch (_) {
+      completer.complete(false);
       return false;
+    } finally {
+      _refreshInFlight = null;
+    }
+  }
+
+  /// Refresh only if the cached access_token is missing or within five
+  /// minutes of expiry. Cheaper than [refreshToken] — avoids burning a
+  /// rotation every time the dashboard mounts/resumes.
+  static Future<bool> refreshTokenIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
+    if (token == null || token.isEmpty) return refreshToken();
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return refreshToken();
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      ) as Map<String, dynamic>;
+      final exp = payload['exp'];
+      if (exp is! int) return refreshToken();
+      final expiresAt =
+          DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
+      final remaining =
+          expiresAt.difference(DateTime.now().toUtc()).inSeconds;
+      if (remaining < 300) return refreshToken();
+      return true;
+    } catch (_) {
+      return refreshToken();
     }
   }
 
