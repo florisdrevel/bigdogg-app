@@ -62,6 +62,8 @@ class _ClientsScreenState extends State<ClientsScreen> {
     final addressController = TextEditingController(text: existing?['address'] ?? '');
     final postcodeController = TextEditingController(text: existing?['postcode'] ?? '');
     final cityController = TextEditingController(text: existing?['city'] ?? '');
+    final kvkController = TextEditingController(text: existing?['kvk_number'] ?? '');
+    final btwController = TextEditingController(text: existing?['btw_number'] ?? '');
 
     showDialog(
       context: context,
@@ -90,6 +92,23 @@ class _ClientsScreenState extends State<ClientsScreen> {
                   Expanded(flex: 2, child: TextField(controller: cityController, decoration: InputDecoration(labelText: isNl ? 'Stad' : 'City'))),
                 ],
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: kvkController,
+                decoration: InputDecoration(
+                  labelText: isNl ? 'KvK-nummer (optioneel)' : 'KvK number (optional)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: btwController,
+                decoration: InputDecoration(
+                  labelText: isNl ? 'BTW-nummer (optioneel)' : 'VAT number (optional)',
+                  hintText: 'NL123456789B01',
+                ),
+                textCapitalization: TextCapitalization.characters,
+              ),
             ],
           ),
         ),
@@ -109,6 +128,8 @@ class _ClientsScreenState extends State<ClientsScreen> {
                   address: addressController.text.trim(),
                   postcode: postcodeController.text.trim(),
                   city: cityController.text.trim(),
+                  kvkNumber: kvkController.text.trim(),
+                  btwNumber: btwController.text.trim(),
                 );
               } else {
                 final result = await ClientsService.createClient(
@@ -119,6 +140,8 @@ class _ClientsScreenState extends State<ClientsScreen> {
                   address: addressController.text.trim(),
                   postcode: postcodeController.text.trim(),
                   city: cityController.text.trim(),
+                  kvkNumber: kvkController.text.trim(),
+                  btwNumber: btwController.text.trim(),
                 );
                 if (result['offline'] == true && mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -463,6 +486,22 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                             style: const TextStyle(color: Colors.white70, fontSize: 13)),
                       Text(client['email'] ?? '',
                           style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                      if ((client['kvk_number']?.toString().isNotEmpty ?? false) ||
+                          (client['btw_number']?.toString().isNotEmpty ?? false))
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Wrap(
+                            spacing: 10,
+                            children: [
+                              if (client['kvk_number']?.toString().isNotEmpty ?? false)
+                                Text('KvK ${client['kvk_number']}',
+                                    style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                              if (client['btw_number']?.toString().isNotEmpty ?? false)
+                                Text('BTW ${client['btw_number']}',
+                                    style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                            ],
+                          ),
+                        ),
                       const SizedBox(height: 12),
                       Row(
                         children: [

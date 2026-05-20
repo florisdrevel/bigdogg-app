@@ -42,6 +42,8 @@ class ClientsService {
     String? address,
     String? postcode,
     String? city,
+    String? btwNumber,
+    String? kvkNumber,
   }) async {
     final token = await _getToken();
     return OfflineQueue.postOrEnqueue(
@@ -58,6 +60,8 @@ class ClientsService {
         'address': address,
         'postcode': postcode,
         'city': city,
+        'btw_number': btwNumber,
+        'kvk_number': kvkNumber,
       },
       label: 'Klant: $contactName',
     );
@@ -72,6 +76,8 @@ class ClientsService {
     String? address,
     String? postcode,
     String? city,
+    String? btwNumber,
+    String? kvkNumber,
   }) async {
     final token = await _getToken();
     return OfflineQueue.putOrEnqueue(
@@ -88,6 +94,8 @@ class ClientsService {
         'address': address,
         'postcode': postcode,
         'city': city,
+        'btw_number': btwNumber,
+        'kvk_number': kvkNumber,
       },
       label: 'Klant bijwerken: ${contactName ?? clientId}',
     );
@@ -141,6 +149,8 @@ class ClientsService {
     String? address,
     String? postcode,
     String? city,
+    String? btwNumber,
+    String? kvkNumber,
   }) async {
     try {
       final response = await http.post(
@@ -154,6 +164,8 @@ class ClientsService {
           'address': address,
           'postcode': postcode,
           'city': city,
+          'btw_number': btwNumber,
+          'kvk_number': kvkNumber,
         }),
       );
       final data = jsonDecode(response.body);

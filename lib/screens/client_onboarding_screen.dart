@@ -18,6 +18,8 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> {
   final _addressController = TextEditingController();
   final _postcodeController = TextEditingController();
   final _cityController = TextEditingController();
+  final _kvkController = TextEditingController();
+  final _btwController = TextEditingController();
   bool _loading = false;
   bool _submitted = false;
   bool _validating = true;
@@ -56,6 +58,8 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> {
       address: _addressController.text.trim(),
       postcode: _postcodeController.text.trim(),
       city: _cityController.text.trim(),
+      kvkNumber: _kvkController.text.trim(),
+      btwNumber: _btwController.text.trim(),
     );
     setState(() { _loading = false; });
     if (result['success']) {
@@ -255,11 +259,32 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> {
                         child: TextField(
                           controller: _cityController,
                           decoration: InputDecoration(labelText: t('Stad', 'City')),
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => _submit(),
+                          textInputAction: TextInputAction.next,
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _kvkController,
+                    decoration: InputDecoration(
+                      labelText: t('KvK-nummer (optioneel)',
+                          'KvK number (optional)'),
+                    ),
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _btwController,
+                    decoration: InputDecoration(
+                      labelText: t('BTW-nummer (optioneel)',
+                          'VAT number (optional)'),
+                      hintText: 'NL123456789B01',
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submit(),
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
