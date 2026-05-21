@@ -27,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _kvkController = TextEditingController();
   final _btwController = TextEditingController();
   final _ibanController = TextEditingController();
+  final _bankAccountNameController = TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
@@ -86,6 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _kvkController.text = p['kvk_number'] ?? '';
         _btwController.text = p['btw_number'] ?? '';
         _ibanController.text = p['iban'] ?? '';
+        _bankAccountNameController.text = p['bank_account_name'] ?? '';
         _logoUrl = p['logo_url'];
         _invoicePrimary = (p['invoice_primary_color']?.toString() ?? '').isNotEmpty
             ? p['invoice_primary_color']
@@ -134,6 +136,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       kvkNumber: _kvkController.text.trim(),
       btwNumber: _btwController.text.trim(),
       iban: _ibanController.text.trim(),
+      bankAccountName: _bankAccountNameController.text.trim(),
       onboardingComplete: true,
       invoicePrimaryColor: _invoicePrimary,
       invoiceAccentColor: _invoiceAccent,
@@ -789,6 +792,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _btwController, isNl ? 'BTW-nummer' : 'BTW number'),
                 const SizedBox(height: 12),
                 _inputField(_ibanController, 'IBAN'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _bankAccountNameController,
+                  decoration: InputDecoration(
+                    labelText: isNl
+                        ? 'Tenaamstelling'
+                        : 'Account holder name',
+                    hintText: isNl
+                        ? 'Bijv. Jan de Vries (als dit afwijkt van je bedrijfsnaam)'
+                        : 'E.g. Jan de Vries (if different from your company name)',
+                    hintMaxLines: 2,
+                  ),
+                ),
               ],
             ),
           ),

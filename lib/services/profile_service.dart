@@ -46,10 +46,12 @@ class ProfileService {
     String? kvkNumber,
     String? btwNumber,
     String? iban,
+    String? bankAccountName,
     String? language,
     bool? onboardingComplete,
     String? invoicePrimaryColor,
     String? invoiceAccentColor,
+    bool? defaultExcludePaymentLink,
   }) async {
     final token = await _getToken();
     return OfflineQueue.postOrEnqueue(
@@ -68,10 +70,12 @@ class ProfileService {
         'kvk_number': kvkNumber,
         'btw_number': btwNumber,
         'iban': iban,
+        'bank_account_name': bankAccountName,
         'language': language,
         'onboarding_complete': onboardingComplete,
         'invoice_primary_color': invoicePrimaryColor,
         'invoice_accent_color': invoiceAccentColor,
+        'default_exclude_payment_link': defaultExcludePaymentLink,
       },
       label: 'Profiel bijwerken',
     );

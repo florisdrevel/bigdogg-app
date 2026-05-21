@@ -13,6 +13,7 @@ import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/payments_service.dart';
+import '../services/profile_service.dart';
 import '../services/web_io.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -59,6 +60,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loadingAccountants = true;
   bool _invitingAccountant = false;
 
+  // Invoice send preferences — currently just one toggle for whether the
+  // Stripe payment link is included by default.
+  bool _defaultExcludePaymentLink = false;
+  bool _savingPaymentPref = false;
+
   @override
   void initState() {
     super.initState();
@@ -67,6 +73,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadReferralStats();
     _loadBankStatus();
     _loadAccountants();
+    _loadInvoicePrefs();
+  }
+
+  Future<void> _loadInvoicePrefs() async {
+    final result = await ProfileService.getProfile();
+    if (!mounted) return;
+    if (result['success'] == true && result['profile'] is Map) {
+      final p = result['profile'] as Map;
+      setState(() {
+        _defaultExcludePaymentLink =
+            p['default_exclude_payment_link'] == true;
+      });
+    }
+  }
+
+  Future<void> _setDefaultExcludePaymentLink(bool value, bool isNl) async {
+    setState(() {
+      _defaultExcludePaymentLink = value;
+      _savingPaymentPref = true;
+    });
+    final result =
+        await ProfileService.saveProfile(defaultExcludePaymentLink: value);
+    if (!mounted) return;
+    setState(() => _savingPaymentPref = false);
+    if (result['success'] != true) {
+      // Revert on failure so the UI doesn't lie about what's saved.
+      setState(() => _defaultExcludePaymentLink = !value);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.error,
+        content: Text(isNl
+            ? 'Voorkeur opslaan mislukt'
+            : 'Failed to save preference'),
+      ));
+    }
   }
 
   Future<void> _loadAccountants() async {
@@ -1403,6 +1443,52 @@ For questions: info@bigdogg.nl''';
                       ? 'Bekijk je uitbetalingen, transacties en accountgegevens via het Stripe Express dashboard. Betaalmethoden worden centraal beheerd via het BigDogg platform.'
                       : 'View your payouts, transactions and account details via the Stripe Express dashboard. Payment methods are managed centrally via the BigDogg platform.',
                   style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary),
+                ),
+                const SizedBox(height: 14),
+                const Divider(height: 1, color: BigDoggTheme.lightBorder),
+                const SizedBox(height: 8),
+                // Global default for the per-send "Verstuur zonder
+                // betaallink" checkbox. Stored on the profile.
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isNl
+                                ? 'Standaard geen betaallink meesturen'
+                                : 'Exclude payment link by default',
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: BigDoggTheme.teal800),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isNl
+                                ? 'Per factuur kun je dit alsnog aan- of uitzetten.'
+                                : 'You can still toggle it per invoice before sending.',
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: BigDoggTheme.lightTextSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_savingPaymentPref)
+                      const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                    else
+                      Switch(
+                        value: _defaultExcludePaymentLink,
+                        onChanged: (v) =>
+                            _setDefaultExcludePaymentLink(v, isNl),
+                        activeColor: BigDoggTheme.teal800,
+                      ),
+                  ],
                 ),
               ] else if (stripeConnectedNotEnabled) ...[
                 Row(children: [

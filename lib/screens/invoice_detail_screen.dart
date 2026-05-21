@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../services/invoices_service.dart';
 import '../services/email_service.dart';
 import '../services/payments_service.dart';
+import '../services/profile_service.dart';
 import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
@@ -23,11 +24,16 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   List<dynamic> _lines = [];
   bool _loading = true;
   bool _generatingLink = false;
+  // Mirror of profile.default_exclude_payment_link — used as the default
+  // state of the "Verstuur zonder betaallink" checkbox in the send
+  // dialog. Loaded fire-and-forget so opening the screen isn't blocked.
+  bool _defaultExcludePaymentLink = false;
 
   @override
   void initState() {
     super.initState();
     _loadInvoice();
+    _loadPaymentLinkPreference();
   }
 
   Future<void> _loadInvoice() async {
@@ -40,6 +46,18 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         _lines = result['lines'];
       }
     });
+  }
+
+  Future<void> _loadPaymentLinkPreference() async {
+    final result = await ProfileService.getProfile();
+    if (!mounted) return;
+    if (result['success'] == true && result['profile'] is Map) {
+      final p = result['profile'] as Map;
+      setState(() {
+        _defaultExcludePaymentLink =
+            p['default_exclude_payment_link'] == true;
+      });
+    }
   }
 
   Color _statusColor(String status) {
@@ -204,80 +222,129 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     }
 
     final paymentLink = _invoice!['payment_link'] as String?;
+    final hasPaymentLink = paymentLink != null;
+    // Default checked when the global preference says so AND a payment
+    // link actually exists (otherwise the toggle is a no-op anyway).
+    bool excludeLink = hasPaymentLink && _defaultExcludePaymentLink;
 
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isNl ? 'Factuur versturen' : 'Send Invoice'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(isNl
-                ? 'Verstuur factuur ${_invoice!['invoice_number']} naar $clientEmail?'
-                : 'Send invoice ${_invoice!['invoice_number']} to $clientEmail?'),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: paymentLink != null
-                    ? BigDoggTheme.successBg
-                    : BigDoggTheme.lightBg,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: paymentLink != null
-                      ? BigDoggTheme.success.withOpacity(0.3)
-                      : BigDoggTheme.lightBorder,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isNl ? 'Factuur versturen' : 'Send Invoice'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(isNl
+                  ? 'Verstuur factuur ${_invoice!['invoice_number']} naar $clientEmail?'
+                  : 'Send invoice ${_invoice!['invoice_number']} to $clientEmail?'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (hasPaymentLink && !excludeLink)
+                      ? BigDoggTheme.successBg
+                      : BigDoggTheme.lightBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: (hasPaymentLink && !excludeLink)
+                        ? BigDoggTheme.success.withOpacity(0.3)
+                        : BigDoggTheme.lightBorder,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      (hasPaymentLink && !excludeLink)
+                          ? Icons.link
+                          : Icons.link_off,
+                      size: 16,
+                      color: (hasPaymentLink && !excludeLink)
+                          ? BigDoggTheme.success
+                          : BigDoggTheme.lightTextSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        !hasPaymentLink
+                            ? (isNl
+                                ? 'Geen betaallink — Stripe niet gekoppeld.'
+                                : 'No payment link — Stripe not connected.')
+                            : (excludeLink
+                                ? (isNl
+                                    ? 'Betaallink wordt NIET meegestuurd.'
+                                    : 'Payment link will NOT be sent.')
+                                : (isNl
+                                    ? 'Betaallink automatisch bijgevoegd.'
+                                    : 'Payment link automatically included.')),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: (hasPaymentLink && !excludeLink)
+                                ? BigDoggTheme.success
+                                : BigDoggTheme.lightTextSecondary),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    paymentLink != null
-                        ? Icons.link
-                        : Icons.link_off,
-                    size: 16,
-                    color: paymentLink != null
-                        ? BigDoggTheme.success
-                        : BigDoggTheme.lightTextSecondary,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      paymentLink != null
-                          ? (isNl
-                              ? 'Betaallink automatisch bijgevoegd.'
-                              : 'Payment link automatically included.')
-                          : (isNl
-                              ? 'Geen betaallink — Stripe niet gekoppeld.'
-                              : 'No payment link — Stripe not connected.'),
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: paymentLink != null
-                              ? BigDoggTheme.success
-                              : BigDoggTheme.lightTextSecondary),
+              if (hasPaymentLink) ...[
+                const SizedBox(height: 4),
+                InkWell(
+                  onTap: () => setDialogState(
+                      () => excludeLink = !excludeLink),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: Checkbox(
+                            value: excludeLink,
+                            onChanged: (v) => setDialogState(
+                                () => excludeLink = v ?? false),
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isNl
+                                ? 'Verstuur zonder betaallink'
+                                : 'Send without payment link',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(isNl ? 'Annuleren' : 'Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(isNl ? 'Versturen' : 'Send'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(isNl ? 'Annuleren' : 'Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(isNl ? 'Versturen' : 'Send'),
-          ),
-        ],
       ),
     );
 
     if (confirm == true && mounted) {
-      final result = await EmailService.sendInvoice(widget.invoiceId);
+      final result = await EmailService.sendInvoice(
+        widget.invoiceId,
+        includePaymentLink: !excludeLink,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(result['success']

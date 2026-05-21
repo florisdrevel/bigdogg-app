@@ -11,7 +11,10 @@ class EmailService {
     return prefs.getString('access_token');
   }
 
-  static Future<Map<String, dynamic>> sendInvoice(String invoiceId) async {
+  static Future<Map<String, dynamic>> sendInvoice(
+    String invoiceId, {
+    bool includePaymentLink = true,
+  }) async {
     final token = await _getToken();
     try {
       final response = await http.post(
@@ -20,6 +23,7 @@ class EmailService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+        body: jsonEncode({'include_payment_link': includePaymentLink}),
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
