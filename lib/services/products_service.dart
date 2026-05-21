@@ -3,12 +3,14 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'api_cache.dart';
+import 'auth_service.dart';
 import 'offline_queue.dart';
 
 class ProductsService {
   static const String baseUrl = ApiConfig.baseUrl;
 
   static Future<String?> _getToken() async {
+    await AuthService.refreshTokenIfNeeded();
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
   }
@@ -68,7 +70,10 @@ class ProductsService {
     String? description,
     int? btwRate,
     String? unit,
-    bool vatIncluded = false,
+    // Nullable on purpose: omitting it from a partial update must NOT
+    // overwrite the server value with `false`. The backend filters out
+    // null fields the same way it does for the other params here.
+    bool? vatIncluded,
   }) async {
     final token = await _getToken();
     return OfflineQueue.putOrEnqueue(

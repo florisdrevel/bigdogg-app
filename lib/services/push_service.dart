@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -17,6 +18,20 @@ import 'api_config.dart';
 /// hard requirement for the app to function.
 class PushService {
   static bool _initialized = false;
+
+  /// `'android'` / `'ios'` / `'web'` for FCM routing on the backend.
+  /// Was hardcoded to `'android'`, which meant iOS devices never got
+  /// pushes from any code path that conditions on the platform field.
+  static String _platformLabel() {
+    if (kIsWeb) return 'web';
+    try {
+      if (Platform.isIOS) return 'ios';
+      if (Platform.isAndroid) return 'android';
+    } catch (_) {
+      // dart:io not available — treat as web.
+    }
+    return 'web';
+  }
 
   static Future<void> initFirebase() async {
     if (_initialized || kIsWeb) return;
@@ -62,7 +77,7 @@ class PushService {
         },
         body: jsonEncode({
           'token': token,
-          'platform': 'android',
+          'platform': _platformLabel(),
         }),
       );
 
@@ -76,7 +91,7 @@ class PushService {
               'Authorization': 'Bearer $accessToken',
               'Content-Type': 'application/json',
             },
-            body: jsonEncode({'token': newToken, 'platform': 'android'}),
+            body: jsonEncode({'token': newToken, 'platform': _platformLabel()}),
           );
         } catch (_) {/* silent */}
       });

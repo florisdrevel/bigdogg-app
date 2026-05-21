@@ -9,6 +9,7 @@ class SubscriptionService {
   static const String baseUrl = ApiConfig.baseUrl;
 
   static Future<String?> _getToken() async {
+    await AuthService.refreshTokenIfNeeded();
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
   }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
+import 'auth_service.dart';
 
 /// In-app notifications. The backend inserts rows server-side
 /// (invoice paid / quote accepted / client onboarded); the app polls
@@ -11,6 +12,7 @@ class NotificationsService {
   static const String baseUrl = ApiConfig.baseUrl;
 
   static Future<String?> _getToken() async {
+    await AuthService.refreshTokenIfNeeded();
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
   }

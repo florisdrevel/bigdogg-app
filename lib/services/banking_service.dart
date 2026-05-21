@@ -4,12 +4,14 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
+import 'auth_service.dart';
 
 /// Frontend client for the Tink-backed /api/v1/banking router.
 class BankingService {
   static const String baseUrl = ApiConfig.baseUrl;
 
   static Future<String?> _getToken() async {
+    await AuthService.refreshTokenIfNeeded();
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
   }

@@ -3,12 +3,14 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'api_cache.dart';
+import 'auth_service.dart';
 import 'offline_queue.dart';
 
 class ClientsService {
   static const String baseUrl = ApiConfig.baseUrl;
 
   static Future<String?> _getToken() async {
+    await AuthService.refreshTokenIfNeeded();
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
   }
