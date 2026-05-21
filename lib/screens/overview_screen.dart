@@ -673,17 +673,6 @@ class _OverviewScreenState extends State<OverviewScreen>
     );
   }
 
-  Widget _paywallFeatureRow(IconData icon, String text) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
-    child: Row(children: [
-      Container(width: 32, height: 32,
-          decoration: BoxDecoration(color: BigDoggTheme.teal800.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, size: 18, color: BigDoggTheme.teal800)),
-      const SizedBox(width: 12),
-      Text(text, style: const TextStyle(fontSize: 14, color: BigDoggTheme.lightTextPrimary)),
-    ]),
-  );
-
   Widget _yearPicker(bool isNl) {
     final currentYear = DateTime.now().year;
     final years = List.generate(currentYear - _minYear + 1, (i) => currentYear - i);
@@ -728,7 +717,7 @@ class _OverviewScreenState extends State<OverviewScreen>
     final progress = (_hoursData?['urencriterium_progress'] as num? ?? 0).toDouble();
     final manualYear = (_hoursData?['manual_year'] as num? ?? 0).toDouble();
     final invoiceYear = (_hoursData?['invoice_year'] as num? ?? 0).toDouble();
-    final target = 1225;
+    const target = 1225;
     final entries = (_hoursData?['entries'] as List? ?? []).take(5).toList();
     final invEntries = (_hoursData?['invoice_hours_breakdown'] as List? ?? []).take(5).toList();
 

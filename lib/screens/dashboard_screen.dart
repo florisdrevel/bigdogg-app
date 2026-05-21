@@ -10,7 +10,6 @@ import '../services/auth_service.dart';
 import '../services/notifications_service.dart';
 import '../services/push_service.dart';
 import '../services/offline_queue.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'products_screen.dart';
 import 'clients_screen.dart';
 import 'invoices_screen.dart';

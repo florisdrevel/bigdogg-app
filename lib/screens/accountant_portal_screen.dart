@@ -2895,10 +2895,9 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
 class _QCell extends StatelessWidget {
   final String text;
   final int flex;
-  final bool bold;
   final TextAlign align;
   const _QCell(this.text,
-      {this.flex = 1, this.bold = false, this.align = TextAlign.left});
+      {this.flex = 1, this.align = TextAlign.left});
 
   @override
   Widget build(BuildContext context) => Expanded(
@@ -2906,9 +2905,9 @@ class _QCell extends StatelessWidget {
         child: Text(
           text,
           textAlign: align,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 11,
-            fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+            fontWeight: FontWeight.w600,
             color: BigDoggTheme.lightTextSecondary,
           ),
         ),

@@ -718,7 +718,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _restartWalkthrough(bool isNl) async {
+  void _restartWalkthrough() async {
     await context.read<AppProvider>().resetWalkthrough();
   }
 
@@ -1666,7 +1666,7 @@ For questions: info@bigdogg.nl''';
               ])),
               const SizedBox(width: 12),
               OutlinedButton.icon(
-                onPressed: () => _restartWalkthrough(isNl),
+                onPressed: () => _restartWalkthrough(),
                 icon: const Icon(Icons.play_circle_outline, size: 16),
                 label: Text(isNl ? 'Starten' : 'Start'),
                 style: OutlinedButton.styleFrom(

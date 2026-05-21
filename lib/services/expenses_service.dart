@@ -54,7 +54,7 @@ class ExpensesService {
     };
     if (projectId != null) body['project_id'] = projectId;
 
-    final result = await OfflineQueue.postOrEnqueue(
+    return OfflineQueue.postOrEnqueue(
       url: '$baseUrl/api/v1/expenses/',
       headers: {
         'Authorization': 'Bearer $token',
@@ -63,7 +63,6 @@ class ExpensesService {
       body: body,
       label: 'Kosten: $description',
     );
-    return result;
   }
 
   static Future<Map<String, dynamic>> parseReceipt({

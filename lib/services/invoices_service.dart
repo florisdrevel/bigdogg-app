@@ -10,11 +10,6 @@ import 'package:http_parser/http_parser.dart';
 class InvoicesService {
   static const String baseUrl = ApiConfig.baseUrl;
 
-  static Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('access_token');
-  }
-
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
@@ -24,7 +19,7 @@ class InvoicesService {
     return ApiCache.read(
       key: 'invoices_list',
       fetcher: () async {
-        final token = await _getToken();
+        final token = await getToken();
         final response = await http.get(
           Uri.parse('$baseUrl/api/v1/invoices/'),
           headers: {
@@ -47,7 +42,7 @@ class InvoicesService {
     String? notes,
     String? projectId,
   }) async {
-    final token = await _getToken();
+    final token = await getToken();
     return OfflineQueue.postOrEnqueue(
       url: '$baseUrl/api/v1/invoices/',
       headers: {
@@ -68,7 +63,7 @@ class InvoicesService {
     return ApiCache.read(
       key: 'invoice:$invoiceId',
       fetcher: () async {
-        final token = await _getToken();
+        final token = await getToken();
         final response = await http.get(
           Uri.parse('$baseUrl/api/v1/invoices/$invoiceId'),
           headers: {
@@ -81,7 +76,7 @@ class InvoicesService {
           return {
             'success': true,
             'invoice': data['invoice'],
-            'lines': data['lines']
+            'lines': data['lines'],
           };
         }
         return {'success': false, 'message': data['detail']};
@@ -93,7 +88,7 @@ class InvoicesService {
     String invoiceId,
     String status,
   ) async {
-    final token = await _getToken();
+    final token = await getToken();
     return OfflineQueue.patchOrEnqueue(
       url: '$baseUrl/api/v1/invoices/$invoiceId/status',
       headers: {
@@ -106,7 +101,7 @@ class InvoicesService {
   }
 
   static Future<Map<String, dynamic>> deleteInvoice(String invoiceId) async {
-    final token = await _getToken();
+    final token = await getToken();
     return OfflineQueue.deleteOrEnqueue(
       url: '$baseUrl/api/v1/invoices/$invoiceId',
       headers: {'Authorization': 'Bearer $token'},
@@ -172,79 +167,95 @@ class InvoicesService {
       return {'success': false, 'message': 'Connection error: $e'};
     }
   }
+
   static Future<Map<String, dynamic>> importExpenses({
-  required List<Uint8List> filesBytes,
-  required List<String> fileNames,
-}) async {
-  final token = await getToken();
-  try {
-    final uri = Uri.parse('$baseUrl/api/v1/expenses/import-expenses');
-    final request = http.MultipartRequest('POST', uri);
-    request.headers['Authorization'] = 'Bearer $token';
+    required List<Uint8List> filesBytes,
+    required List<String> fileNames,
+  }) async {
+    final token = await getToken();
+    try {
+      final uri = Uri.parse('$baseUrl/api/v1/expenses/import-expenses');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $token';
 
-    for (int i = 0; i < filesBytes.length; i++) {
-      final fileName = fileNames[i];
-      final ext = fileName.toLowerCase().split('.').last;
-      String contentType;
-      switch (ext) {
-        case 'pdf': contentType = 'application/pdf'; break;
-        case 'png': contentType = 'image/png'; break;
-        case 'jpg': case 'jpeg': contentType = 'image/jpeg'; break;
-        case 'webp': contentType = 'image/webp'; break;
-        default: contentType = 'image/jpeg';
+      for (int i = 0; i < filesBytes.length; i++) {
+        final fileName = fileNames[i];
+        final ext = fileName.toLowerCase().split('.').last;
+        String contentType;
+        switch (ext) {
+          case 'pdf':
+            contentType = 'application/pdf';
+            break;
+          case 'png':
+            contentType = 'image/png';
+            break;
+          case 'jpg':
+          case 'jpeg':
+            contentType = 'image/jpeg';
+            break;
+          case 'webp':
+            contentType = 'image/webp';
+            break;
+          default:
+            contentType = 'image/jpeg';
+        }
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'files',
+            filesBytes[i],
+            filename: fileName,
+            contentType: MediaType.parse(contentType),
+          ),
+        );
       }
-      request.files.add(http.MultipartFile.fromBytes(
-        'files', filesBytes[i],
-        filename: fileName,
-        contentType: MediaType.parse(contentType),
-      ));
-    }
 
-    final response = await request.send();
-    final body = await response.stream.bytesToString();
-    final data = jsonDecode(body);
-    if (response.statusCode == 200) {
-      return {'success': true, ...data};
+      final response = await request.send();
+      final body = await response.stream.bytesToString();
+      final data = jsonDecode(body);
+      if (response.statusCode == 200) {
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': data['detail'] ?? 'Import failed'};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error: $e'};
     }
-    return {'success': false, 'message': data['detail'] ?? 'Import failed'};
-  } catch (e) {
-    return {'success': false, 'message': 'Connection error: $e'};
   }
-}
 
-static Future<Map<String, dynamic>> getImportedInvoices() async {
-  final token = await getToken();
-  try {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/v1/invoices/imported'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    final data = jsonDecode(response.body);
-    if (response.statusCode == 200) {
-      return {'success': true, 'invoices': data['invoices']};
+  static Future<Map<String, dynamic>> getImportedInvoices() async {
+    final token = await getToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/v1/invoices/imported'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'invoices': data['invoices']};
+      }
+      return {'success': false, 'message': data['detail']};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error'};
     }
-    return {'success': false, 'message': data['detail']};
-  } catch (e) {
-    return {'success': false, 'message': 'Connection error'};
   }
-}
 
-static Future<Map<String, dynamic>> deleteImportedInvoice(String invoiceId) async {
-  final token = await getToken();
-  try {
-    final response = await http.delete(
-      Uri.parse('$baseUrl/api/v1/invoices/imported/$invoiceId'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    if (response.statusCode == 200) return {'success': true};
-    return {'success': false};
-  } catch (e) {
-    return {'success': false, 'message': 'Connection error'};
+  static Future<Map<String, dynamic>> deleteImportedInvoice(
+    String invoiceId,
+  ) async {
+    final token = await getToken();
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/v1/invoices/imported/$invoiceId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) return {'success': true};
+      return {'success': false};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error'};
+    }
   }
-}
 
   static Future<Map<String, dynamic>> sendReminder(String invoiceId) async {
-    final token = await _getToken();
+    final token = await getToken();
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/v1/invoices/$invoiceId/reminder'),

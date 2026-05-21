@@ -55,9 +55,6 @@ class OverviewService {
       },
     );
   }
-  // ─────────────────────────────────────────────────────────────────────────────
-// ADD THESE TWO METHODS TO YOUR EXISTING OverviewService CLASS
-// ─────────────────────────────────────────────────────────────────────────────
 
   /// Fetches the invoices + expenses that make up a specific quarter.
   /// Your API endpoint should return:
