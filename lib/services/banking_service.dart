@@ -6,7 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'auth_service.dart';
 
-/// Frontend client for the Tink-backed /api/v1/banking router.
+/// Frontend client for the TrueLayer-backed /api/v1/banking router.
+/// The connect flow is: POST /connect returns a TrueLayer hosted-auth
+/// URL → app opens it externally → user picks bank inside TrueLayer's
+/// UI → TrueLayer redirects to /callback → backend exchanges code for
+/// tokens → user lands back in app with ?bank=success.
 class BankingService {
   static const String baseUrl = ApiConfig.baseUrl;
 
@@ -35,8 +39,9 @@ class BankingService {
     }
   }
 
-  /// Asks the backend to mint a Tink Link URL for this user. The caller
-  /// should open this URL in an external browser; Tink will redirect back
+  /// Asks the backend to mint a TrueLayer hosted-auth URL for this user.
+  /// The caller should open this URL in an external browser; TrueLayer
+  /// shows the bank picker + PSD2 consent UI, then redirects back
   /// through the registered callback once the user finishes.
   static Future<Map<String, dynamic>> connect() async {
     final token = await _getToken();
@@ -205,6 +210,7 @@ class BankingService {
       final ext = fileName.toLowerCase().split('.').last;
       if (ext == 'xml' || ext == 'camt') contentType = 'application/xml';
       if (ext == 'sta' || ext == 'mt940' || ext == 'txt') contentType = 'text/plain';
+      if (ext == 'pdf') contentType = 'application/pdf';
 
       request.files.add(http.MultipartFile.fromBytes(
         'file',

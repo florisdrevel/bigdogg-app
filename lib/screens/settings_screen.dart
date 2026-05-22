@@ -35,7 +35,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _connectingStripe = false;
   bool _openingDashboard = false;
 
-  // Bank (Tink) state
+  // Bank (TrueLayer) state
   Map<String, dynamic>? _bankStatus;
   bool _loadingBank = true;
   bool _connectingBank = false;
@@ -568,7 +568,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
     final picked = await pickFiles(
-      accept: '.sta,.940,.mt940,.txt,.xml,.camt,application/xml,text/plain',
+      accept: '.sta,.940,.mt940,.txt,.xml,.camt,.pdf,application/xml,text/plain,application/pdf',
       multiple: false,
     );
     if (picked == null || picked.isEmpty) return;
@@ -1175,8 +1175,8 @@ For questions: info@bigdogg.nl''';
           const SizedBox(height: 8),
           Text(
             isNl
-                ? 'Beveiligd via Tink (PSD2). BigDogg krijgt alleen leestoegang tot je transacties.'
-                : 'Secured via Tink (PSD2). BigDogg only gets read access to your transactions.',
+                ? 'Beveiligd via TrueLayer (PSD2). BigDogg krijgt alleen leestoegang tot je transacties.'
+                : 'Secured via TrueLayer (PSD2). BigDogg only gets read access to your transactions.',
             style: const TextStyle(
                 fontSize: 11, color: BigDoggTheme.lightTextHint),
           ),
@@ -1199,8 +1199,8 @@ For questions: info@bigdogg.nl''';
           const SizedBox(height: 4),
           Text(
             isNl
-                ? 'MT940 of CAMT.053 — direct te downloaden vanuit je internetbankieren.'
-                : 'MT940 or CAMT.053 — downloadable from your bank\'s online portal.',
+                ? 'PDF, MT940 of CAMT.053 — direct te downloaden vanuit je internetbankieren.'
+                : 'PDF, MT940 or CAMT.053 — downloadable from your bank\'s online portal.',
             style: const TextStyle(
                 fontSize: 12, color: BigDoggTheme.lightTextSecondary),
           ),
@@ -1574,7 +1574,7 @@ For questions: info@bigdogg.nl''';
 
           const SizedBox(height: 16),
 
-          // ── 3b. BANK CONNECTION (Tink) ─────────────────────────────
+          // ── 3b. BANK CONNECTION (TrueLayer) ────────────────────────
           _buildBankCard(isNl),
 
           const SizedBox(height: 16),
