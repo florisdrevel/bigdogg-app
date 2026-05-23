@@ -1155,6 +1155,11 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                   'unit': unit,
                   'unit_price_ex_btw': price,
                   'btw_rate': btwRate,
+                  // Carry the product id when the line came from the
+                  // dropdown. Backend uses this for the hours calc so
+                  // editing the description doesn't break the link.
+                  if (selectedProductId != null)
+                    'product_id': selectedProductId,
                 });
               },
               child: Text(isNl ? 'Toevoegen' : 'Add'),
