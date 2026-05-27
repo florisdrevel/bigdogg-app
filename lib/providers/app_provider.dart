@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Bump this when a release should re-show the welcome tour to everyone
+/// (a "big update"). The tour shows when the user's stored
+/// walkthrough_seen_version is below this number — so first-ever launch
+/// (stored 0) shows it, and bumping this to 2, 3, … re-shows it once
+/// after that release. Logging out does NOT reset it (see
+/// AuthService.logout, which preserves device-level prefs).
+const int kWalkthroughVersion = 1;
+
 class AppProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   String _language = 'en';
@@ -52,14 +60,25 @@ class AppProvider extends ChangeNotifier {
     final lang = prefs.getString('language') ?? 'en';
     final projects = prefs.getBool('projects_enabled') ?? false;
     final quotes = prefs.getBool('quotes_enabled') ?? true;
-    final seen = prefs.getBool('has_seen_walkthrough') ?? false;
     _themeMode = theme == 'dark' ? ThemeMode.dark : ThemeMode.light;
     _language = lang;
     _projectsEnabled = projects;
     _quotesEnabled = quotes;
-    _hasSeenWalkthrough = seen;
+    _hasSeenWalkthrough = _resolveSeen(prefs);
     _prefsLoaded = true;
     notifyListeners();
+  }
+
+  /// Walkthrough is "seen" when the stored version is at least the
+  /// current one. Migrates the legacy boolean: a user who completed the
+  /// old tour counts as having seen version 1.
+  bool _resolveSeen(SharedPreferences prefs) {
+    final storedVersion = prefs.getInt('walkthrough_seen_version');
+    if (storedVersion != null) {
+      return storedVersion >= kWalkthroughVersion;
+    }
+    final legacySeen = prefs.getBool('has_seen_walkthrough') ?? false;
+    return legacySeen && kWalkthroughVersion <= 1;
   }
 
   Future<void> toggleTheme() async {
@@ -127,14 +146,16 @@ class AppProvider extends ChangeNotifier {
   Future<void> markWalkthroughSeen() async {
     _hasSeenWalkthrough = true;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('has_seen_walkthrough', true);
+    await prefs.setInt('walkthrough_seen_version', kWalkthroughVersion);
     notifyListeners();
   }
 
   Future<void> resetWalkthrough() async {
     _hasSeenWalkthrough = false;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('has_seen_walkthrough', false);
+    // 0 = never seen → tour shows again. Used by the "restart tour"
+    // option in Settings.
+    await prefs.setInt('walkthrough_seen_version', 0);
     notifyListeners();
   }
 }

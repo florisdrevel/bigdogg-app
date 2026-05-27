@@ -14,6 +14,7 @@ import 'screens/reset_password_screen.dart';
 import 'screens/transactions_screen.dart';
 import 'screens/accountant_portal_screen.dart';
 import 'services/push_service.dart';
+import 'services/auth_service.dart';
 import 'theme.dart';
 import 'providers/app_provider.dart';
 
@@ -48,9 +49,22 @@ final _router = GoRouter(
     if (state.uri.path != '/') return null;
 
     final prefs = await SharedPreferences.getInstance();
-    final hasToken = (prefs.getString('access_token') ?? '').isNotEmpty;
     final remember = prefs.getBool('remember_me') ?? false;
-    if (hasToken && remember) return '/dashboard';
+    // The refresh_token is the durable credential — it long-outlives the
+    // 1-hour access token. Decide "still logged in" on its presence (plus
+    // remember-me), not on the short-lived access token, so a user who
+    // hasn't opened the app in hours/days still lands on the dashboard
+    // instead of the login screen.
+    final hasRefresh = (prefs.getString('refresh_token') ?? '').isNotEmpty;
+    final hasAccess = (prefs.getString('access_token') ?? '').isNotEmpty;
+    if (remember && (hasRefresh || hasAccess)) {
+      // Kick a refresh so the dashboard opens with a valid access token
+      // even if the cached one expired while the app was closed.
+      // Fire-and-forget; refreshTokenIfNeeded no-ops when still fresh.
+      // ignore: unawaited_futures
+      AuthService.refreshTokenIfNeeded();
+      return '/dashboard';
+    }
 
     // The landing page is a marketing page for the website. Native
     // (Android / iOS) builds skip straight to the login screen.

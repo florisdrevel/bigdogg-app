@@ -207,10 +207,41 @@ class AuthService {
     }
   }
 
+  // Device-level preferences that must survive a logout. These aren't
+  // tied to the account/session — wiping them on logout is what made the
+  // welcome tour re-appear after every re-login (has_seen_walkthrough got
+  // cleared) and reset the user's theme/language.
+  static const List<String> _devicePrefKeys = [
+    'theme',
+    'language',
+    'walkthrough_seen_version',
+    'has_seen_walkthrough', // legacy key, preserved for migration
+    'accountant_portal_lang',
+  ];
+
   static Future<void> logout() async {
     await ApiCache.clearAll();
     final prefs = await SharedPreferences.getInstance();
+    // Snapshot the device-level prefs, clear everything (tokens, user
+    // info, cached per-account flags), then restore the device prefs.
+    final preserved = <String, Object>{};
+    for (final key in _devicePrefKeys) {
+      final value = prefs.get(key);
+      if (value != null) preserved[key] = value;
+    }
     await prefs.clear();
+    for (final entry in preserved.entries) {
+      final v = entry.value;
+      if (v is String) {
+        await prefs.setString(entry.key, v);
+      } else if (v is bool) {
+        await prefs.setBool(entry.key, v);
+      } else if (v is int) {
+        await prefs.setInt(entry.key, v);
+      } else if (v is double) {
+        await prefs.setDouble(entry.key, v);
+      }
+    }
   }
 
   static Future<bool> isLoggedIn() async {
