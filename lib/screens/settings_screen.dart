@@ -1362,9 +1362,40 @@ For questions: info@bigdogg.nl''';
                 fontSize: 13, color: BigDoggTheme.lightTextSecondary),
           ),
           const SizedBox(height: 12),
-          if (_loadingBank)
-            const Center(child: CircularProgressIndicator())
-          else if (connected) ...[
+          // Live PSD2 connect is built but not production-ready yet:
+          // dimmed + tap-blocked with a small "Binnenkort" pill. The
+          // statement-import section below stays fully interactive.
+          Opacity(
+            opacity: 0.5,
+            child: AbsorbPointer(
+              absorbing: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: BigDoggTheme.gold500.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        isNl
+                            ? 'Live koppeling — binnenkort beschikbaar'
+                            : 'Live sync — coming soon',
+                        style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: BigDoggTheme.gold600),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (_loadingBank)
+                    const Center(child: CircularProgressIndicator())
+                  else if (connected) ...[
             Row(children: [
               const Icon(Icons.check_circle,
                   color: BigDoggTheme.success, size: 18),
@@ -1456,6 +1487,10 @@ For questions: info@bigdogg.nl''';
                     backgroundColor: BigDoggTheme.teal800),
               ),
             ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
           Text(
             isNl
@@ -1538,79 +1573,6 @@ For questions: info@bigdogg.nl''';
           ),
         ],
       ),
-    );
-  }
-
-  // Wraps a widget in a non-interactive "Coming Soon" overlay. The child
-  // is still built (so the bank/PDF flow exists and can be re-enabled by
-  // removing this wrapper) but AbsorbPointer blocks every tap and a
-  // dimmed scrim + card sits on top.
-  Widget _comingSoonOverlay(Widget child, bool isNl) {
-    return Stack(
-      children: [
-        AbsorbPointer(absorbing: true, child: child),
-        Positioned.fill(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              color: Colors.black.withOpacity(0.55),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.all(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 22, vertical: 20),
-                decoration: BoxDecoration(
-                  color: BigDoggTheme.lightSurface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: BigDoggTheme.teal800.withOpacity(0.25)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: BigDoggTheme.teal800.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.rocket_launch,
-                          color: BigDoggTheme.teal800, size: 28),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      isNl ? 'Binnenkort beschikbaar' : 'Coming Soon',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: BigDoggTheme.teal800),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      isNl
-                          ? 'Bankgekoppeld via PSD2 — we werken eraan'
-                          : 'Live bank sync via PSD2 — we\'re working on it',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 13,
-                          height: 1.4,
-                          color: BigDoggTheme.lightTextSecondary),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1959,9 +1921,10 @@ For questions: info@bigdogg.nl''';
           const SizedBox(height: 16),
 
           // ── 3b. BANK CONNECTION (TrueLayer) ────────────────────────
-          // Built but gated behind a "Coming Soon" overlay until the live
-          // PSD2 flow is production-ready.
-          _comingSoonOverlay(_buildBankCard(isNl), isNl),
+          // The live PSD2 connect is dimmed + disabled with a subtle
+          // "Binnenkort" pill (see _buildBankCard); the PDF/statement
+          // import below it stays fully usable.
+          _buildBankCard(isNl),
 
           const SizedBox(height: 16),
 
