@@ -52,6 +52,37 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
   final Set<String> _expandedInvoices = {};
   final Set<String> _expandedInvestments = {};
 
+  // ── Responsive layout ────────────────────────────────────
+  // On wide (desktop) viewports the portal was rendering a phone-width
+  // layout stretched edge-to-edge: tiny text on very long lines. We cap
+  // content to a centered column and scale type up. _bodyHPad is the
+  // horizontal padding the tab bodies use to center within that column;
+  // it's recomputed at the top of build().
+  static const double _maxContentWidth = 1080;
+  static const double _wideBreakpoint = 900;
+
+  bool _isWide(BuildContext context) =>
+      MediaQuery.of(context).size.width > _wideBreakpoint;
+
+  /// Full-bleed background, content centered to [_maxContentWidth]. Used
+  /// for the header / summary / tab bars whose colored backgrounds span
+  /// the whole screen but whose content should line up with the body.
+  Widget _capped(Widget child) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: _maxContentWidth),
+          child: child,
+        ),
+      );
+
+  /// Centers a scrollable tab body to [_maxContentWidth]. On phones the
+  /// max-width never binds, so the layout is unchanged there.
+  Widget _tabBody(Widget child) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: _maxContentWidth),
+          child: child,
+        ),
+      );
+
   String t(String nl, String en) => _isNl ? nl : en;
 
   @override
@@ -289,33 +320,45 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
     final expired = daysLeft < 0;
     final warnExpiry = !expired && daysLeft <= 30;
 
+    final mq = MediaQuery.of(context);
+    final wide = _isWide(context);
+    // Bump type ~17% on desktop so the phone-sized fonts become readable
+    // on a large screen. textScaler multiplies every Text's fontSize, so
+    // we don't have to touch each style individually.
+    final scaler = wide
+        ? const TextScaler.linear(1.17)
+        : mq.textScaler;
+
+    final column = Column(
+      children: [
+        _header(),
+        if (expired || warnExpiry) _expiryBanner(expired, daysLeft),
+        _summaryBar(),
+        _tabBar(),
+        if (_yearLoading)
+          const LinearProgressIndicator(
+              minHeight: 2, color: BigDoggTheme.gold500),
+        Expanded(
+          child: TabBarView(
+            controller: _tabs,
+            children: [
+              _tabBody(_overviewTab()),
+              _tabBody(_invoicesTab()),
+              _tabBody(_expensesTab()),
+              _tabBody(_investmentsTab()),
+              _tabBody(_hoursTab()),
+              _tabBody(_btwTab()),
+            ],
+          ),
+        ),
+      ],
+    );
+
     return Scaffold(
       backgroundColor: BigDoggTheme.lightBg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _header(),
-            if (expired || warnExpiry) _expiryBanner(expired, daysLeft),
-            _summaryBar(),
-            _tabBar(),
-            if (_yearLoading)
-              const LinearProgressIndicator(
-                  minHeight: 2, color: BigDoggTheme.gold500),
-            Expanded(
-              child: TabBarView(
-                controller: _tabs,
-                children: [
-                  _overviewTab(),
-                  _invoicesTab(),
-                  _expensesTab(),
-                  _investmentsTab(),
-                  _hoursTab(),
-                  _btwTab(),
-                ],
-              ),
-            ),
-          ],
-        ),
+      body: MediaQuery(
+        data: mq.copyWith(textScaler: scaler),
+        child: SafeArea(child: column),
       ),
     );
   }
@@ -331,9 +374,9 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: const BoxDecoration(color: BigDoggTheme.teal800),
-      child: Column(
+      child: _capped(Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
@@ -343,7 +386,7 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
                     'BigDogg · Accountant Portal'),
                 style: const TextStyle(
                   color: Color(0xFFC9A96E),
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.4,
                 ),
@@ -354,7 +397,7 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
             const SizedBox(width: 6),
             _csvButton(),
           ]),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
               child: Column(
@@ -363,25 +406,25 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
                   Text(ownerName,
                       style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 19,
+                          fontSize: 22,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.3),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis),
                   if (kvk.isNotEmpty || btw.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Wrap(spacing: 12, runSpacing: 2, children: [
+                    const SizedBox(height: 4),
+                    Wrap(spacing: 14, runSpacing: 2, children: [
                       if (kvk.isNotEmpty)
                         Text('KvK $kvk',
                             style: const TextStyle(
                                 color: Color(0xFFE2DDD6),
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w500)),
                       if (btw.isNotEmpty)
                         Text('BTW $btw',
                             style: const TextStyle(
                                 color: Color(0xFFE2DDD6),
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w500)),
                     ]),
                   ],
@@ -391,10 +434,10 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
             const SizedBox(width: 10),
             _yearDropdown(),
           ]),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _annualReportButton(),
         ],
-      ),
+      )),
     );
   }
 
@@ -518,13 +561,13 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
     final korPct = (korRatio * 100).clamp(0, 100).toStringAsFixed(0);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: const BoxDecoration(
         color: BigDoggTheme.lightSurface,
         border:
             Border(bottom: BorderSide(color: BigDoggTheme.lightBorder)),
       ),
-      child: Row(children: [
+      child: _capped(Row(children: [
         Expanded(
             child: _summaryCell(
                 t('Omzet', 'Revenue'),
@@ -552,12 +595,12 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
                 '$korPct%',
                 t('drempel', 'threshold'),
                 BigDoggTheme.teal700)),
-      ]),
+      ])),
     );
   }
 
   Widget _vSep() => Container(
-      width: 1, height: 32, color: BigDoggTheme.lightBorder);
+      width: 1, height: 40, color: BigDoggTheme.lightBorder);
 
   Widget _summaryCell(String label, String value, String hint, Color color) {
     return Column(
@@ -566,17 +609,18 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
       children: [
         Text(label,
             style: const TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: BigDoggTheme.lightTextSecondary)),
-        const SizedBox(height: 2),
+        const SizedBox(height: 3),
         Text(value,
             style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w700, color: color),
+                fontSize: 16, fontWeight: FontWeight.w800, color: color),
             overflow: TextOverflow.ellipsis),
+        const SizedBox(height: 1),
         Text(hint,
             style: const TextStyle(
-                fontSize: 9, color: BigDoggTheme.lightTextHint)),
+                fontSize: 10, color: BigDoggTheme.lightTextHint)),
       ],
     );
   }
@@ -594,17 +638,17 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
         : (urgent ? const Color(0xFFB91C1C) : const Color(0xFFD97706));
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: bgColor,
         border: Border(bottom: BorderSide(color: borderColor, width: 1)),
       ),
-      child: Row(children: [
+      child: _capped(Row(children: [
         Icon(
           expired
               ? Icons.error_outline
               : Icons.warning_amber_rounded,
-          size: 16,
+          size: 18,
           color: fgColor,
         ),
         const SizedBox(width: 8),
@@ -612,27 +656,35 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
           child: Text(
             _expiryLabel(),
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               color: fgColor,
             ),
           ),
         ),
-      ]),
+      ])),
     );
   }
 
   Widget _tabBar() {
     return Container(
-      color: BigDoggTheme.lightSurface,
-      child: TabBar(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: BigDoggTheme.lightSurface,
+        border: Border(bottom: BorderSide(color: BigDoggTheme.lightBorder)),
+      ),
+      child: _capped(TabBar(
         controller: _tabs,
         isScrollable: true,
+        tabAlignment: TabAlignment.start,
         labelColor: BigDoggTheme.teal800,
         unselectedLabelColor: BigDoggTheme.lightTextSecondary,
         indicatorColor: BigDoggTheme.gold500,
+        indicatorWeight: 3,
         labelStyle:
-            const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        unselectedLabelStyle:
+            const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         tabs: [
           Tab(text: t('Overzicht', 'Overview')),
           Tab(text: t('Facturen', 'Invoices')),
@@ -641,7 +693,7 @@ class _AccountantPortalScreenState extends State<AccountantPortalScreen>
           Tab(text: t('Uren', 'Hours')),
           const Tab(text: 'BTW'),
         ],
-      ),
+      )),
     );
   }
 
