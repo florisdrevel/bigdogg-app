@@ -8,6 +8,7 @@ import '../services/subscription_service.dart';
 import '../services/auth_service.dart';
 import '../services/referral_service.dart';
 import '../services/banking_service.dart';
+import '../services/expenses_service.dart';
 import '../services/accountants_service.dart';
 import '../services/api_config.dart';
 import '../providers/app_provider.dart';
@@ -41,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _connectingBank = false;
   bool _disconnectingBank = false;
   bool _importingStatement = false;
+  bool _parsingStatement = false;
 
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -604,6 +606,288 @@ class _SettingsScreenState extends State<SettingsScreen> {
             (isNl ? 'Import mislukt' : 'Import failed')),
       ));
     }
+  }
+
+  // ── Bank statement PDF → Claude parse → import selected as expenses ──
+  Future<void> _parseStatementPdf(bool isNl) async {
+    if (!kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isNl
+            ? 'Importeren werkt momenteel via bigdogg.nl op je computer'
+            : 'Import currently works via bigdogg.nl on your computer'),
+      ));
+      return;
+    }
+    final picked = await pickFiles(
+      accept: '.pdf,application/pdf',
+      multiple: false,
+    );
+    if (picked == null || picked.isEmpty) return;
+    final file = picked.first;
+
+    setState(() => _parsingStatement = true);
+    final result = await BankingService.parseStatement(
+      fileBytes: file.bytes,
+      fileName: file.name,
+    );
+    if (!mounted) return;
+    setState(() => _parsingStatement = false);
+
+    final count = (result['count'] as int?) ?? 0;
+    if (result['success'] != true || count == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.error,
+        duration: const Duration(seconds: 6),
+        content: Text(isNl
+            ? 'Geen transacties gevonden. Controleer of dit een bankafschrift is.'
+            : 'No transactions found. Check that this is a bank statement.'),
+      ));
+      return;
+    }
+
+    final transactions = ((result['transactions'] as List?) ?? [])
+        .cast<Map<String, dynamic>>();
+    final bank = (result['bank'] ?? 'unknown').toString();
+    if (!mounted) return;
+    _showStatementSheet(transactions, bank, isNl);
+  }
+
+  void _showStatementSheet(
+      List<Map<String, dynamic>> transactions, String bank, bool isNl) {
+    // Pre-select outgoing (negative) lines — those are the expenses.
+    final selected = <int>{
+      for (var i = 0; i < transactions.length; i++)
+        if (((transactions[i]['amount'] as num?) ?? 0) < 0) i,
+    };
+    bool importing = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSheet) {
+          Future<void> importSelected() async {
+            if (selected.isEmpty) return;
+            setSheet(() => importing = true);
+            int ok = 0;
+            for (final i in selected) {
+              final tx = transactions[i];
+              final amount = ((tx['amount'] as num?) ?? 0).toDouble().abs();
+              if (amount <= 0) continue;
+              final res = await ExpensesService.createExpense(
+                description: (tx['description'] ?? '').toString().isEmpty
+                    ? (isNl ? 'Banktransactie' : 'Bank transaction')
+                    : tx['description'].toString(),
+                // Bank lines are gross; treat as ex-BTW with 0% so the
+                // figure isn't silently inflated. The user can adjust the
+                // BTW per expense afterwards.
+                amountExBtw: amount,
+                btwRate: 0,
+                category: 'general',
+                expenseDate: (tx['date'] ?? '').toString().isEmpty
+                    ? null
+                    : tx['date'].toString(),
+              );
+              if (res['success'] == true || res['offline'] == true) ok++;
+            }
+            if (!mounted) return;
+            Navigator.pop(sheetCtx);
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              backgroundColor: BigDoggTheme.success,
+              duration: const Duration(seconds: 4),
+              content: Text(isNl
+                  ? '$ok kosten geïmporteerd'
+                  : '$ok expenses imported'),
+            ));
+          }
+
+          return DraggableScrollableSheet(
+            initialChildSize: 0.85,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (_, scrollController) => Container(
+              decoration: const BoxDecoration(
+                color: BigDoggTheme.lightSurface,
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: BigDoggTheme.lightBorder,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+                    child: Row(children: [
+                      const Icon(Icons.account_balance_outlined,
+                          size: 20, color: BigDoggTheme.teal800),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isNl
+                                  ? '${transactions.length} transacties gevonden'
+                                  : '${transactions.length} transactions found',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: BigDoggTheme.teal800),
+                            ),
+                            if (bank.isNotEmpty && bank != 'unknown')
+                              Text(bank,
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color:
+                                          BigDoggTheme.lightTextSecondary)),
+                          ],
+                        ),
+                      ),
+                    ]),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      itemCount: transactions.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: 4),
+                      itemBuilder: (_, i) {
+                        final tx = transactions[i];
+                        final amount =
+                            ((tx['amount'] as num?) ?? 0).toDouble();
+                        final isOut = amount < 0;
+                        final checked = selected.contains(i);
+                        return InkWell(
+                          onTap: () => setSheet(() {
+                            if (checked) {
+                              selected.remove(i);
+                            } else {
+                              selected.add(i);
+                            }
+                          }),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: checked
+                                  ? BigDoggTheme.teal800.withOpacity(0.06)
+                                  : null,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Checkbox(
+                                  value: checked,
+                                  visualDensity: VisualDensity.compact,
+                                  onChanged: (_) => setSheet(() {
+                                    if (checked) {
+                                      selected.remove(i);
+                                    } else {
+                                      selected.add(i);
+                                    }
+                                  }),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      (tx['description'] ?? '').toString(),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          color: BigDoggTheme
+                                              .lightTextPrimary),
+                                    ),
+                                    Text(
+                                      (tx['date'] ?? '').toString(),
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          color: BigDoggTheme
+                                              .lightTextSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${isOut ? '-' : '+'} € ${amount.abs().toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: isOut
+                                      ? BigDoggTheme.error
+                                      : BigDoggTheme.success,
+                                ),
+                              ),
+                            ]),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                          top: BorderSide(
+                              color: BigDoggTheme.lightBorder)),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed:
+                            (selected.isEmpty || importing)
+                                ? null
+                                : importSelected,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: BigDoggTheme.teal800,
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: importing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : Text(
+                                isNl
+                                    ? 'Importeer geselecteerde (${selected.length})'
+                                    : 'Import selected (${selected.length})',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _connectStripe(bool isNl) async {
@@ -1225,8 +1509,108 @@ For questions: info@bigdogg.nl''';
               ),
             ),
           ),
+          const SizedBox(height: 8),
+          // PDF → Claude parse → pick which lines to import as expenses.
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _parsingStatement ? null : () => _parseStatementPdf(isNl),
+              icon: _parsingStatement
+                  ? const SizedBox(
+                      width: 14, height: 14,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.auto_awesome, size: 16, color: Colors.white),
+              label: Text(
+                _parsingStatement
+                    ? (isNl ? 'PDF wordt gelezen…' : 'Reading PDF…')
+                    : (isNl ? 'PDF afschrift inlezen (AI)' : 'Scan PDF statement (AI)'),
+                style: const TextStyle(color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: BigDoggTheme.teal800,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(vertical: 11),
+              ),
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  // Wraps a widget in a non-interactive "Coming Soon" overlay. The child
+  // is still built (so the bank/PDF flow exists and can be re-enabled by
+  // removing this wrapper) but AbsorbPointer blocks every tap and a
+  // dimmed scrim + card sits on top.
+  Widget _comingSoonOverlay(Widget child, bool isNl) {
+    return Stack(
+      children: [
+        AbsorbPointer(absorbing: true, child: child),
+        Positioned.fill(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              color: Colors.black.withOpacity(0.55),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.all(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 22, vertical: 20),
+                decoration: BoxDecoration(
+                  color: BigDoggTheme.lightSurface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: BigDoggTheme.teal800.withOpacity(0.25)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: BigDoggTheme.teal800.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.rocket_launch,
+                          color: BigDoggTheme.teal800, size: 28),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      isNl ? 'Binnenkort beschikbaar' : 'Coming Soon',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: BigDoggTheme.teal800),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      isNl
+                          ? 'Bankgekoppeld via PSD2 — we werken eraan'
+                          : 'Live bank sync via PSD2 — we\'re working on it',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          height: 1.4,
+                          color: BigDoggTheme.lightTextSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1575,7 +1959,9 @@ For questions: info@bigdogg.nl''';
           const SizedBox(height: 16),
 
           // ── 3b. BANK CONNECTION (TrueLayer) ────────────────────────
-          _buildBankCard(isNl),
+          // Built but gated behind a "Coming Soon" overlay until the live
+          // PSD2 flow is production-ready.
+          _comingSoonOverlay(_buildBankCard(isNl), isNl),
 
           const SizedBox(height: 16),
 

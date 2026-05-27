@@ -231,6 +231,40 @@ class BankingService {
     }
   }
 
+  /// Send a bank-statement PDF to /bank/parse-statement. Claude extracts
+  /// every transaction line. Returns
+  /// `{success, transactions: [{date, description, amount}], count, bank}`
+  /// or `{success: false, message}` / `{success: true, count: 0, error}`.
+  static Future<Map<String, dynamic>> parseStatement({
+    required Uint8List fileBytes,
+    required String fileName,
+  }) async {
+    final token = await _getToken();
+    try {
+      final uri = Uri.parse('$baseUrl/api/v1/bank/parse-statement');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        fileBytes,
+        filename: fileName,
+        contentType: MediaType.parse('application/pdf'),
+      ));
+      final response = await request.send();
+      final body = await response.stream.bytesToString();
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        return {'success': true, ...data};
+      }
+      return {
+        'success': false,
+        'message': data['detail']?.toString() ?? 'parse_failed',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error'};
+    }
+  }
+
   /// Last 90 days of transactions from the connected bank.
   static Future<Map<String, dynamic>> getTransactions({int pageSize = 100}) async {
     final token = await _getToken();

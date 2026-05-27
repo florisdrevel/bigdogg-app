@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme.dart';
 import '../services/support_service.dart';
 
@@ -184,6 +185,7 @@ For questions about these terms: info@bigdogg.nl''';
             _buildSupportCallout(isWide),
             _buildPricing(isWide),
             _buildFinalCta(isWide),
+            _buildAppStoreSection(isWide),
             _buildFooter(isWide),
           ],
         ),
@@ -1784,6 +1786,166 @@ For questions about these terms: info@bigdogg.nl''';
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+
+  // ─── App store badges ─────────────────────────────────────
+  // iOS app isn't live yet — flip to true once it ships.
+  static const bool iosAppLive = false;
+  static const String _playUrl =
+      'https://play.google.com/store/apps/details?id=nl.bigdogg.app';
+  static const String _appStoreUrl =
+      'https://apps.apple.com/nl/app/bigdogg/id000000000';
+
+  Future<void> _openStoreUrl(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {/* best effort */}
+  }
+
+  Widget _buildAppStoreSection(bool isWide) {
+    final play = _storeBadge(
+      icon: Icons.shop_outlined,
+      topLine: t('Beschikbaar op', 'Get it on'),
+      bottomLine: 'Google Play',
+      onTap: () => _openStoreUrl(_playUrl),
+    );
+    final appStore = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _storeBadge(
+          icon: Icons.apple,
+          topLine: t('Download in de', 'Download on the'),
+          bottomLine: 'App Store',
+          onTap: iosAppLive ? () => _openStoreUrl(_appStoreUrl) : null,
+        ),
+        if (!iosAppLive) ...[
+          const SizedBox(height: 6),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: BigDoggTheme.lightBorder,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              t('Binnenkort', 'Coming Soon'),
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: BigDoggTheme.lightTextSecondary,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+          horizontal: isWide ? 64 : 24, vertical: isWide ? 56 : 40),
+      color: BigDoggTheme.lightBg,
+      child: Column(
+        children: [
+          Text(
+            t('Ook beschikbaar als app', 'Also available as an app'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: isWide ? 28 : 22,
+              fontWeight: FontWeight.bold,
+              color: BigDoggTheme.teal800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            t('Onderweg je administratie bijwerken — op iedere telefoon.',
+                'Update your books on the go — on any phone.'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontSize: 14, color: BigDoggTheme.lightTextSecondary),
+          ),
+          const SizedBox(height: 28),
+          if (isWide)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                play,
+                const SizedBox(width: 16),
+                appStore,
+              ],
+            )
+          else
+            Column(
+              children: [
+                play,
+                const SizedBox(height: 16),
+                appStore,
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Official-badge-proportioned button (~3:1). Dark pill, store icon on
+  /// the left, two stacked text lines on the right.
+  Widget _storeBadge({
+    required IconData icon,
+    required String topLine,
+    required String bottomLine,
+    VoidCallback? onTap,
+  }) {
+    final enabled = onTap != null;
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.55,
+      child: Material(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: 180,
+            height: 60,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white24),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: Colors.white, size: 28),
+                const SizedBox(width: 10),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      topLine,
+                      style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 10,
+                          height: 1.1),
+                    ),
+                    Text(
+                      bottomLine,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
