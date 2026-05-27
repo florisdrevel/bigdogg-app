@@ -102,6 +102,23 @@ class InvoicesService {
     );
   }
 
+  /// Flip the per-invoice "send the Stripe payment link" toggle.
+  static Future<Map<String, dynamic>> setPaymentLinkEnabled(
+    String invoiceId,
+    bool enabled,
+  ) async {
+    final token = await getToken();
+    return OfflineQueue.patchOrEnqueue(
+      url: '$baseUrl/api/v1/invoices/$invoiceId',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: {'payment_link_enabled': enabled},
+      label: 'Factuur betaallink → ${enabled ? 'aan' : 'uit'}',
+    );
+  }
+
   static Future<Map<String, dynamic>> deleteInvoice(String invoiceId) async {
     final token = await getToken();
     return OfflineQueue.deleteOrEnqueue(

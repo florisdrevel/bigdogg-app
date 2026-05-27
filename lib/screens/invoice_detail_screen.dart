@@ -94,6 +94,23 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     }
   }
 
+  // Per-invoice payment-link toggle. Optimistically flips the local
+  // state, persists via PATCH, and reverts on failure.
+  Future<void> _setPaymentLinkEnabled(bool enabled, bool isNl) async {
+    final previous = _invoice?['payment_link_enabled'] != false;
+    setState(() => _invoice?['payment_link_enabled'] = enabled);
+    final result =
+        await InvoicesService.setPaymentLinkEnabled(widget.invoiceId, enabled);
+    if (!mounted) return;
+    if (result['success'] != true && result['offline'] != true) {
+      setState(() => _invoice?['payment_link_enabled'] = previous);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.error,
+        content: Text(isNl ? 'Kon betaallink niet bijwerken' : 'Could not update payment link'),
+      ));
+    }
+  }
+
   // Manual fallback — generate payment link if somehow missing
   Future<void> _generatePaymentLink(bool isNl) async {
     setState(() => _generatingLink = true);
@@ -222,9 +239,12 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     }
 
     final paymentLink = _invoice!['payment_link'] as String?;
-    final hasPaymentLink = paymentLink != null;
-    // Default checked when the global preference says so AND a payment
-    // link actually exists (otherwise the toggle is a no-op anyway).
+    // A link is "available to send" only when one exists AND the invoice's
+    // own payment-link toggle is on. If the toggle is off, the send dialog
+    // treats it as having no link at all.
+    final hasPaymentLink =
+        paymentLink != null && _invoice!['payment_link_enabled'] != false;
+    // Default the per-send "exclude" checkbox from the global preference.
     bool excludeLink = hasPaymentLink && _defaultExcludePaymentLink;
 
     final confirm = await showDialog<bool>(
@@ -386,6 +406,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     final clientEmail =
         client?['email'] ?? _invoice!['client_email'] ?? '';
     final paymentLink = _invoice!['payment_link'] as String?;
+    final paymentLinkEnabled = _invoice!['payment_link_enabled'] != false;
     final isPaid = status == 'paid';
 
     return Scaffold(
@@ -583,70 +604,101 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   color: BigDoggTheme.lightSurface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: paymentLink != null
+                    color: (paymentLink != null && paymentLinkEnabled)
                         ? BigDoggTheme.success.withOpacity(0.4)
                         : BigDoggTheme.lightBorder,
                   ),
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    Icon(
-                      paymentLink != null
-                          ? Icons.check_circle
-                          : Icons.info_outline,
-                      color: paymentLink != null
-                          ? BigDoggTheme.success
-                          : BigDoggTheme.lightTextSecondary,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        paymentLink != null
-                            ? (isNl
-                                ? 'Betaallink actief — automatisch bijgevoegd aan e-mail.'
-                                : 'Payment link active — automatically included in email.')
-                            : (isNl
-                                ? 'Geen betaallink — koppel Stripe via Instellingen.'
-                                : 'No payment link — connect Stripe via Settings.'),
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: paymentLink != null
+                    Row(
+                      children: [
+                        Icon(
+                          (paymentLink != null && paymentLinkEnabled)
+                              ? Icons.check_circle
+                              : Icons.info_outline,
+                          color: (paymentLink != null && paymentLinkEnabled)
                               ? BigDoggTheme.success
                               : BigDoggTheme.lightTextSecondary,
+                          size: 18,
                         ),
-                      ),
-                    ),
-                    // Manual fallback generate button if no link
-                    if (paymentLink == null)
-                      _generatingLink
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2))
-                          : TextButton(
-                              onPressed: () =>
-                                  _generatePaymentLink(isNl),
-                              child: Text(
-                                  isNl ? 'Genereer' : 'Generate',
-                                  style: const TextStyle(
-                                      color: BigDoggTheme.teal800,
-                                      fontSize: 12)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            paymentLink == null
+                                ? (isNl
+                                    ? 'Geen betaallink — koppel Stripe via Instellingen.'
+                                    : 'No payment link — connect Stripe via Settings.')
+                                : (paymentLinkEnabled
+                                    ? (isNl
+                                        ? 'Betaallink actief — automatisch bijgevoegd aan e-mail.'
+                                        : 'Payment link active — automatically included in email.')
+                                    : (isNl
+                                        ? 'Betaallink uitgeschakeld voor deze factuur.'
+                                        : 'Payment link disabled for this invoice.')),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: (paymentLink != null && paymentLinkEnabled)
+                                  ? BigDoggTheme.success
+                                  : BigDoggTheme.lightTextSecondary,
                             ),
-                    // QR button if link exists
-                    if (paymentLink != null)
-                      TextButton.icon(
-                        onPressed: () =>
-                            _showQrDialog(isNl, paymentLink),
-                        icon: const Icon(Icons.qr_code,
-                            size: 16, color: BigDoggTheme.teal800),
-                        label: Text(
-                            isNl ? 'QR Code' : 'QR Code',
-                            style: const TextStyle(
-                                color: BigDoggTheme.teal800,
-                                fontSize: 12)),
+                          ),
+                        ),
+                        // Manual fallback generate button if no link
+                        if (paymentLink == null)
+                          _generatingLink
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2))
+                              : TextButton(
+                                  onPressed: () =>
+                                      _generatePaymentLink(isNl),
+                                  child: Text(
+                                      isNl ? 'Genereer' : 'Generate',
+                                      style: const TextStyle(
+                                          color: BigDoggTheme.teal800,
+                                          fontSize: 12)),
+                                ),
+                        // QR button only when link exists AND it's enabled
+                        if (paymentLink != null && paymentLinkEnabled)
+                          TextButton.icon(
+                            onPressed: () =>
+                                _showQrDialog(isNl, paymentLink),
+                            icon: const Icon(Icons.qr_code,
+                                size: 16, color: BigDoggTheme.teal800),
+                            label: Text(
+                                isNl ? 'QR Code' : 'QR Code',
+                                style: const TextStyle(
+                                    color: BigDoggTheme.teal800,
+                                    fontSize: 12)),
+                          ),
+                      ],
+                    ),
+                    // The on/off toggle — only relevant when a link exists.
+                    if (paymentLink != null) ...[
+                      const Divider(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              isNl ? 'Betaallink meesturen' : 'Send payment link',
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: BigDoggTheme.lightTextPrimary),
+                            ),
+                          ),
+                          Switch(
+                            value: paymentLinkEnabled,
+                            activeColor: BigDoggTheme.teal800,
+                            onChanged: (v) =>
+                                _setPaymentLinkEnabled(v, isNl),
+                          ),
+                        ],
                       ),
+                    ],
                   ],
                 ),
               ),
