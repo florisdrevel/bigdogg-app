@@ -1077,6 +1077,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   }
 
   Widget _buildExpensesTab(bool isNl, bool isMobile) {
+    final isReadOnly = context.watch<AppProvider>().isAppReadOnly;
     final filtered = _filteredExpenses;
     final double totalExBtw = filtered.fold(
         0, (s, e) => s + ((e['amount_ex_btw'] as num?) ?? 0).toDouble());
@@ -1677,7 +1678,6 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
-    final isReadOnly = context.watch<AppProvider>().isAppReadOnly;
     final isMobile = _isMobile();
 
     return Column(

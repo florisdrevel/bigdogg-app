@@ -9,6 +9,7 @@ import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/client_onboarding_screen.dart';
 import 'screens/landing_screen.dart';
+import 'screens/pricing_screen.dart';
 import 'screens/quote_public_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/transactions_screen.dart';
@@ -94,14 +95,14 @@ final _router = GoRouter(
     GoRoute(path: '/', builder: (context, state) => const LandingScreen()),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(
-      // Pricing deep-link target opened by the native app's in-app web
-      // view. We persist any ?email= so the eventual register form
-      // pre-fills it, then render the existing marketing landing where
-      // pricing already lives.
+      // Dedicated 3-plan checkout chooser. Opened by the native app's
+      // paywall modal in an in-app web view; also linkable from the
+      // marketing landing. Reads `?token=` (Supabase access token) so it
+      // can call /subscription/checkout without a separate web login.
       path: '/pricing',
       builder: (context, state) {
         _stashPendingSignupEmail(state.uri.queryParameters['email']);
-        return const LandingScreen();
+        return const PricingScreen();
       },
     ),
     GoRoute(

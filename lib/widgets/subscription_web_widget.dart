@@ -22,8 +22,21 @@ Future<Uri> buildPortalUrl() => _buildWebUrl(_portalPath);
 Future<Uri> _buildWebUrl(String pathWithHash) async {
   final prefs = await SharedPreferences.getInstance();
   final email = (prefs.getString('user_email') ?? '').trim();
-  final query =
-      email.isEmpty ? '' : '?email=${Uri.encodeQueryComponent(email)}';
+  final token = (prefs.getString('access_token') ?? '').trim();
+  // Both params are optional; the pricing screen falls back to a
+  // /register handoff when there's no token. Email + token together
+  // mean the user lands on a chooser that can POST /checkout straight
+  // through without a separate web login.
+  final params = <String, String>{};
+  if (email.isNotEmpty) params['email'] = email;
+  if (token.isNotEmpty) params['token'] = token;
+  final query = params.isEmpty
+      ? ''
+      : '?' +
+          params.entries
+              .map((e) =>
+                  '${e.key}=${Uri.encodeQueryComponent(e.value)}')
+              .join('&');
   return Uri.parse('$kBigDoggWebOrigin$pathWithHash$query');
 }
 
