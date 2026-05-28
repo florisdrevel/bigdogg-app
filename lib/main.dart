@@ -41,6 +41,15 @@ void main() async {
   );
 }
 
+void _stashPendingSignupEmail(String? email) {
+  final trimmed = email?.trim() ?? '';
+  if (trimmed.isEmpty) return;
+  // Fire-and-forget; the register screen reads this on init.
+  SharedPreferences.getInstance().then((prefs) {
+    prefs.setString('pending_signup_email', trimmed);
+  });
+}
+
 final _router = GoRouter(
   initialLocation: '/',
   redirect: (context, state) async {
@@ -85,6 +94,17 @@ final _router = GoRouter(
     GoRoute(path: '/', builder: (context, state) => const LandingScreen()),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(
+      // Pricing deep-link target opened by the native app's in-app web
+      // view. We persist any ?email= so the eventual register form
+      // pre-fills it, then render the existing marketing landing where
+      // pricing already lives.
+      path: '/pricing',
+      builder: (context, state) {
+        _stashPendingSignupEmail(state.uri.queryParameters['email']);
+        return const LandingScreen();
+      },
+    ),
+    GoRoute(
       path: '/register',
       builder: (context, state) {
         // Capture ?ref=XXXXX so it survives the email-confirm round trip.
@@ -95,6 +115,10 @@ final _router = GoRouter(
             prefs.setString('pending_referral_code', ref.trim());
           });
         }
+        // Native app opens /pricing?email=… first which stashes the
+        // address; users who hit /register directly with an email param
+        // get the same prefill.
+        _stashPendingSignupEmail(state.uri.queryParameters['email']);
         return const RegisterScreen();
       },
     ),

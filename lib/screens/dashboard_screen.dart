@@ -611,6 +611,10 @@ Future<void> _refreshUnreadCount() async {
 
 
 // ─── Trial-ended banner ──────────────────────────────────────────
+/// Slim, full-width tappable banner. Whole row launches the paywall
+/// modal so the conversion path is one tap away. The close button
+/// dismisses for the session (banner only — modal can still re-open
+/// via FABs or settings).
 class _TrialEndedBanner extends StatelessWidget {
   final bool isNl;
   final VoidCallback onDismiss;
@@ -624,51 +628,39 @@ class _TrialEndedBanner extends StatelessWidget {
       child: SafeArea(
         bottom: false,
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
-          child: Row(
-            children: [
-              const Icon(Icons.info_outline_rounded,
-                  color: BigDoggTheme.gold500, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  isNl
-                      ? 'Je proefperiode is afgelopen. Ga naar bigdogg.nl om je abonnement te activeren.'
-                      : 'Your trial has ended. Visit bigdogg.nl to activate your subscription.',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    height: 1.35,
+        child: InkWell(
+          onTap: () => showPaywallModal(context, isNl),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+            child: Row(
+              children: [
+                const Icon(Icons.workspace_premium_rounded,
+                    color: BigDoggTheme.gold500, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    isNl
+                        ? 'Proefperiode afgelopen · Abonneer op bigdogg.nl · €9,99/maand'
+                        : 'Trial ended · Subscribe at bigdogg.nl · €9,99/month',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              TextButton(
-                onPressed: () => showSubscriptionWebSheet(context, isNl),
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: BigDoggTheme.teal800,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 6),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                  minimumSize: const Size(0, 32),
+                const Icon(Icons.chevron_right_rounded,
+                    color: Colors.white70, size: 18),
+                IconButton(
+                  tooltip: isNl ? 'Sluiten' : 'Dismiss',
+                  icon: const Icon(Icons.close,
+                      color: Colors.white60, size: 16),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onDismiss,
                 ),
-                child: Text(
-                  isNl ? 'Openen' : 'Open',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 12),
-                ),
-              ),
-              IconButton(
-                tooltip: isNl ? 'Sluiten' : 'Dismiss',
-                icon: const Icon(Icons.close, color: Colors.white70, size: 18),
-                visualDensity: VisualDensity.compact,
-                onPressed: onDismiss,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -50,9 +50,19 @@ class AppProvider extends ChangeNotifier {
   bool _subscriptionIsActive = false;
   bool _trialBannerDismissed = false;
 
+  // Paywall modal session state.
+  // [_paywallShownThisSession] gates the auto-popup on FAB taps so we
+  // don't badger the user after they've dismissed it once.
+  // [_paywallVisible] lets the dashboard banner hide itself while the
+  // modal is on screen (the user is already being asked to subscribe).
+  bool _paywallShownThisSession = false;
+  bool _paywallVisible = false;
+
   String get subscriptionStatus => _subscriptionStatus;
   bool get subscriptionLoaded => _subscriptionLoaded;
   bool get isSubscriptionActive => _subscriptionIsActive;
+  bool get paywallShownThisSession => _paywallShownThisSession;
+  bool get paywallVisible => _paywallVisible;
 
   /// Read-only mode: user can still browse existing data, but cannot
   /// create new invoices / expenses / send invoices. True once we know
@@ -60,18 +70,39 @@ class AppProvider extends ChangeNotifier {
   bool get isAppReadOnly => _subscriptionLoaded && !_subscriptionIsActive;
 
   /// Whether to show the trial-ended banner on the dashboard. Hidden
-  /// once the user dismisses it for the rest of the session.
-  bool get showTrialBanner => isAppReadOnly && !_trialBannerDismissed;
+  /// once the user dismisses it for the rest of the session, and also
+  /// hidden while the paywall modal is on screen.
+  bool get showTrialBanner =>
+      isAppReadOnly && !_trialBannerDismissed && !_paywallVisible;
 
   void setSubscription({required String status, required bool isActive}) {
+    final wasActive = _subscriptionIsActive;
     _subscriptionStatus = status;
     _subscriptionIsActive = isActive;
     _subscriptionLoaded = true;
+    // Successfully activating clears all the suppression flags so the
+    // app feels fresh again — no stale "trial ended" banner, no
+    // already-dismissed paywall to surprise the user later.
+    if (!wasActive && isActive) {
+      _trialBannerDismissed = false;
+      _paywallShownThisSession = false;
+    }
     notifyListeners();
   }
 
   void dismissTrialBanner() {
     _trialBannerDismissed = true;
+    notifyListeners();
+  }
+
+  void markPaywallShownThisSession() {
+    _paywallShownThisSession = true;
+    notifyListeners();
+  }
+
+  void setPaywallVisible(bool visible) {
+    if (_paywallVisible == visible) return;
+    _paywallVisible = visible;
     notifyListeners();
   }
 

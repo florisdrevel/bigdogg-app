@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
 
@@ -67,6 +68,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void initState() {
     super.initState();
     _passwordController.addListener(() => setState(() {}));
+    _consumePendingEmail();
+  }
+
+  /// The native app opens `/pricing?email=…` in the in-app web view; the
+  /// route handler stashes that address. Read it once and clear so a
+  /// later visit doesn't surprise-fill someone else's email.
+  Future<void> _consumePendingEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = (prefs.getString('pending_signup_email') ?? '').trim();
+    if (email.isEmpty) return;
+    await prefs.remove('pending_signup_email');
+    if (!mounted) return;
+    setState(() {
+      _emailController.text = email;
+    });
   }
 
   @override

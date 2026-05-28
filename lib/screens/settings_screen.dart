@@ -28,7 +28,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, dynamic>? _subscription;
   bool _loading = true;
-  bool _subscriptionExpanded = false;
   bool _stripeFeeExpanded = false;
 
   Map<String, dynamic>? _stripeStatus;
@@ -1599,27 +1598,21 @@ For questions: info@bigdogg.nl''';
         children: [
 
           // ── 1. SUBSCRIPTION ───────────────────────────────────────
-          GestureDetector(
-            onTap: () => setState(() => _subscriptionExpanded = !_subscriptionExpanded),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: BigDoggTheme.teal800, borderRadius: BorderRadius.circular(12)),
-              child: Row(children: [
-                Container(width: 10, height: 10, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
-                const SizedBox(width: 12),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(statusText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(statusDetail, style: TextStyle(color: statusColor, fontSize: 13)),
-                ])),
-                Icon(_subscriptionExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.white70, size: 20),
-              ]),
-            ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: BigDoggTheme.teal800, borderRadius: BorderRadius.circular(12)),
+            child: Row(children: [
+              Container(width: 10, height: 10, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(statusText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(statusDetail, style: TextStyle(color: statusColor, fontSize: 13)),
+              ])),
+            ]),
           ),
 
-          if (_subscriptionExpanded) ...[
-            const SizedBox(height: 8),
-            SubscriptionWebCard(isNl: isNl),
-          ],
+          const SizedBox(height: 8),
+          _buildSubscriptionActionRow(isNl, status),
 
           const SizedBox(height: 16),
 
@@ -1981,6 +1974,77 @@ For questions: info@bigdogg.nl''';
               style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextHint))),
           const SizedBox(height: 32),
         ],
+      ),
+    );
+  }
+
+  /// Permanent, non-intrusive path to the user's billing on bigdogg.nl.
+  /// Active users get the Stripe customer portal; trial/expired users
+  /// get the pricing page (both with email pre-filled). Always visible
+  /// in Settings so the user never has to hunt for it.
+  Widget _buildSubscriptionActionRow(bool isNl, String status) {
+    final isActive = status == 'active';
+    final label = isActive
+        ? (isNl ? 'Abonnement beheren' : 'Manage subscription')
+        : (isNl ? 'Abonnement starten' : 'Start subscription');
+    final subtitle = isActive
+        ? (isNl
+            ? 'Wijzig je betaalmethode of zeg op'
+            : 'Change payment method or cancel')
+        : (isNl
+            ? '€9,99 / maand · 30 dagen gratis'
+            : '€9.99 / month · 30-day free trial');
+    final icon = isActive ? Icons.tune_rounded : Icons.workspace_premium_rounded;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () {
+        if (isActive) {
+          openManageSubscription(context, isNl);
+        } else {
+          showPaywallModal(context, isNl);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: BigDoggTheme.lightSurface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: BigDoggTheme.lightBorder),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: BigDoggTheme.teal800.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: BigDoggTheme.teal800, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                          color: BigDoggTheme.lightTextPrimary)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: BigDoggTheme.lightTextSecondary)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                color: BigDoggTheme.lightTextHint, size: 20),
+          ],
+        ),
       ),
     );
   }
