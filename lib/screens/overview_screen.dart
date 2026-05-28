@@ -11,7 +11,6 @@ import '../services/offline_queue.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/subscription_service.dart';
-import '../services/report_access_service.dart';
 import '../widgets/subscription_web_widget.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -535,28 +534,13 @@ class _OverviewScreenState extends State<OverviewScreen>
   }
 
   Future<void> _downloadBtwReport(bool isNl, {int? quarter, int? year}) async {
-    final now = DateTime.now();
-    final effYear = year ?? now.year;
-    final effQuarter = quarter ?? ((now.month - 1) ~/ 3 + 1);
-
-    final allowed = await _ensureReportAccess(
-      isNl: isNl,
-      type: 'vat_report',
-      year: effYear,
-      quarter: effQuarter,
-    );
-    if (!allowed || !mounted) return;
-
     final token = await InvoicesService.getToken();
     final lang = isNl ? 'nl' : 'en';
-    final url =
-        '${ApiConfig.baseUrl}/api/v1/reports/btw/pdf?token=$token&lang=$lang'
-        '&quarter=$effQuarter&year=$effYear';
+    String url = '${ApiConfig.baseUrl}/api/v1/reports/btw/pdf?token=$token&lang=$lang';
+    if (quarter != null && year != null) url += '&quarter=$quarter&year=$year';
     final uri = Uri.parse(url);
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -567,79 +551,20 @@ class _OverviewScreenState extends State<OverviewScreen>
     }
   }
 
-  /// Pre-flight check before a report PDF download. For PAYG users
-  /// without a paid credit this opens the Stripe checkout in the in-app
-  /// web view, then retries the check once after it closes. Returns
-  /// true if the caller should proceed with `launchUrl`, false if the
-  /// flow ended (payment failed, subscribe-required paywall shown, or
-  /// network error).
-  Future<bool> _ensureReportAccess({
-    required bool isNl,
-    required String type,
-    required int year,
-    int? quarter,
-  }) async {
-    final check =
-        await ReportAccessService.check(type: type, year: year, quarter: quarter);
-    final access = (check['access'] ?? 'error').toString();
-
-    if (access == 'allowed') return true;
-
-    if (access == 'subscribe_required') {
-      if (mounted) showPaywallModal(context, isNl);
-      return false;
-    }
-
-    if (access == 'payment_required') {
-      final checkoutUrl = (check['checkout_url'] ?? '').toString();
-      if (checkoutUrl.isEmpty) return false;
-      try {
-        await launchUrl(Uri.parse(checkoutUrl), mode: LaunchMode.inAppWebView);
-      } catch (_) {
-        await launchUrl(Uri.parse(checkoutUrl),
-            mode: LaunchMode.externalApplication);
-      }
-      // Stripe webhook usually lands within a second of close — wait a
-      // beat so the credit row is in place when we re-check.
-      await Future.delayed(const Duration(milliseconds: 1500));
-      if (!mounted) return false;
-      final retry = await ReportAccessService.check(
-          type: type, year: year, quarter: quarter);
-      if ((retry['access'] ?? '').toString() == 'allowed') return true;
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          backgroundColor: BigDoggTheme.warning,
-          content: Text(isNl
-              ? 'Betaling nog niet verwerkt — probeer opnieuw'
-              : 'Payment not yet processed — please try again'),
-        ));
-      }
-      return false;
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(isNl
-            ? 'Kan toegang niet verifiëren — probeer opnieuw'
-            : 'Could not verify access — please try again'),
-        backgroundColor: BigDoggTheme.error,
-      ));
-    }
-    return false;
-  }
-
   void _onDownloadAnnualReportTapped(bool isNl, int year) async {
     if (!mounted) return;
 
-    // Single gate that handles all three cases: monthly/yearly pass
-    // through, PAYG triggers a Stripe one-time checkout for €5 with
-    // automatic retry on close, trial/expired sees the subscribe modal.
-    final allowed = await _ensureReportAccess(
-      isNl: isNl,
-      type: 'annual_report',
-      year: year,
-    );
-    if (!allowed || !mounted) return;
+    final subResult = await SubscriptionService.getStatus();
+    final status = subResult['success'] == true
+        ? (subResult['subscription']?['status'] ?? 'expired')
+        : 'expired';
+    final isPaid = status == 'active';
+
+    if (!mounted) return;
+    if (!isPaid) {
+      _showPaywallDialog(isNl);
+      return;
+    }
 
     showDialog(
       context: context,

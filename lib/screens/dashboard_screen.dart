@@ -640,8 +640,8 @@ class _TrialEndedBanner extends StatelessWidget {
                 Expanded(
                   child: Text(
                     isNl
-                        ? 'Proefperiode afgelopen · Abonneer op bigdogg.nl · €9,99/maand'
-                        : 'Trial ended · Subscribe at bigdogg.nl · €9,99/month',
+                        ? 'Proefperiode afgelopen · Abonneer op bigdogg.nl · vanaf €9,99/maand'
+                        : 'Trial ended · Subscribe at bigdogg.nl · from €9.99/month',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12.5,

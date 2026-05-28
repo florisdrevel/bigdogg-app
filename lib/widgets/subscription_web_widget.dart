@@ -262,8 +262,8 @@ class _PaywallModal extends StatelessWidget {
             ),
             child: Text(
               isNl
-                  ? '€9,99 / maand — 30 dagen gratis proberen'
-                  : '€9.99 / month — 30-day free trial',
+                  ? 'Vanaf €9,99 / maand — 30 dagen gratis proberen'
+                  : 'From €9.99 / month — 30-day free trial',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,

@@ -109,7 +109,7 @@ BigDogg is een online boekhoud- en facturatiedienst voor zelfstandigen en ZZP'er
 BigDogg biedt tools voor facturatie, uitgavenbeheer, BTW-overzichten en financiële rapportages. Wij streven naar correctheid en beschikbaarheid van onze diensten, maar bieden geen garanties met betrekking tot volledigheid of geschiktheid voor specifieke fiscale of juridische doeleinden.
 
 3. ABONNEMENT EN BETALING
-Het abonnement bedraagt €9,99 per maand. Na een gratis proefperiode van 30 dagen wordt er overgegaan op een betaald abonnement, tenzij je vóór het einde van de proefperiode opzegt. Opzegging kan op elk moment via de instellingen in de app. Je behoudt toegang tot het einde van de lopende betaalperiode.
+Het abonnement bedraagt €11,99 per maand of €119,88 per jaar (€9,99 effectief per maand). Na een gratis proefperiode van 30 dagen wordt er overgegaan op een betaald abonnement, tenzij je vóór het einde van de proefperiode opzegt. Opzegging kan op elk moment via de instellingen in de app. Je behoudt toegang tot het einde van de lopende betaalperiode.
 
 4. VERANTWOORDELIJKHEID VOOR ADMINISTRATIE
 BigDogg ondersteunt jou bij je administratie, maar de volledige verantwoordelijkheid voor de juistheid, volledigheid en tijdige indiening van je belastingaangiftes, facturen en overige administratieve verplichtingen ligt bij jou als gebruiker. Wij raden je nadrukkelijk aan om regelmatig lokale back-ups te maken van al je facturen, rapporten en financiële documenten door deze te downloaden en op te slaan op een eigen, veilige locatie. BigDogg is niet aansprakelijk voor verlies van gegevens als gevolg van technische storingen, beëindiging van het account of andere omstandigheden buiten onze directe controle.
@@ -142,7 +142,7 @@ BigDogg is an online accounting and invoicing service for freelancers in the Net
 BigDogg provides tools for invoicing, expense management, VAT overviews and financial reporting. We strive for accuracy and availability of our services, but make no guarantees regarding completeness or suitability for specific tax or legal purposes.
 
 3. SUBSCRIPTION AND PAYMENT
-The subscription fee is €9.99 per month. After a 30-day free trial, a paid subscription begins unless cancelled before the end of the trial period. You may cancel at any time via the settings in the app. You retain access until the end of the current billing period.
+The subscription fee is €11.99 per month or €119.88 per year (effectively €9.99 / month). After a 30-day free trial, a paid subscription begins unless cancelled before the end of the trial period. You may cancel at any time via the settings in the app. You retain access until the end of the current billing period.
 
 4. RESPONSIBILITY FOR YOUR ADMINISTRATION
 BigDogg supports you in managing your administration, but full responsibility for the accuracy, completeness and timely submission of your tax returns, invoices and other administrative obligations rests with you as the user. We strongly encourage you to regularly create local backups of all your invoices, reports and financial documents by downloading and saving them to a secure location of your own. BigDogg is not liable for data loss resulting from technical failures, account termination or other circumstances beyond our direct control.
@@ -357,10 +357,10 @@ For questions about these terms: info@bigdogg.nl''';
         Text(
           t(
             kIsWeb
-                ? 'Maak facturen, doe je BTW en houd uitgaven bij — zonder accountant en voor €9,99 per maand.'
+                ? 'Maak facturen, doe je BTW en houd uitgaven bij — zonder accountant, vanaf €9,99 per maand.'
                 : 'Maak facturen, doe je BTW en houd uitgaven bij — zonder accountant.',
             kIsWeb
-                ? 'Make invoices, file your VAT and track expenses — without an accountant, for €9.99 a month.'
+                ? 'Make invoices, file your VAT and track expenses — without an accountant, from €9.99 a month.'
                 : 'Make invoices, file your VAT and track expenses — without an accountant.',
           ),
           style: TextStyle(
@@ -635,7 +635,7 @@ For questions about these terms: info@bigdogg.nl''';
   Widget _buildStatBar(bool isWide) {
     final items = [
       t('Net gelanceerd', 'Just launched'),
-      if (kIsWeb) '€9,99 / ${t('maand', 'month')}',
+      if (kIsWeb) '${t('vanaf', 'from')} €9,99 / ${t('maand', 'month')}',
       t('30 dagen gratis', '30 days free'),
       t('Gemaakt in Nederland', 'Built in the Netherlands'),
     ];
@@ -652,11 +652,11 @@ For questions about these terms: info@bigdogg.nl''';
             Text(
               items[i],
               style: TextStyle(
-                color: items[i].startsWith('€')
+                color: items[i].contains('€')
                     ? BigDoggTheme.gold400
                     : Colors.white70,
                 fontSize: isWide ? 14 : 12.5,
-                fontWeight: items[i].startsWith('€')
+                fontWeight: items[i].contains('€')
                     ? FontWeight.w700
                     : FontWeight.w500,
               ),
@@ -684,8 +684,8 @@ For questions about these terms: info@bigdogg.nl''';
             'You pay €17 or more a month for features you never use.',
           ),
           'fix': t(
-            'BigDogg kost €9,99 per maand. Alles zit erin. Geen extra pakketten.',
-            'BigDogg is €9.99 a month. Everything is included. No add-ons.',
+            'BigDogg start bij €9,99 per maand (jaarlijks) of €11,99 maandelijks. Alles zit erin. Geen extra pakketten.',
+            'BigDogg starts at €9.99 a month (yearly billing) or €11.99 monthly. Everything is included. No add-ons.',
           ),
         },
       {
@@ -1642,11 +1642,20 @@ For questions about these terms: info@bigdogg.nl''';
                     const SizedBox(width: 8),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: Text(t('/ maand', '/ month'),
+                      child: Text(t('/ maand bij jaarlijks',
+                              '/ month billed yearly'),
                           style: const TextStyle(
-                              color: Colors.white60, fontSize: 16)),
+                              color: Colors.white60, fontSize: 14)),
                     ),
                   ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  t('Of €11,99 maandelijks', 'Or €11.99 monthly'),
+                  style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 4),
                 Container(
@@ -1801,8 +1810,8 @@ For questions about these terms: info@bigdogg.nl''';
           Text(
             kIsWeb
                 ? t(
-                    '30 dagen gratis. Daarna €9,99 per maand. Altijd opzegbaar.',
-                    '30 days free. Then €9.99 per month. Cancel anytime.')
+                    '30 dagen gratis. Daarna vanaf €9,99 per maand (jaarlijks). Altijd opzegbaar.',
+                    '30 days free. Then from €9.99 per month (billed yearly). Cancel anytime.')
                 : t('30 dagen gratis proberen. Altijd opzegbaar.',
                     '30 days free trial. Cancel anytime.'),
             style: const TextStyle(

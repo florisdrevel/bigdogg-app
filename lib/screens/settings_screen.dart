@@ -1041,7 +1041,7 @@ BigDogg is een online boekhoud- en facturatiedienst voor zelfstandigen en ZZP'er
 BigDogg biedt tools voor facturatie, uitgavenbeheer, BTW-overzichten en financiële rapportages. Wij streven naar correctheid en beschikbaarheid van onze diensten, maar bieden geen garanties met betrekking tot volledigheid of geschiktheid voor specifieke fiscale of juridische doeleinden.
 
 3. ABONNEMENT EN BETALING
-Het abonnement bedraagt €9,99 per maand. Na een gratis proefperiode van 30 dagen wordt er overgegaan op een betaald abonnement, tenzij je vóór het einde van de proefperiode opzegt. Opzegging kan op elk moment via de instellingen in de app. Je behoudt toegang tot het einde van de lopende betaalperiode.
+Het abonnement bedraagt €11,99 per maand of €119,88 per jaar (€9,99 effectief per maand). Na een gratis proefperiode van 30 dagen wordt er overgegaan op een betaald abonnement, tenzij je vóór het einde van de proefperiode opzegt. Opzegging kan op elk moment via de instellingen in de app. Je behoudt toegang tot het einde van de lopende betaalperiode.
 
 4. VERANTWOORDELIJKHEID VOOR ADMINISTRATIE
 BigDogg ondersteunt jou bij je administratie, maar de volledige verantwoordelijkheid voor de juistheid, volledigheid en tijdige indiening van je belastingaangiftes, facturen en overige administratieve verplichtingen ligt bij jou als gebruiker.
@@ -1076,7 +1076,7 @@ BigDogg is an online accounting and invoicing service for freelancers in the Net
 BigDogg provides tools for invoicing, expense management, VAT overviews and financial reporting. We strive for accuracy and availability but make no guarantees regarding completeness or suitability for specific tax or legal purposes.
 
 3. SUBSCRIPTION AND PAYMENT
-The subscription fee is €9.99 per month. After a 30-day free trial, a paid subscription begins unless cancelled before the end of the trial. You may cancel at any time via the settings in the app.
+The subscription fee is €11.99 per month or €119.88 per year (effectively €9.99 / month). After a 30-day free trial, a paid subscription begins unless cancelled before the end of the trial. You may cancel at any time via the settings in the app.
 
 4. RESPONSIBILITY FOR YOUR ADMINISTRATION
 Full responsibility for the accuracy, completeness and timely submission of your tax returns rests with you as the user. We strongly encourage you to regularly create local backups of all your invoices and financial documents.
@@ -1992,8 +1992,8 @@ For questions: info@bigdogg.nl''';
             ? 'Wijzig je betaalmethode of zeg op'
             : 'Change payment method or cancel')
         : (isNl
-            ? '€9,99 / maand · 30 dagen gratis'
-            : '€9.99 / month · 30-day free trial');
+            ? 'Vanaf €9,99 / maand · 30 dagen gratis'
+            : 'From €9.99 / month · 30-day free trial');
     final icon = isActive ? Icons.tune_rounded : Icons.workspace_premium_rounded;
 
     return InkWell(

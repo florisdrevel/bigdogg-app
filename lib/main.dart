@@ -109,8 +109,9 @@ final _router = GoRouter(
     ),
     GoRoute(
       // Subscription management. Active monthly/yearly users get
-      // redirected straight to Stripe's billing portal; PAYG users see
-      // their own status + upgrade CTA. Reached from Settings →
+      // redirected straight to Stripe's billing portal; legacy active
+      // users without a Stripe customer see a "subscription active —
+      // contact support" status page. Reached from Settings →
       // "Manage subscription" in the native app via in-app web view.
       path: '/subscription',
       builder: (context, state) => const SubscriptionPortalScreen(),

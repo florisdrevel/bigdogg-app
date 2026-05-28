@@ -13,9 +13,8 @@ import '../theme.dart';
 /// The `token` query parameter carries the user's Supabase access token
 /// so the backend can identify them without a separate web login. We
 /// keep it in memory only (no localStorage / no Shared­Preferences) —
-/// after the user picks a plan and we POST to /checkout, we either
-/// redirect to Stripe or show a PAYG success state and let the user
-/// dismiss the webview.
+/// after the user picks a plan we POST to /checkout and redirect the
+/// window to Stripe Checkout.
 class PricingScreen extends StatefulWidget {
   const PricingScreen({super.key});
 
@@ -28,7 +27,6 @@ class _PricingScreenState extends State<PricingScreen> {
   String? _email;
   String? _busyPlan;
   String? _error;
-  bool _paygActivated = false;
   bool _isNl = true;
 
   String t(String nl, String en) => _isNl ? nl : en;
@@ -82,13 +80,6 @@ class _PricingScreenState extends State<PricingScreen> {
         });
         return;
       }
-      if (plan == 'payg') {
-        setState(() {
-          _busyPlan = null;
-          _paygActivated = true;
-        });
-        return;
-      }
       // Monthly / yearly: redirect the current window to Stripe Checkout.
       final url = data['checkout_url']?.toString();
       if (url == null || url.isEmpty) {
@@ -139,10 +130,7 @@ class _PricingScreenState extends State<PricingScreen> {
                 children: [
                   _header(),
                   const SizedBox(height: 32),
-                  if (_paygActivated)
-                    _paygSuccess()
-                  else
-                    _cards(isWide),
+                  _cards(isWide),
                   if (_error != null) ...[
                     const SizedBox(height: 20),
                     Container(
@@ -215,7 +203,7 @@ class _PricingScreenState extends State<PricingScreen> {
     final monthly = _planCard(
       plan: 'monthly',
       title: t('Maandelijks', 'Monthly'),
-      priceLine: '€9,99',
+      priceLine: '€11,99',
       priceSub: t('/ maand', '/ month'),
       tagline: t('Flexibel — zeg op wanneer je wilt',
           'Flexible — cancel any time'),
@@ -232,14 +220,14 @@ class _PricingScreenState extends State<PricingScreen> {
     final yearly = _planCard(
       plan: 'yearly',
       title: t('Jaarlijks', 'Yearly'),
-      priceLine: '€99,99',
-      priceSub: t('/ jaar', '/ year'),
-      tagline: t('Beste deal · 2 maanden gratis',
-          'Best value · 2 months free'),
+      priceLine: '€119,88',
+      priceSub: t('/ jaar (€9,99/mnd)', '/ year (€9.99/mo)'),
+      tagline: t('Beste deal · 17% korting',
+          'Best value · 17% off'),
       bullets: [
         t('✓ Alles van Maandelijks', '✓ Everything in Monthly'),
-        t('✓ 2 maanden korting per jaar',
-            '✓ 2 months free vs monthly'),
+        t('✓ Effectief €9,99 per maand',
+            '✓ Effectively €9.99 per month'),
         t('✓ Eén keer per jaar afrekenen',
             '✓ One payment a year'),
         t('✓ Onbeperkt jaarrapporten', '✓ Unlimited annual reports'),
@@ -247,28 +235,6 @@ class _PricingScreenState extends State<PricingScreen> {
       ],
       ctaLabel: t('Start jaarlijks', 'Start yearly'),
       highlight: true,
-    );
-    final payg = _planCard(
-      plan: 'payg',
-      title: t('Per gebruik', 'Pay-as-you-go'),
-      priceLine: t('Gratis', 'Free'),
-      priceSub: t('signup', 'signup'),
-      tagline: t('Betaal alleen voor wat je downloadt',
-          'Pay only for what you download'),
-      bullets: [
-        t('✓ Gratis account & basisgebruik',
-            '✓ Free account & basic usage'),
-        t('✓ Facturen en kosten bijhouden',
-            '✓ Track invoices and expenses'),
-        t('· €5 per jaarrapport',
-            '· €5 per annual report'),
-        t('· €1 per BTW-aangifte',
-            '· €1 per VAT report'),
-        t('✓ Upgrade later als je wilt',
-            '✓ Upgrade any time'),
-      ],
-      ctaLabel: t('Gratis starten', 'Start free'),
-      highlight: false,
     );
 
     if (isWide) {
@@ -279,8 +245,6 @@ class _PricingScreenState extends State<PricingScreen> {
             Expanded(child: monthly),
             const SizedBox(width: 16),
             Expanded(child: yearly),
-            const SizedBox(width: 16),
-            Expanded(child: payg),
           ],
         ),
       );
@@ -290,8 +254,6 @@ class _PricingScreenState extends State<PricingScreen> {
         monthly,
         const SizedBox(height: 16),
         yearly,
-        const SizedBox(height: 16),
-        payg,
       ],
     );
   }
@@ -443,53 +405,4 @@ class _PricingScreenState extends State<PricingScreen> {
     );
   }
 
-  Widget _paygSuccess() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: BigDoggTheme.successBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: BigDoggTheme.success.withOpacity(0.4)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: BigDoggTheme.success,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.check_rounded,
-                color: Colors.white, size: 40),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            t('Je account is geactiveerd!', 'Your account is activated!'),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: BigDoggTheme.teal800,
-              fontFamily: 'PlusJakartaSans',
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            t(
-              'Sluit dit venster en open de BigDogg app. Je kunt direct beginnen — '
-              'jaarrapporten kosten €5 per stuk, BTW-aangiftes €1.',
-              'Close this window and open the BigDogg app. You can start right '
-              'away — annual reports are €5 each, VAT reports €1.',
-            ),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 14,
-                color: BigDoggTheme.lightTextSecondary,
-                height: 1.5),
-          ),
-        ],
-      ),
-    );
-  }
 }

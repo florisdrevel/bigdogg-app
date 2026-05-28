@@ -9,15 +9,18 @@ import '../theme.dart';
 
 /// Subscription management page reached via `bigdogg.nl/#/subscription`.
 ///
-/// Routing logic, in order:
-///   1. No `?token=` → bounce to /pricing (organic visitors / signed-out
-///      users have nothing to manage).
+/// Routing logic:
+///   1. No `?token=` → bounce to /pricing (organic visitors have
+///      nothing to manage).
 ///   2. POST /api/v1/subscription/portal with the token.
 ///      • 200 + url → redirect this window to Stripe's hosted billing
 ///        portal. Monthly/yearly subscribers manage cards, cancel, etc.
-///      • 400 `no_stripe_customer` → user is PAYG (no Stripe customer
-///        record). Show a status page with an "Upgrade" CTA → /pricing.
-///      • Anything else → error state with a manual retry.
+///      • 200 + url:null + status:'legacy_active' → user is active but
+///        was activated outside of a normal Stripe checkout (admin
+///        flip, pre-Stripe signup, etc.). Show "Subscription active —
+///        contact support to manage billing" status.
+///      • 404 → no subscription row. Bounce to /pricing.
+///      • Anything else → error state with retry.
 class SubscriptionPortalScreen extends StatefulWidget {
   const SubscriptionPortalScreen({super.key});
 
@@ -31,8 +34,9 @@ class _SubscriptionPortalScreenState extends State<SubscriptionPortalScreen> {
   String? _email;
   bool _isNl = true;
 
-  // 'loading' | 'payg' | 'error' | 'no_subscription'
+  // 'loading' | 'legacy_active' | 'error' | 'no_subscription'
   String _state = 'loading';
+  String? _planLabel;
   String? _errorMessage;
 
   String t(String nl, String en) => _isNl ? nl : en;
@@ -46,15 +50,12 @@ class _SubscriptionPortalScreenState extends State<SubscriptionPortalScreen> {
     final lang = state.uri.queryParameters['lang'];
     if (lang == 'en') _isNl = false;
 
-    // Run the portal handoff once after first build so context.go works
-    // if we end up bouncing to /pricing.
     WidgetsBinding.instance.addPostFrameCallback((_) => _openPortal());
   }
 
   Future<void> _openPortal() async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      // Nobody to manage — send organic visitors to the chooser.
       if (!mounted) return;
       context.go(_pricingUrl());
       return;
@@ -68,44 +69,33 @@ class _SubscriptionPortalScreenState extends State<SubscriptionPortalScreen> {
           'Content-Type': 'application/json',
         },
       );
-      if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body) as Map<String, dynamic>;
-        final url = (data['url'] ?? '').toString();
-        if (url.isEmpty) {
-          setState(() {
-            _state = 'error';
-            _errorMessage = t(
-                'Geen portal link ontvangen.', 'No portal URL received.');
-          });
-          return;
-        }
-        await _navigateExternal(url);
-        return;
-      }
-
-      // 400 with reason=no_stripe_customer → PAYG user. Anything else
-      // is treated as a generic error.
-      String? reason;
-      try {
-        final body = jsonDecode(resp.body);
-        if (body is Map && body['detail'] is Map) {
-          reason = (body['detail']['reason'] ?? '').toString();
-        }
-      } catch (_) {/* fall through to error */}
-
-      if (reason == 'no_stripe_customer') {
-        setState(() => _state = 'payg');
-        return;
-      }
       if (resp.statusCode == 404) {
         setState(() => _state = 'no_subscription');
         return;
       }
-      setState(() {
-        _state = 'error';
-        _errorMessage = t(
-            'Kon abonnement niet ophalen.', 'Could not load subscription.');
-      });
+      if (resp.statusCode != 200) {
+        setState(() {
+          _state = 'error';
+          _errorMessage = t(
+              'Kon abonnement niet ophalen.', 'Could not load subscription.');
+        });
+        return;
+      }
+
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final url = (data['url'] ?? '').toString();
+      if (url.isNotEmpty) {
+        // Active monthly/yearly subscriber → hand off to Stripe portal.
+        await _navigateExternal(url);
+        return;
+      }
+
+      // url=null branch — legacy-active or other no-Stripe-customer
+      // state. Show the user a friendly "already active" page rather
+      // than the upgrade flow they don't need.
+      final planRaw = (data['plan'] ?? '').toString();
+      _planLabel = _humanPlan(planRaw);
+      setState(() => _state = 'legacy_active');
     } catch (_) {
       setState(() {
         _state = 'error';
@@ -113,6 +103,17 @@ class _SubscriptionPortalScreenState extends State<SubscriptionPortalScreen> {
             'Verbindingsfout. Controleer je internet.',
             'Connection error. Check your internet.');
       });
+    }
+  }
+
+  String? _humanPlan(String plan) {
+    switch (plan) {
+      case 'monthly':
+        return t('Maandelijks abonnement', 'Monthly subscription');
+      case 'yearly':
+        return t('Jaarlijks abonnement', 'Yearly subscription');
+      default:
+        return null;
     }
   }
 
@@ -172,26 +173,31 @@ class _SubscriptionPortalScreenState extends State<SubscriptionPortalScreen> {
         ],
       );
     }
-    if (_state == 'payg') return _paygCard();
+    if (_state == 'legacy_active') return _legacyActiveCard();
     if (_state == 'no_subscription') return _noSubCard();
     return _errorCard();
   }
 
-  Widget _paygCard() {
+  Widget _legacyActiveCard() {
+    final planLine = _planLabel == null
+        ? null
+        : t('Je huidige plan: $_planLabel',
+            'Your current plan: $_planLabel');
     return _card(
-      icon: Icons.bolt_rounded,
-      iconBg: BigDoggTheme.gold500,
-      title: t('Je gebruikt BigDogg per gebruik',
-          'You\'re on pay-as-you-go'),
-      body: t(
-        'Geen vast abonnement nodig — je betaalt alleen voor de rapporten die je downloadt: €5 per jaarrapport, €1 per BTW-aangifte.',
-        'No fixed subscription — you only pay for the reports you download: €5 per annual report, €1 per VAT report.',
-      ),
-      primaryLabel:
-          t('Upgrade naar onbeperkt', 'Upgrade to unlimited'),
-      onPrimary: () => context.go(_pricingUrl()),
-      secondaryLabel: t('Sluiten', 'Close'),
-      onSecondary: () => context.go('/'),
+      icon: Icons.check_circle_rounded,
+      iconBg: BigDoggTheme.success,
+      title: t('Je abonnement is actief', 'Your subscription is active'),
+      body: planLine != null
+          ? t(
+              '$planLine.\n\nNeem contact op met info@bigdogg.nl als je je betaalgegevens wilt wijzigen of wilt opzeggen.',
+              '$planLine.\n\nContact info@bigdogg.nl if you want to change payment details or cancel.',
+            )
+          : t(
+              'Neem contact op met info@bigdogg.nl als je je betaalgegevens wilt wijzigen of wilt opzeggen.',
+              'Contact info@bigdogg.nl to change payment details or cancel.',
+            ),
+      primaryLabel: t('Sluiten', 'Close'),
+      onPrimary: () => context.go('/'),
     );
   }
 
