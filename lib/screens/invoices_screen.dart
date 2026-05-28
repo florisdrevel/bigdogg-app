@@ -14,6 +14,7 @@ import 'invoice_detail_screen.dart';
 import 'prompt_invoice_screen.dart';
 import 'prompt_quote_screen.dart';
 import 'quote_detail_screen.dart';
+import '../widgets/subscription_web_widget.dart';
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -1622,6 +1623,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
     final quotesEnabled = context.watch<AppProvider>().quotesEnabled;
+    final isReadOnly = context.watch<AppProvider>().isAppReadOnly;
     final filteredInvoices = _filteredInvoices;
     final filteredQuotes = _filteredQuotes;
     // When quotes are toggled off, the tab bar isn't rendered, so the
@@ -1677,19 +1679,21 @@ class _InvoicesScreenState extends State<InvoicesScreen>
             right: 16,
             child: FloatingActionButton(
               heroTag: 'ai_fab',
-              onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) =>
-                              const PromptInvoiceScreen()))
-                  .then((result) {
-                if (result is String) {
-                  _loadInvoices();
-                  _navigateToInvoice(result);
-                } else if (result == true) {
-                  _loadInvoices();
-                }
-              }),
+              onPressed: isReadOnly
+                  ? () => showSubscriptionWebSheet(context, isNl)
+                  : () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const PromptInvoiceScreen()))
+                      .then((result) {
+                        if (result is String) {
+                          _loadInvoices();
+                          _navigateToInvoice(result);
+                        } else if (result == true) {
+                          _loadInvoices();
+                        }
+                      }),
               backgroundColor: BigDoggTheme.teal800,
               elevation: 2,
               child: const Icon(Icons.smart_toy_outlined,
@@ -1701,7 +1705,9 @@ class _InvoicesScreenState extends State<InvoicesScreen>
             right: 16,
             child: FloatingActionButton(
               heroTag: 'create_fab',
-              onPressed: () => _showCreateInvoice(isNl),
+              onPressed: isReadOnly
+                  ? () => showSubscriptionWebSheet(context, isNl)
+                  : () => _showCreateInvoice(isNl),
               child: const Icon(Icons.add),
             ),
           ),
@@ -1712,18 +1718,20 @@ class _InvoicesScreenState extends State<InvoicesScreen>
             right: 16,
             child: FloatingActionButton(
               heroTag: 'ai_quote_fab',
-              onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const PromptQuoteScreen()))
-                  .then((result) {
-                if (result is String) {
-                  _loadQuotes();
-                  _navigateToQuote(result);
-                } else if (result == true) {
-                  _loadQuotes();
-                }
-              }),
+              onPressed: isReadOnly
+                  ? () => showSubscriptionWebSheet(context, isNl)
+                  : () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const PromptQuoteScreen()))
+                      .then((result) {
+                        if (result is String) {
+                          _loadQuotes();
+                          _navigateToQuote(result);
+                        } else if (result == true) {
+                          _loadQuotes();
+                        }
+                      }),
               backgroundColor: BigDoggTheme.teal800,
               elevation: 2,
               child: const Icon(Icons.smart_toy_outlined,
@@ -1735,7 +1743,9 @@ class _InvoicesScreenState extends State<InvoicesScreen>
             right: 16,
             child: FloatingActionButton(
               heroTag: 'create_quote_fab',
-              onPressed: () => _showCreateQuote(isNl),
+              onPressed: isReadOnly
+                  ? () => showSubscriptionWebSheet(context, isNl)
+                  : () => _showCreateQuote(isNl),
               child: const Icon(Icons.add),
             ),
           ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -183,7 +184,7 @@ For questions about these terms: info@bigdogg.nl''';
             _buildFeatures(isWide),
             _buildComparison(isWide),
             _buildSupportCallout(isWide),
-            _buildPricing(isWide),
+            if (kIsWeb) _buildPricing(isWide),
             _buildFinalCta(isWide),
             _buildAppStoreSection(isWide),
             _buildFooter(isWide),
@@ -344,8 +345,12 @@ For questions about these terms: info@bigdogg.nl''';
         const SizedBox(height: 18),
         Text(
           t(
-            'Maak facturen, doe je BTW en houd uitgaven bij — zonder accountant en voor €9,99 per maand.',
-            'Make invoices, file your VAT and track expenses — without an accountant, for €9.99 a month.',
+            kIsWeb
+                ? 'Maak facturen, doe je BTW en houd uitgaven bij — zonder accountant en voor €9,99 per maand.'
+                : 'Maak facturen, doe je BTW en houd uitgaven bij — zonder accountant.',
+            kIsWeb
+                ? 'Make invoices, file your VAT and track expenses — without an accountant, for €9.99 a month.'
+                : 'Make invoices, file your VAT and track expenses — without an accountant.',
           ),
           style: TextStyle(
             fontSize: isWide ? 17 : 15,
@@ -619,7 +624,7 @@ For questions about these terms: info@bigdogg.nl''';
   Widget _buildStatBar(bool isWide) {
     final items = [
       t('Net gelanceerd', 'Just launched'),
-      '€9,99 / ${t('maand', 'month')}',
+      if (kIsWeb) '€9,99 / ${t('maand', 'month')}',
       t('30 dagen gratis', '30 days free'),
       t('Gemaakt in Nederland', 'Built in the Netherlands'),
     ];
@@ -636,10 +641,13 @@ For questions about these terms: info@bigdogg.nl''';
             Text(
               items[i],
               style: TextStyle(
-                color: i == 1 ? BigDoggTheme.gold400 : Colors.white70,
+                color: items[i].startsWith('€')
+                    ? BigDoggTheme.gold400
+                    : Colors.white70,
                 fontSize: isWide ? 14 : 12.5,
-                fontWeight:
-                    i == 1 ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: items[i].startsWith('€')
+                    ? FontWeight.w700
+                    : FontWeight.w500,
               ),
             ),
             if (i < items.length - 1)
@@ -658,16 +666,17 @@ For questions about these terms: info@bigdogg.nl''';
   // ─── Problem / solution ───────────────────────────────────
   Widget _buildProblemSolution(bool isWide) {
     final items = [
-      {
-        'pain': t(
-          'Je betaalt €17 of meer per maand voor functies die je nooit gebruikt.',
-          'You pay €17 or more a month for features you never use.',
-        ),
-        'fix': t(
-          'BigDogg kost €9,99 per maand. Alles zit erin. Geen extra pakketten.',
-          'BigDogg is €9.99 a month. Everything is included. No add-ons.',
-        ),
-      },
+      if (kIsWeb)
+        {
+          'pain': t(
+            'Je betaalt €17 of meer per maand voor functies die je nooit gebruikt.',
+            'You pay €17 or more a month for features you never use.',
+          ),
+          'fix': t(
+            'BigDogg kost €9,99 per maand. Alles zit erin. Geen extra pakketten.',
+            'BigDogg is €9.99 a month. Everything is included. No add-ons.',
+          ),
+        },
       {
         'pain': t(
           'Elk kwartaal zit je weer met je BTW-aangifte in je maag.',
@@ -1053,10 +1062,11 @@ For questions about these terms: info@bigdogg.nl''';
 
     // Each row: [label, BigDogg, Moneybird, Exact, Tellow, Bunni]
     final rows = <List<String>>[
-      [
-        t('Prijs / maand', 'Price / month'),
-        '€9,99', '€14+', '€49+', '€8–15', '€9,95',
-      ],
+      if (kIsWeb)
+        [
+          t('Prijs / maand', 'Price / month'),
+          '€9,99', '€14+', '€49+', '€8–15', '€9,95',
+        ],
       [
         t('Gratis proberen', 'Free trial'),
         t('30 dagen', '30 days'),
@@ -1778,9 +1788,12 @@ For questions about these terms: info@bigdogg.nl''';
           ),
           const SizedBox(height: 16),
           Text(
-            t(
-                '30 dagen gratis. Daarna €9,99 per maand. Altijd opzegbaar.',
-                '30 days free. Then €9.99 per month. Cancel anytime.'),
+            kIsWeb
+                ? t(
+                    '30 dagen gratis. Daarna €9,99 per maand. Altijd opzegbaar.',
+                    '30 days free. Then €9.99 per month. Cancel anytime.')
+                : t('30 dagen gratis proberen. Altijd opzegbaar.',
+                    '30 days free trial. Cancel anytime.'),
             style: const TextStyle(
                 color: BigDoggTheme.lightTextHint, fontSize: 13),
             textAlign: TextAlign.center,

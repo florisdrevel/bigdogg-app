@@ -39,6 +39,42 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ─── Subscription state (mirrored from /subscription/status) ──
+  // Populated by DashboardScreen on mount + refresh. The app blocks
+  // create/send actions when the user has no active subscription, and
+  // shows a one-shot dismissible banner on the dashboard. All billing
+  // actions live on bigdogg.nl — the native app must not initiate
+  // Stripe Checkout (Apple/Google platform fee policy).
+  String _subscriptionStatus = '';
+  bool _subscriptionLoaded = false;
+  bool _subscriptionIsActive = false;
+  bool _trialBannerDismissed = false;
+
+  String get subscriptionStatus => _subscriptionStatus;
+  bool get subscriptionLoaded => _subscriptionLoaded;
+  bool get isSubscriptionActive => _subscriptionIsActive;
+
+  /// Read-only mode: user can still browse existing data, but cannot
+  /// create new invoices / expenses / send invoices. True once we know
+  /// the subscription is not active.
+  bool get isAppReadOnly => _subscriptionLoaded && !_subscriptionIsActive;
+
+  /// Whether to show the trial-ended banner on the dashboard. Hidden
+  /// once the user dismisses it for the rest of the session.
+  bool get showTrialBanner => isAppReadOnly && !_trialBannerDismissed;
+
+  void setSubscription({required String status, required bool isActive}) {
+    _subscriptionStatus = status;
+    _subscriptionIsActive = isActive;
+    _subscriptionLoaded = true;
+    notifyListeners();
+  }
+
+  void dismissTrialBanner() {
+    _trialBannerDismissed = true;
+    notifyListeners();
+  }
+
   ThemeMode get themeMode => _themeMode;
   String get language => _language;
   bool get isDark => _themeMode == ThemeMode.dark;

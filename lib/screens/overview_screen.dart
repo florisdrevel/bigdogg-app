@@ -11,6 +11,7 @@ import '../services/offline_queue.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/subscription_service.dart';
+import '../widgets/subscription_web_widget.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Invoice Detail Sheet
@@ -618,59 +619,7 @@ class _OverviewScreenState extends State<OverviewScreen>
   }
 
   void _showPaywallDialog(bool isNl) {
-    showModalBottomSheet(
-      context: context, backgroundColor: Colors.transparent, isScrollControlled: true,
-      builder: (_) => Container(
-        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 24),
-                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-            Container(width: 72, height: 72,
-                decoration: BoxDecoration(color: BigDoggTheme.teal800.withOpacity(0.08), shape: BoxShape.circle),
-                child: const Icon(Icons.lock_outline_rounded, size: 36, color: BigDoggTheme.teal800)),
-            const SizedBox(height: 20),
-            Text(isNl ? 'Betaald abonnement vereist' : 'Paid plan required',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: BigDoggTheme.teal800, fontFamily: 'PlusJakartaSans')),
-            const SizedBox(height: 12),
-            Text(
-              isNl ? 'Het jaarrapport is alleen beschikbaar voor gebruikers met een betaald abonnement.'
-                  : 'The annual report is only available for users on a paid plan.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  final result = await SubscriptionService.createCheckout();
-                  if (result['success']) {
-                    final url = Uri.parse(result['checkout_url']);
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(url, mode: LaunchMode.externalApplication);
-                    }
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: BigDoggTheme.gold500,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: Text(isNl ? 'Upgraden' : 'Upgrade',
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'PlusJakartaSans')),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextButton(onPressed: () => Navigator.pop(context),
-                child: Text(isNl ? 'Niet nu' : 'Not now', style: TextStyle(color: Colors.grey[500], fontSize: 14))),
-          ],
-        ),
-      ),
-    );
+    showSubscriptionWebSheet(context, isNl);
   }
 
   Widget _yearPicker(bool isNl) {

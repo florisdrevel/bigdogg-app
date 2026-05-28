@@ -10,6 +10,7 @@ import '../services/profile_service.dart';
 import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
+import '../widgets/subscription_web_widget.dart';
 
 class InvoiceDetailScreen extends StatefulWidget {
   final String invoiceId;
@@ -223,6 +224,11 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   }
 
   Future<void> _sendEmail(bool isNl) async {
+    // Read-only mode (no active subscription) blocks sending invoices.
+    if (context.read<AppProvider>().isAppReadOnly) {
+      await showSubscriptionWebSheet(context, isNl);
+      return;
+    }
     final client = _invoice!['clients'];
     final clientEmail =
         client?['email'] ?? _invoice!['client_email'] ?? '';

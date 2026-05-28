@@ -183,10 +183,10 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
       _Step(
         tabIndex: -1,
         icon: Icons.credit_card_rounded,
-        titleNl: 'Instellingen — Stripe & abonnement',
-        titleEn: 'Settings — Stripe & subscription',
-        bodyNl: 'Koppel je Stripe-account om betaallinks op facturen te zetten. Klanten betalen direct via iDEAL of creditcard — ideaal voor betaling op locatie via QR-code. Op dit scherm beheer je ook je abonnement en wachtwoord.',
-        bodyEn: 'Connect Stripe to add payment links to invoices. Clients pay directly via iDEAL or credit card — great for on-the-spot payment via QR code. You also manage your subscription and password on this screen.',
+        titleNl: 'Instellingen — Stripe betaallinks',
+        titleEn: 'Settings — Stripe payment links',
+        bodyNl: 'Koppel je Stripe-account om betaallinks op facturen te zetten. Klanten betalen direct via iDEAL of creditcard — ideaal voor betaling op locatie via QR-code.',
+        bodyEn: 'Connect Stripe to add payment links to invoices. Clients pay directly via iDEAL or credit card — great for on-the-spot payment via QR code.',
         isSettings: true,
       ),
       _Step(

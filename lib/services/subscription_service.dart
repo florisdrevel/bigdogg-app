@@ -5,6 +5,9 @@ import 'api_config.dart';
 import 'api_cache.dart';
 import 'auth_service.dart';
 
+/// Read-only subscription client. All billing actions live on bigdogg.nl —
+/// the native app must not initiate Stripe Checkout to avoid Apple/Google
+/// platform fees on iOS and Android.
 class SubscriptionService {
   static const String baseUrl = ApiConfig.baseUrl;
 
@@ -50,34 +53,5 @@ class SubscriptionService {
         return {'success': false, 'message': data['detail']};
       },
     );
-  }
-
-  static Future<Map<String, dynamic>> createCheckout() async {
-    try {
-      var headers = await _authHeaders();
-      var response = await http.post(
-        Uri.parse('$baseUrl/api/v1/subscription/checkout'),
-        headers: headers,
-      );
-
-      if (response.statusCode == 401) {
-        final refreshed = await AuthService.refreshToken();
-        if (refreshed) {
-          headers = await _authHeaders();
-          response = await http.post(
-            Uri.parse('$baseUrl/api/v1/subscription/checkout'),
-            headers: headers,
-          );
-        }
-      }
-
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'checkout_url': data['checkout_url']};
-      }
-      return {'success': false, 'message': data['detail']};
-    } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
-    }
   }
 }

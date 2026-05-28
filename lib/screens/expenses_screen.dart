@@ -12,6 +12,7 @@ import '../services/expenses_service.dart';
 import '../services/api_config.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
+import '../widgets/subscription_web_widget.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -1396,9 +1397,11 @@ class _ExpensesScreenState extends State<ExpensesScreen>
             if (isMobile) ...[
               FloatingActionButton(
                 heroTag: 'camera_fab',
-                onPressed: _parsing
-                    ? null
-                    : () => _pickAndParseReceipt(isNl, camera: true),
+                onPressed: isReadOnly
+                    ? () => showSubscriptionWebSheet(context, isNl)
+                    : (_parsing
+                        ? null
+                        : () => _pickAndParseReceipt(isNl, camera: true)),
                 backgroundColor: BigDoggTheme.teal800,
                 child: const Icon(Icons.camera_alt,
                     color: Colors.white, size: 24),
@@ -1407,9 +1410,11 @@ class _ExpensesScreenState extends State<ExpensesScreen>
             ],
             FloatingActionButton(
               heroTag: 'upload_fab',
-              onPressed: _parsing
-                  ? null
-                  : () => _pickAndParseReceipt(isNl, camera: false),
+              onPressed: isReadOnly
+                  ? () => showSubscriptionWebSheet(context, isNl)
+                  : (_parsing
+                      ? null
+                      : () => _pickAndParseReceipt(isNl, camera: false)),
               backgroundColor: BigDoggTheme.teal800,
               child: const Icon(Icons.folder_open,
                   color: Colors.white, size: 24),
@@ -1417,7 +1422,9 @@ class _ExpensesScreenState extends State<ExpensesScreen>
             const SizedBox(height: 12),
             FloatingActionButton(
               heroTag: 'add_fab',
-              onPressed: () => _showAddExpense(isNl),
+              onPressed: isReadOnly
+                  ? () => showSubscriptionWebSheet(context, isNl)
+                  : () => _showAddExpense(isNl),
               child: const Icon(Icons.add, color: Colors.white, size: 24),
             ),
           ]),
@@ -1427,6 +1434,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   }
 
   Widget _buildInvestmentsTab(bool isNl) {
+    final isReadOnly = context.watch<AppProvider>().isAppReadOnly;
     final currentYear = DateTime.now().year;
     double totalThisYear = 0;
     for (final inv in _investments) {
@@ -1656,7 +1664,9 @@ class _ExpensesScreenState extends State<ExpensesScreen>
           right: 16,
           child: FloatingActionButton(
             heroTag: 'inv_add_fab',
-            onPressed: () => _showAddInvestment(isNl),
+            onPressed: isReadOnly
+                ? () => showSubscriptionWebSheet(context, isNl)
+                : () => _showAddInvestment(isNl),
             child: const Icon(Icons.add, color: Colors.white, size: 24),
           ),
         ),
@@ -1667,6 +1677,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
+    final isReadOnly = context.watch<AppProvider>().isAppReadOnly;
     final isMobile = _isMobile();
 
     return Column(

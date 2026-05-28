@@ -10,6 +10,8 @@ import '../services/auth_service.dart';
 import '../services/notifications_service.dart';
 import '../services/push_service.dart';
 import '../services/offline_queue.dart';
+import '../services/subscription_service.dart';
+import '../widgets/subscription_web_widget.dart';
 import 'products_screen.dart';
 import 'clients_screen.dart';
 import 'invoices_screen.dart';
@@ -69,6 +71,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     AuthService.refreshTokenIfNeeded();
     _refreshTimer = Timer.periodic(const Duration(minutes: 20),
         (_) => AuthService.refreshTokenIfNeeded());
+    _refreshSubscriptionStatus();
     // Make sure FCM is registered for this device. Idempotent: the
     // backend upserts on (user_id, fcm_token), so calling this at
     // every mount is fine. Also handles persistent-login users who
@@ -134,6 +137,22 @@ class _DashboardScreenState extends State<DashboardScreen>
       _refreshUnreadCount();
       // ignore: unawaited_futures
       _drainOfflineQueue();
+      _refreshSubscriptionStatus();
+    }
+  }
+
+  /// Pull the current subscription state from the backend and push it
+  /// into AppProvider so screens can gate creation actions and decide
+  /// whether to show the dashboard banner.
+  Future<void> _refreshSubscriptionStatus() async {
+    final result = await SubscriptionService.getStatus();
+    if (!mounted) return;
+    if (result['success'] == true && result['subscription'] is Map) {
+      final sub = result['subscription'] as Map;
+      context.read<AppProvider>().setSubscription(
+            status: (sub['status'] ?? '').toString(),
+            isActive: sub['is_active'] == true,
+          );
     }
   }
 
@@ -543,7 +562,16 @@ Future<void> _refreshUnreadCount() async {
           ),
         ],
       ),
-      body: screens[safeIndex],
+      body: Column(
+        children: [
+          if (appProvider.showTrialBanner)
+            _TrialEndedBanner(
+              isNl: isNl,
+              onDismiss: () => appProvider.dismissTrialBanner(),
+            ),
+          Expanded(child: screens[safeIndex]),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: BigDoggTheme.teal800,
@@ -577,6 +605,73 @@ Future<void> _refreshUnreadCount() async {
       projectsEnabled: projectsEnabled,
       quotesEnabled: appProvider.quotesEnabled,
       child: scaffold,
+    );
+  }
+}
+
+
+// ─── Trial-ended banner ──────────────────────────────────────────
+class _TrialEndedBanner extends StatelessWidget {
+  final bool isNl;
+  final VoidCallback onDismiss;
+
+  const _TrialEndedBanner({required this.isNl, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: BigDoggTheme.teal800,
+      child: SafeArea(
+        bottom: false,
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline_rounded,
+                  color: BigDoggTheme.gold500, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isNl
+                      ? 'Je proefperiode is afgelopen. Ga naar bigdogg.nl om je abonnement te activeren.'
+                      : 'Your trial has ended. Visit bigdogg.nl to activate your subscription.',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: () => showSubscriptionWebSheet(context, isNl),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: BigDoggTheme.teal800,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  minimumSize: const Size(0, 32),
+                ),
+                child: Text(
+                  isNl ? 'Openen' : 'Open',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 12),
+                ),
+              ),
+              IconButton(
+                tooltip: isNl ? 'Sluiten' : 'Dismiss',
+                icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                visualDensity: VisualDensity.compact,
+                onPressed: onDismiss,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
