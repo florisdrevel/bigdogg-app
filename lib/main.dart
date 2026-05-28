@@ -9,7 +9,9 @@ import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/client_onboarding_screen.dart';
 import 'screens/landing_screen.dart';
+import 'screens/payment_success_screen.dart';
 import 'screens/pricing_screen.dart';
+import 'screens/subscription_portal_screen.dart';
 import 'screens/quote_public_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/transactions_screen.dart';
@@ -104,6 +106,21 @@ final _router = GoRouter(
         _stashPendingSignupEmail(state.uri.queryParameters['email']);
         return const PricingScreen();
       },
+    ),
+    GoRoute(
+      // Subscription management. Active monthly/yearly users get
+      // redirected straight to Stripe's billing portal; PAYG users see
+      // their own status + upgrade CTA. Reached from Settings →
+      // "Manage subscription" in the native app via in-app web view.
+      path: '/subscription',
+      builder: (context, state) => const SubscriptionPortalScreen(),
+    ),
+    GoRoute(
+      // Stripe Checkout returns here after a successful payment. Shows
+      // a green-check "close this window" page; the native app polls
+      // status on webview dismiss and surfaces the welcome snackbar.
+      path: '/payment-success',
+      builder: (context, state) => const PaymentSuccessScreen(),
     ),
     GoRoute(
       path: '/register',

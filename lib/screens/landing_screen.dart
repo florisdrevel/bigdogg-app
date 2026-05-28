@@ -231,6 +231,17 @@ For questions about these terms: info@bigdogg.nl''';
           ),
           const SizedBox(width: 8),
           if (isWide) ...[
+            if (kIsWeb)
+              TextButton(
+                onPressed: () => context.go('/pricing'),
+                style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8)),
+                child: Text(t('Prijzen', 'Pricing'),
+                    style: const TextStyle(
+                        color: BigDoggTheme.teal800,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13)),
+              ),
             TextButton(
               onPressed: () => context.go('/login'),
               style: TextButton.styleFrom(
