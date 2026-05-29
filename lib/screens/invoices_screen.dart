@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../services/invoices_service.dart';
 import '../services/clients_service.dart';
 import '../services/products_service.dart';
 import '../services/quotes_service.dart';
+import '../services/local_storage_service.dart';
+import '../services/connectivity_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/api_config.dart';
@@ -15,6 +18,7 @@ import 'prompt_invoice_screen.dart';
 import 'prompt_quote_screen.dart';
 import 'quote_detail_screen.dart';
 import '../widgets/subscription_web_widget.dart';
+import '../widgets/offline_chrome.dart';
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -31,6 +35,14 @@ class _InvoicesScreenState extends State<InvoicesScreen>
   // ─── Invoices state ──────────────────────────────────────
   List<dynamic> _invoices = [];
   bool _loading = true;
+  // Background-refresh indicator (top-right 16px dot) — set while
+  // _refreshInvoices is in flight on a screen that already has data.
+  bool _refreshing = false;
+  // True when last refresh failed AND we have cached data to show. Drives
+  // the slim "Offline — gegevens van HH:mm" banner.
+  bool _offlineMode = false;
+  // Auto-retry every 30s when offline AND no cache (empty state shown).
+  Timer? _retryTimer;
 
   String? _filterStatus;
   int? _filterQuarter;
@@ -68,9 +80,20 @@ class _InvoicesScreenState extends State<InvoicesScreen>
     });
     _appProvider.addListener(_onAppProviderChange);
     _filterQuarter = _currentQuarter;
+    _bootstrapInvoicesFromCache();
     _loadInvoices();
     _loadDismissedOverdue();
     _loadQuotes();
+  }
+
+  /// Synchronous read from the Hive cache so the list paints on the
+  /// first frame instead of after a network round-trip.
+  void _bootstrapInvoicesFromCache() {
+    final cached = LocalStorageService.get('invoices');
+    if (cached is List && cached.isNotEmpty) {
+      _invoices = cached;
+      _loading = false;
+    }
   }
 
   int _lastDataVersion = 0;
@@ -96,6 +119,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
   void dispose() {
     _appProvider.removeListener(_onAppProviderChange);
     _tabController.dispose();
+    _retryTimer?.cancel();
     super.dispose();
   }
 
@@ -178,12 +202,43 @@ class _InvoicesScreenState extends State<InvoicesScreen>
   }
 
   Future<void> _loadInvoices() async {
-    setState(() => _loading = true);
-    final result = await InvoicesService.getInvoices();
+    // Spec: never show a full-screen spinner if cache exists. So we
+    // only flip _loading=true when the list is empty (cold start with
+    // no Hive entry); otherwise we show the top-right refresh dot.
+    final hasCache = _invoices.isNotEmpty;
     setState(() {
-      _loading = false;
-      if (result['success']) _invoices = result['invoices'];
+      if (!hasCache) _loading = true;
+      _refreshing = hasCache;
     });
+    final result = await InvoicesService.getInvoices();
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final fresh = (result['invoices'] as List?) ?? const [];
+      setState(() {
+        _invoices = fresh;
+        _loading = false;
+        _refreshing = false;
+        _offlineMode = false;
+      });
+      // Persist for the next cold start + reset the retry timer.
+      await LocalStorageService.save('invoices', fresh);
+      await LocalStorageService.saveLastSync('invoices', DateTime.now());
+      _retryTimer?.cancel();
+    } else {
+      setState(() {
+        _loading = false;
+        _refreshing = false;
+        _offlineMode = true;
+      });
+      // If we have nothing to show, keep trying every 30s in the
+      // background so the user gets data the moment the wifi comes back.
+      if (_invoices.isEmpty) {
+        _retryTimer?.cancel();
+        _retryTimer = Timer(const Duration(seconds: 30), () {
+          if (mounted) _loadInvoices();
+        });
+      }
+    }
   }
 
   Future<void> _loadQuotes() async {
@@ -747,6 +802,9 @@ class _InvoicesScreenState extends State<InvoicesScreen>
     String? selectedClientId;
     String? selectedProjectId;
     List<Map<String, dynamic>> lines = [];
+    // High-risk-flow guard: disables the submit button + shows a
+    // spinner inside it while the create request is in flight.
+    bool saving = false;
 
     showDialog(
       context: context,
@@ -858,15 +916,21 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                 onPressed: () => Navigator.pop(context),
                 child: Text(isNl ? 'Annuleren' : 'Cancel')),
             ElevatedButton(
-              onPressed: selectedClientId == null || lines.isEmpty
+              onPressed: (selectedClientId == null || lines.isEmpty || saving)
                   ? null
                   : () async {
-                      Navigator.pop(context);
+                      // High-risk strict flow per spec: keep the form
+                      // open until the API confirms. Disable the button
+                      // and show a spinner inside it while the request
+                      // is in flight.
+                      setDialogState(() => saving = true);
                       final result = await InvoicesService.createInvoice(
                           clientId: selectedClientId!, lines: lines,
                           projectId: selectedProjectId);
                       if (!mounted) return;
                       if (result['offline'] == true) {
+                        // Queued — close + tell the user.
+                        Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           backgroundColor: BigDoggTheme.warning,
                           behavior: SnackBarBehavior.floating,
@@ -877,13 +941,33 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                         ));
                         return;
                       }
-                      if (result['success']) {
+                      if (result['success'] == true) {
+                        Navigator.pop(context);
                         await _loadInvoices();
                         final invoiceId = result['invoice']['id'];
                         _navigateToInvoice(invoiceId);
+                        return;
                       }
+                      // Hard failure: keep the form open with all
+                      // input intact, re-enable the button, show error.
+                      setDialogState(() => saving = false);
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        backgroundColor: BigDoggTheme.error,
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 5),
+                        content: Text(isNl
+                            ? 'Opslaan mislukt. Controleer je verbinding en probeer opnieuw.'
+                            : 'Save failed. Check your connection and try again.'),
+                      ));
                     },
-              child: Text(isNl ? 'Aanmaken' : 'Create'),
+              child: saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : Text(isNl ? 'Aanmaken' : 'Create'),
             ),
           ],
         ),
@@ -1631,10 +1715,22 @@ class _InvoicesScreenState extends State<InvoicesScreen>
     // FAB layout falls back to the invoices-only setup.
     final isQuotesTab = quotesEnabled && _tabController.index == 1;
 
+    // Empty + offline + nothing in Hive = no signal at all. Show the
+    // dedicated empty state instead of the normal list chrome.
+    final hasCache = LocalStorageService.getLastSync('invoices') != null;
+    if (_offlineMode && _invoices.isEmpty && !hasCache && !_loading) {
+      return OfflineEmptyState(isNl: isNl);
+    }
+
     return Stack(
       children: [
         Column(
           children: [
+            if (_offlineMode)
+              OfflineBanner(
+                lastSync: LocalStorageService.getLastSync('invoices'),
+                isNl: isNl,
+              ),
             // ── Tab bar (only when quotes are enabled) ─────────
             if (quotesEnabled)
               Container(
@@ -1681,19 +1777,24 @@ class _InvoicesScreenState extends State<InvoicesScreen>
               heroTag: 'ai_fab',
               onPressed: isReadOnly
                   ? () => showSubscriptionWebSheet(context, isNl)
-                  : () => Navigator.push(
+                  : () async {
+                      if (!ConnectivityService.instance.isConnectedNow) {
+                        await showOfflineGateDialog(context, isNl);
+                        return;
+                      }
+                      Navigator.push(
                           context,
                           MaterialPageRoute(
                               builder: (context) =>
-                                  const PromptInvoiceScreen()))
-                      .then((result) {
+                                  const PromptInvoiceScreen())).then((result) {
                         if (result is String) {
                           _loadInvoices();
                           _navigateToInvoice(result);
                         } else if (result == true) {
                           _loadInvoices();
                         }
-                      }),
+                      });
+                    },
               backgroundColor: BigDoggTheme.teal800,
               elevation: 2,
               child: const Icon(Icons.smart_toy_outlined,
@@ -1707,7 +1808,13 @@ class _InvoicesScreenState extends State<InvoicesScreen>
               heroTag: 'create_fab',
               onPressed: isReadOnly
                   ? () => showSubscriptionWebSheet(context, isNl)
-                  : () => _showCreateInvoice(isNl),
+                  : () async {
+                      if (!ConnectivityService.instance.isConnectedNow) {
+                        await showOfflineGateDialog(context, isNl);
+                        return;
+                      }
+                      _showCreateInvoice(isNl);
+                    },
               child: const Icon(Icons.add),
             ),
           ),
@@ -1720,18 +1827,23 @@ class _InvoicesScreenState extends State<InvoicesScreen>
               heroTag: 'ai_quote_fab',
               onPressed: isReadOnly
                   ? () => showSubscriptionWebSheet(context, isNl)
-                  : () => Navigator.push(
+                  : () async {
+                      if (!ConnectivityService.instance.isConnectedNow) {
+                        await showOfflineGateDialog(context, isNl);
+                        return;
+                      }
+                      Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => const PromptQuoteScreen()))
-                      .then((result) {
+                              builder: (context) => const PromptQuoteScreen())).then((result) {
                         if (result is String) {
                           _loadQuotes();
                           _navigateToQuote(result);
                         } else if (result == true) {
                           _loadQuotes();
                         }
-                      }),
+                      });
+                    },
               backgroundColor: BigDoggTheme.teal800,
               elevation: 2,
               child: const Icon(Icons.smart_toy_outlined,
@@ -1745,11 +1857,20 @@ class _InvoicesScreenState extends State<InvoicesScreen>
               heroTag: 'create_quote_fab',
               onPressed: isReadOnly
                   ? () => showSubscriptionWebSheet(context, isNl)
-                  : () => _showCreateQuote(isNl),
+                  : () async {
+                      if (!ConnectivityService.instance.isConnectedNow) {
+                        await showOfflineGateDialog(context, isNl);
+                        return;
+                      }
+                      _showCreateQuote(isNl);
+                    },
               child: const Icon(Icons.add),
             ),
           ),
         ],
+        // Subtle "we're checking for new data" dot. Hidden when no
+        // refresh in flight.
+        TopRightRefreshDot(visible: _refreshing),
       ],
     );
   }

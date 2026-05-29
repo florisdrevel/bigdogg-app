@@ -11,7 +11,9 @@ import '../services/offline_queue.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../services/subscription_service.dart';
+import '../services/local_storage_service.dart';
 import '../widgets/subscription_web_widget.dart';
+import '../widgets/offline_chrome.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Invoice Detail Sheet
@@ -383,25 +385,60 @@ class _OverviewScreenState extends State<OverviewScreen>
     return prefs.getString('access_token');
   }
 
+  // Background-refresh + offline state for the main "dashboard" cache
+  // key (driven by _loadQuarterly). The screen also loads annual/hours
+  // but those aren't part of the spec's "dashboard summary" snapshot.
+  bool _refreshingDashboard = false;
+  bool _offlineDashboard = false;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _bootstrapDashboardFromCache();
     _loadQuarterly();
     _loadAnnual();
     _loadHours();
+  }
+
+  void _bootstrapDashboardFromCache() {
+    final cached = LocalStorageService.get('dashboard');
+    if (cached is Map<String, dynamic>) {
+      _quarterly = cached;
+      _loadingQuarterly = false;
+    }
   }
 
   @override
   void dispose() { _tabController.dispose(); super.dispose(); }
 
   Future<void> _loadQuarterly() async {
-    setState(() => _loadingQuarterly = true);
-    final result = await OverviewService.getQuarterlyOverview();
+    final hasCache = _quarterly != null;
     setState(() {
-      _loadingQuarterly = false;
-      if (result['success']) _quarterly = result['overview'];
+      if (!hasCache) _loadingQuarterly = true;
+      _refreshingDashboard = hasCache;
     });
+    final result = await OverviewService.getQuarterlyOverview();
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final fresh = result['overview'];
+      setState(() {
+        _quarterly = fresh is Map<String, dynamic>
+            ? fresh
+            : Map<String, dynamic>.from(fresh as Map);
+        _loadingQuarterly = false;
+        _refreshingDashboard = false;
+        _offlineDashboard = false;
+      });
+      await LocalStorageService.save('dashboard', _quarterly);
+      await LocalStorageService.saveLastSync('dashboard', DateTime.now());
+    } else {
+      setState(() {
+        _loadingQuarterly = false;
+        _refreshingDashboard = false;
+        _offlineDashboard = true;
+      });
+    }
   }
 
   Future<void> _loadAnnual() async {
@@ -881,27 +918,50 @@ class _OverviewScreenState extends State<OverviewScreen>
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
-    return Column(
+
+    final hasCache = LocalStorageService.getLastSync('dashboard') != null;
+    if (_offlineDashboard && _quarterly == null && !hasCache && !_loadingQuarterly) {
+      return OfflineEmptyState(isNl: isNl);
+    }
+
+    return Stack(
       children: [
-        Container(
-          color: BigDoggTheme.teal800,
-          child: TabBar(
-            controller: _tabController,
-            indicatorColor: BigDoggTheme.gold500, indicatorWeight: 3,
-            labelColor: Colors.white, unselectedLabelColor: BigDoggTheme.teal400,
-            labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'PlusJakartaSans'),
-            tabs: [
-              Tab(text: isNl ? 'Dit kwartaal' : 'This Quarter'),
-              Tab(text: isNl ? 'Dit jaar' : 'This Year'),
-            ],
-          ),
+        Column(
+          children: [
+            if (_offlineDashboard)
+              OfflineBanner(
+                lastSync: LocalStorageService.getLastSync('dashboard'),
+                isNl: isNl,
+              ),
+            Container(
+              color: BigDoggTheme.teal800,
+              child: TabBar(
+                controller: _tabController,
+                indicatorColor: BigDoggTheme.gold500,
+                indicatorWeight: 3,
+                labelColor: Colors.white,
+                unselectedLabelColor: BigDoggTheme.teal400,
+                labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'PlusJakartaSans'),
+                tabs: [
+                  Tab(text: isNl ? 'Dit kwartaal' : 'This Quarter'),
+                  Tab(text: isNl ? 'Dit jaar' : 'This Year'),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildQuarterlyView(isNl),
+                  _buildAnnualView(isNl),
+                ],
+              ),
+            ),
+          ],
         ),
-        Expanded(
-          child: TabBarView(controller: _tabController, children: [
-            _buildQuarterlyView(isNl),
-            _buildAnnualView(isNl),
-          ]),
-        ),
+        TopRightRefreshDot(visible: _refreshingDashboard),
       ],
     );
   }

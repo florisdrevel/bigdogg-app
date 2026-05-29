@@ -6,6 +6,10 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/feature_flags.dart';
 import '../services/subscription_service.dart';
+import '../services/local_storage_service.dart';
+import '../services/invoices_service.dart';
+import '../services/expenses_service.dart';
+import '../services/overview_service.dart';
 import '../widgets/subscription_web_widget.dart';
 import '../services/auth_service.dart';
 import '../services/referral_service.dart';
@@ -1931,6 +1935,11 @@ For questions: info@bigdogg.nl''';
 
           const SizedBox(height: 16),
 
+          // ── 5b. LOCAL DATA / LAST SYNC ────────────────────────────
+          _buildLastSyncRow(isNl),
+
+          const SizedBox(height: 16),
+
           // ── 5. RESTART WALKTHROUGH ────────────────────────────────
           Container(
             decoration: BoxDecoration(color: BigDoggTheme.lightSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: BigDoggTheme.lightBorder)),
@@ -1994,6 +2003,134 @@ For questions: info@bigdogg.nl''';
         ],
       ),
     );
+  }
+
+  bool _refreshingLocalData = false;
+
+  /// "Local data — Updated at HH:MM" with a refresh button that
+  /// re-pulls invoices / expenses / clients / dashboard from the
+  /// server in parallel. Reads the oldest lastSync across all keys so
+  /// the row reflects the worst-case cache freshness.
+  Widget _buildLastSyncRow(bool isNl) {
+    final oldest = LocalStorageService.oldestLastSync();
+    final value = _formatLastSync(oldest, isNl);
+    return Container(
+      decoration: BoxDecoration(
+        color: BigDoggTheme.lightSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: BigDoggTheme.lightBorder),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isNl ? 'Lokale gegevens' : 'Local data',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: BigDoggTheme.lightTextPrimary),
+                ),
+                const SizedBox(height: 2),
+                Text(value,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: BigDoggTheme.lightTextSecondary)),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: isNl ? 'Nu vernieuwen' : 'Refresh now',
+            icon: _refreshingLocalData
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            BigDoggTheme.teal800)),
+                  )
+                : const Icon(Icons.refresh_rounded,
+                    color: BigDoggTheme.teal800),
+            onPressed: _refreshingLocalData
+                ? null
+                : () => _forceRefreshLocalData(isNl),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatLastSync(DateTime? t, bool isNl) {
+    if (t == null) {
+      return isNl ? 'Nog geen offline gegevens' : 'No offline data yet';
+    }
+    final now = DateTime.now();
+    final diff = now.difference(t);
+    if (diff.inMinutes < 60) {
+      return isNl ? 'Zojuist bijgewerkt' : 'Just updated';
+    }
+    final sameDay = t.year == now.year &&
+        t.month == now.month &&
+        t.day == now.day;
+    final hh = t.hour.toString().padLeft(2, '0');
+    final mm = t.minute.toString().padLeft(2, '0');
+    if (sameDay) {
+      return isNl ? 'Bijgewerkt om $hh:$mm' : 'Updated at $hh:$mm';
+    }
+    final monthsNl = const [
+      'jan', 'feb', 'mrt', 'apr', 'mei', 'jun',
+      'jul', 'aug', 'sep', 'okt', 'nov', 'dec',
+    ];
+    final monthsEn = const [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final mon = (isNl ? monthsNl : monthsEn)[t.month - 1];
+    return isNl
+        ? 'Bijgewerkt op ${t.day} $mon'
+        : 'Updated on ${t.day} $mon';
+  }
+
+  Future<void> _forceRefreshLocalData(bool isNl) async {
+    setState(() => _refreshingLocalData = true);
+    // Drop in-memory caches so the service calls hit the network. The
+    // persistent Hive cache stays intact until each fetch overwrites it.
+    LocalStorageService.remove('dashboard');
+    final results = await Future.wait([
+      InvoicesService.getInvoices(),
+      ExpensesService.getExpenses(),
+      OverviewService.getQuarterlyOverview(),
+    ]);
+    // Persist on success; the screen-level refresh logic already does
+    // this on its own reload, but doing it here too keeps Settings'
+    // "last synced" honest even if the user doesn't visit those tabs.
+    if (results[0]['success'] == true) {
+      await LocalStorageService.save(
+          'invoices', results[0]['invoices'] ?? const []);
+      await LocalStorageService.saveLastSync('invoices', DateTime.now());
+    }
+    if (results[1]['success'] == true) {
+      await LocalStorageService.save(
+          'expenses', results[1]['expenses'] ?? const []);
+      await LocalStorageService.saveLastSync('expenses', DateTime.now());
+    }
+    if (results[2]['success'] == true) {
+      await LocalStorageService.save(
+          'dashboard', results[2]['overview']);
+      await LocalStorageService.saveLastSync('dashboard', DateTime.now());
+    }
+    if (!mounted) return;
+    setState(() => _refreshingLocalData = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      backgroundColor: BigDoggTheme.success,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 2),
+      content: Text(isNl ? 'Lokale gegevens bijgewerkt' : 'Local data refreshed'),
+    ));
   }
 
   /// Trial countdown / status chip rendered inside the subscription

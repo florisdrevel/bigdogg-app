@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'api_cache.dart';
 import 'auth_service.dart';
+import 'local_storage_service.dart';
+import 'mem_cache.dart';
 import 'offline_queue.dart';
 import 'dart:typed_data';
 import 'package:http_parser/http_parser.dart';
@@ -17,24 +19,33 @@ class InvoicesService {
     return prefs.getString('access_token');
   }
 
+  /// 5-minute in-memory cache with stale-while-revalidate. The disk-
+  /// cache (ApiCache) remains the offline fallback inside the fetcher.
+  /// Repeat screen visits return the RAM cache instantly; the next
+  /// visit after 5 minutes triggers a background refresh.
   static Future<Map<String, dynamic>> getInvoices() async {
-    return ApiCache.read(
+    return MemCache.readWithRefresh<Map<String, dynamic>>(
       key: 'invoices_list',
-      fetcher: () async {
-        final token = await getToken();
-        final response = await http.get(
-          Uri.parse('$baseUrl/api/v1/invoices/'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-        );
-        final data = jsonDecode(response.body);
-        if (response.statusCode == 200) {
-          return {'success': true, 'invoices': data['invoices']};
-        }
-        return {'success': false, 'message': data['detail']};
-      },
+      ttl: const Duration(minutes: 5),
+      cacheIf: (v) => v['success'] == true,
+      fetcher: () => ApiCache.read(
+        key: 'invoices_list',
+        fetcher: () async {
+          final token = await getToken();
+          final response = await http.get(
+            Uri.parse('$baseUrl/api/v1/invoices/'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          );
+          final data = jsonDecode(response.body);
+          if (response.statusCode == 200) {
+            return {'success': true, 'invoices': data['invoices']};
+          }
+          return {'success': false, 'message': data['detail']};
+        },
+      ),
     );
   }
 
@@ -45,7 +56,7 @@ class InvoicesService {
     String? projectId,
   }) async {
     final token = await getToken();
-    return OfflineQueue.postOrEnqueue(
+    final result = await OfflineQueue.postOrEnqueue(
       url: '$baseUrl/api/v1/invoices/',
       headers: {
         'Authorization': 'Bearer $token',
@@ -59,6 +70,19 @@ class InvoicesService {
       },
       label: 'Factuur (${lines.length} regel${lines.length == 1 ? '' : 's'})',
     );
+    _invalidateInvoiceCaches();
+    return result;
+  }
+
+  /// Drop every cache touched by an invoice mutation. The list itself
+  /// must reload; quarterly / annual overviews aggregate invoice totals
+  /// so they're stale too.
+  static void _invalidateInvoiceCaches() {
+    MemCache.invalidate('invoices_list');
+    MemCache.invalidatePrefix('overview_');
+    MemCache.invalidatePrefix('quarter_detail');
+    // Spec: any mutation forces a fresh dashboard fetch on next load.
+    LocalStorageService.remove('dashboard');
   }
 
   static Future<Map<String, dynamic>> getInvoice(String invoiceId) async {
@@ -91,7 +115,7 @@ class InvoicesService {
     String status,
   ) async {
     final token = await getToken();
-    return OfflineQueue.patchOrEnqueue(
+    final result = await OfflineQueue.patchOrEnqueue(
       url: '$baseUrl/api/v1/invoices/$invoiceId/status',
       headers: {
         'Authorization': 'Bearer $token',
@@ -100,6 +124,8 @@ class InvoicesService {
       body: {'status': status},
       label: 'Factuur status → $status',
     );
+    _invalidateInvoiceCaches();
+    return result;
   }
 
   /// Flip the per-invoice "send the Stripe payment link" toggle.
@@ -121,11 +147,13 @@ class InvoicesService {
 
   static Future<Map<String, dynamic>> deleteInvoice(String invoiceId) async {
     final token = await getToken();
-    return OfflineQueue.deleteOrEnqueue(
+    final result = await OfflineQueue.deleteOrEnqueue(
       url: '$baseUrl/api/v1/invoices/$invoiceId',
       headers: {'Authorization': 'Bearer $token'},
       label: 'Factuur verwijderen: $invoiceId',
     );
+    _invalidateInvoiceCaches();
+    return result;
   }
 
   static Future<Map<String, dynamic>> importInvoices({

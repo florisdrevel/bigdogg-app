@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'api_cache.dart';
+import 'mem_cache.dart';
+import 'local_storage_service.dart';
 
 class AuthService {
   static const String baseUrl = ApiConfig.baseUrl;
@@ -221,6 +223,10 @@ class AuthService {
 
   static Future<void> logout() async {
     await ApiCache.clearAll();
+    MemCache.clearAll();
+    // Persistent Hive cache too — never leave one user's financial
+    // data accessible to the next person who opens the app.
+    await LocalStorageService.clearAll();
     final prefs = await SharedPreferences.getInstance();
     // Snapshot the device-level prefs, clear everything (tokens, user
     // info, cached per-account flags), then restore the device prefs.

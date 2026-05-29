@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../services/clients_service.dart';
 import '../services/invoices_service.dart';
+import '../services/local_storage_service.dart';
+import '../services/connectivity_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
+import '../widgets/offline_chrome.dart';
 import 'invoice_detail_screen.dart';
 
 class ClientsScreen extends StatefulWidget {
@@ -17,12 +21,30 @@ class ClientsScreen extends StatefulWidget {
 class _ClientsScreenState extends State<ClientsScreen> {
   List<dynamic> _clients = [];
   bool _loading = true;
+  bool _refreshing = false;
+  bool _offlineMode = false;
+  Timer? _retryTimer;
   int _lastDataVersion = -1;
 
   @override
   void initState() {
     super.initState();
+    _bootstrapClientsFromCache();
     _loadClients();
+  }
+
+  @override
+  void dispose() {
+    _retryTimer?.cancel();
+    super.dispose();
+  }
+
+  void _bootstrapClientsFromCache() {
+    final cached = LocalStorageService.get('clients');
+    if (cached is List && cached.isNotEmpty) {
+      _clients = cached;
+      _loading = false;
+    }
   }
 
   @override
@@ -36,13 +58,37 @@ class _ClientsScreenState extends State<ClientsScreen> {
   }
 
   Future<void> _loadClients() async {
-    setState(() => _loading = true);
+    final hasCache = _clients.isNotEmpty;
+    setState(() {
+      if (!hasCache) _loading = true;
+      _refreshing = hasCache;
+    });
     final result = await ClientsService.getClients();
     if (!mounted) return;
-    setState(() {
-      _loading = false;
-      if (result['success']) _clients = result['clients'];
-    });
+    if (result['success'] == true) {
+      final fresh = (result['clients'] as List?) ?? const [];
+      setState(() {
+        _clients = fresh;
+        _loading = false;
+        _refreshing = false;
+        _offlineMode = false;
+      });
+      await LocalStorageService.save('clients', fresh);
+      await LocalStorageService.saveLastSync('clients', DateTime.now());
+      _retryTimer?.cancel();
+    } else {
+      setState(() {
+        _loading = false;
+        _refreshing = false;
+        _offlineMode = true;
+      });
+      if (_clients.isEmpty) {
+        _retryTimer?.cancel();
+        _retryTimer = Timer(const Duration(seconds: 30), () {
+          if (mounted) _loadClients();
+        });
+      }
+    }
   }
 
   void _openClientDetail(bool isNl, Map<String, dynamic> client) {
@@ -283,8 +329,24 @@ class _ClientsScreenState extends State<ClientsScreen> {
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
 
+    final hasCache = LocalStorageService.getLastSync('clients') != null;
+    if (_offlineMode && _clients.isEmpty && !hasCache && !_loading) {
+      return OfflineEmptyState(isNl: isNl);
+    }
+
     return Stack(
       children: [
+        if (_offlineMode)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: OfflineBanner(
+              lastSync: LocalStorageService.getLastSync('clients'),
+              isNl: isNl,
+            ),
+          ),
+        TopRightRefreshDot(visible: _refreshing),
         _loading
             ? const Center(child: CircularProgressIndicator())
             : _clients.isEmpty
@@ -365,7 +427,13 @@ class _ClientsScreenState extends State<ClientsScreen> {
           right: 16,
           child: FloatingActionButton(
             heroTag: 'add_fab',
-            onPressed: () => _showClientDialog(isNl),
+            onPressed: () async {
+              if (!ConnectivityService.instance.isConnectedNow) {
+                await showOfflineGateDialog(context, isNl);
+                return;
+              }
+              _showClientDialog(isNl);
+            },
             child: const Icon(Icons.add),
           ),
         ),

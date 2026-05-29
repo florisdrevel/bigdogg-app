@@ -223,6 +223,86 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     );
   }
 
+  /// Optimistic status change — flips the local invoice immediately,
+  /// shows a 4-second undo snackbar, fires the API call in the
+  /// background. On failure we revert the local state and surface an
+  /// error snackbar (6s).
+  ///
+  /// Per spec: only used for status flips that don't trigger external
+  /// communication. Sending the invoice by email goes through the
+  /// strict high-risk flow (form stays open on failure).
+  Future<void> _optimisticStatusChange({
+    required String newStatus,
+    required String successLabelNl,
+    required String successLabelEn,
+    required bool isNl,
+  }) async {
+    if (await _blockedByReadOnly(isNl)) return;
+    final invoice = _invoice;
+    if (invoice == null) return;
+    final previousStatus = (invoice['status'] ?? '').toString();
+    if (previousStatus == newStatus) return;
+
+    // Optimistic flip — UI updates instantly.
+    setState(() {
+      invoice['status'] = newStatus;
+    });
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    var undone = false;
+    final snackController = messenger.showSnackBar(SnackBar(
+      duration: const Duration(seconds: 4),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: BigDoggTheme.teal800,
+      content: Text(
+        isNl ? successLabelNl : successLabelEn,
+        style: const TextStyle(color: Colors.white),
+      ),
+      action: SnackBarAction(
+        label: isNl ? 'Ongedaan maken' : 'Undo',
+        textColor: BigDoggTheme.gold400,
+        onPressed: () {
+          undone = true;
+          // Revert the local state. We cannot cancel the in-flight
+          // HTTP request — if the API already wrote the new status,
+          // fire a follow-up PATCH back to the previous value so the
+          // server matches the user's intent.
+          if (mounted) {
+            setState(() {
+              invoice['status'] = previousStatus;
+            });
+          }
+          // Best-effort revert on the server.
+          // ignore: unawaited_futures
+          InvoicesService.updateStatus(widget.invoiceId, previousStatus);
+        },
+      ),
+    ));
+
+    final result =
+        await InvoicesService.updateStatus(widget.invoiceId, newStatus);
+    if (undone) return; // User clicked Undo before the call returned.
+    if (!mounted) return;
+    if (result['success'] != true && result['offline'] != true) {
+      // Revert and surface an error. (Offline-queue inserts are
+      // treated as success — they'll sync when connectivity returns.)
+      setState(() {
+        invoice['status'] = previousStatus;
+      });
+      snackController.close();
+      messenger.showSnackBar(SnackBar(
+        duration: const Duration(seconds: 6),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: BigDoggTheme.error,
+        content: Text(
+          isNl ? 'Niet gelukt — probeer opnieuw' : 'Failed — please try again',
+          style: const TextStyle(color: Colors.white),
+        ),
+      ));
+    }
+  }
+
   /// Returns true if the user is in read-only mode AND we surfaced the
   /// paywall sheet for them — caller should bail. Returns false if the
   /// action is allowed.
@@ -739,24 +819,24 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   isNl ? 'Markeer als verstuurd' : 'Mark as Sent',
                   BigDoggTheme.info,
                   Icons.send,
-                  () async {
-                    if (await _blockedByReadOnly(isNl)) return;
-                    await InvoicesService.updateStatus(
-                        widget.invoiceId, 'sent');
-                    _loadInvoice();
-                  },
+                  () => _optimisticStatusChange(
+                    newStatus: 'sent',
+                    successLabelNl: 'Gemarkeerd als verstuurd',
+                    successLabelEn: 'Marked as sent',
+                    isNl: isNl,
+                  ),
                 ),
               if (status == 'sent' || status == 'overdue') ...[
                 _actionButton(
                   isNl ? 'Markeer als betaald' : 'Mark as Paid',
                   BigDoggTheme.success,
                   Icons.check_circle_outline,
-                  () async {
-                    if (await _blockedByReadOnly(isNl)) return;
-                    await InvoicesService.updateStatus(
-                        widget.invoiceId, 'paid');
-                    _loadInvoice();
-                  },
+                  () => _optimisticStatusChange(
+                    newStatus: 'paid',
+                    successLabelNl: 'Gemarkeerd als betaald',
+                    successLabelEn: 'Marked as paid',
+                    isNl: isNl,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 _actionButton(
@@ -789,12 +869,12 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                         : 'Mark as Overdue',
                     BigDoggTheme.error,
                     Icons.warning_amber_outlined,
-                    () async {
-                      if (await _blockedByReadOnly(isNl)) return;
-                      await InvoicesService.updateStatus(
-                          widget.invoiceId, 'overdue');
-                      _loadInvoice();
-                    },
+                    () => _optimisticStatusChange(
+                      newStatus: 'overdue',
+                      successLabelNl: 'Gemarkeerd als verlopen',
+                      successLabelEn: 'Marked as overdue',
+                      isNl: isNl,
+                    ),
                   ),
                 ),
               if (status == 'draft')

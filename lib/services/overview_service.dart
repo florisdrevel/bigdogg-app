@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'api_cache.dart';
 import 'auth_service.dart';
+import 'mem_cache.dart';
 
 class OverviewService {
   static const String baseUrl = ApiConfig.baseUrl;
@@ -15,46 +16,56 @@ class OverviewService {
   }
 
   static Future<Map<String, dynamic>> getQuarterlyOverview() async {
-    return ApiCache.read(
+    return MemCache.readWithRefresh<Map<String, dynamic>>(
       key: 'overview_quarterly',
-      fetcher: () async {
-        final token = await _getToken();
-        final response = await http.get(
-          Uri.parse('$baseUrl/api/v1/overview/quarterly'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-        );
-        final data = jsonDecode(response.body);
-        if (response.statusCode == 200) {
-          return {'success': true, 'overview': data};
-        }
-        return {'success': false, 'message': data['detail']};
-      },
+      ttl: const Duration(minutes: 5),
+      cacheIf: (v) => v['success'] == true,
+      fetcher: () => ApiCache.read(
+        key: 'overview_quarterly',
+        fetcher: () async {
+          final token = await _getToken();
+          final response = await http.get(
+            Uri.parse('$baseUrl/api/v1/overview/quarterly'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          );
+          final data = jsonDecode(response.body);
+          if (response.statusCode == 200) {
+            return {'success': true, 'overview': data};
+          }
+          return {'success': false, 'message': data['detail']};
+        },
+      ),
     );
   }
 
   static Future<Map<String, dynamic>> getAnnualOverview({int? year}) async {
     final y = year ?? DateTime.now().year;
-    return ApiCache.read(
+    return MemCache.readWithRefresh<Map<String, dynamic>>(
       key: 'overview_annual:$y',
-      fetcher: () async {
-        final token = await _getToken();
-        final yearParam = year != null ? '?year=$year' : '';
-        final response = await http.get(
-          Uri.parse('$baseUrl/api/v1/overview/annual$yearParam'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-        );
-        final data = jsonDecode(response.body);
-        if (response.statusCode == 200) {
-          return {'success': true, 'overview': data};
-        }
-        return {'success': false, 'message': data['detail']};
-      },
+      ttl: const Duration(minutes: 5),
+      cacheIf: (v) => v['success'] == true,
+      fetcher: () => ApiCache.read(
+        key: 'overview_annual:$y',
+        fetcher: () async {
+          final token = await _getToken();
+          final yearParam = year != null ? '?year=$year' : '';
+          final response = await http.get(
+            Uri.parse('$baseUrl/api/v1/overview/annual$yearParam'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          );
+          final data = jsonDecode(response.body);
+          if (response.statusCode == 200) {
+            return {'success': true, 'overview': data};
+          }
+          return {'success': false, 'message': data['detail']};
+        },
+      ),
     );
   }
 

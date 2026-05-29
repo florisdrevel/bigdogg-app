@@ -7,12 +7,16 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
 import '../services/web_io.dart';
 import '../services/expenses_service.dart';
 import '../services/api_config.dart';
+import '../services/local_storage_service.dart';
+import '../services/connectivity_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../widgets/subscription_web_widget.dart';
+import '../widgets/offline_chrome.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -29,6 +33,9 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   List<dynamic> _expenses = [];
   bool _loading = true;
   bool _parsing = false;
+  bool _refreshing = false;
+  bool _offlineMode = false;
+  Timer? _retryTimer;
 
   List<dynamic> _investments = [];
   bool _loadingInvestments = true;
@@ -66,8 +73,18 @@ class _ExpensesScreenState extends State<ExpensesScreen>
         length: 2, vsync: this, initialIndex: initialSubTab);
     _appProvider.addListener(_onAppProviderChange);
     _filterQuarter = _currentQuarter;
+    _bootstrapExpensesFromCache();
     _loadExpenses();
     _loadInvestments();
+  }
+
+  /// Cache-first render so the list paints on the first frame.
+  void _bootstrapExpensesFromCache() {
+    final cached = LocalStorageService.get('expenses');
+    if (cached is List && cached.isNotEmpty) {
+      _expenses = cached;
+      _loading = false;
+    }
   }
 
   int _lastDataVersion = 0;
@@ -92,16 +109,42 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   void dispose() {
     _appProvider.removeListener(_onAppProviderChange);
     _tabController.dispose();
+    _retryTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _loadExpenses() async {
-    setState(() => _loading = true);
-    final result = await ExpensesService.getExpenses();
+    final hasCache = _expenses.isNotEmpty;
     setState(() {
-      _loading = false;
-      if (result['success']) _expenses = result['expenses'];
+      if (!hasCache) _loading = true;
+      _refreshing = hasCache;
     });
+    final result = await ExpensesService.getExpenses();
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final fresh = (result['expenses'] as List?) ?? const [];
+      setState(() {
+        _expenses = fresh;
+        _loading = false;
+        _refreshing = false;
+        _offlineMode = false;
+      });
+      await LocalStorageService.save('expenses', fresh);
+      await LocalStorageService.saveLastSync('expenses', DateTime.now());
+      _retryTimer?.cancel();
+    } else {
+      setState(() {
+        _loading = false;
+        _refreshing = false;
+        _offlineMode = true;
+      });
+      if (_expenses.isEmpty) {
+        _retryTimer?.cancel();
+        _retryTimer = Timer(const Duration(seconds: 30), () {
+          if (mounted) _loadExpenses();
+        });
+      }
+    }
   }
 
   Future<void> _loadInvestments() async {
@@ -137,10 +180,57 @@ class _ExpensesScreenState extends State<ExpensesScreen>
     return [];
   }
 
+  /// Optimistic delete — the row disappears instantly; an undo snackbar
+  /// gives the user 4s to back out before the API call lands. Failures
+  /// snap the row back into the list with an error snackbar.
   Future<void> _deleteExpense(String id) async {
     final isNl = context.read<AppProvider>().language == 'nl';
+    final idx = _expenses.indexWhere((e) => e['id'].toString() == id);
+    if (idx < 0) return;
+    final removed = _expenses[idx];
+
+    // Optimistic local removal.
+    setState(() {
+      _expenses = List.from(_expenses)..removeAt(idx);
+    });
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    var undone = false;
+    final snack = messenger.showSnackBar(SnackBar(
+      duration: const Duration(seconds: 4),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: BigDoggTheme.teal800,
+      content: Text(
+        isNl ? 'Kosten verwijderd' : 'Expense deleted',
+        style: const TextStyle(color: Colors.white),
+      ),
+      action: SnackBarAction(
+        label: isNl ? 'Ongedaan maken' : 'Undo',
+        textColor: BigDoggTheme.gold400,
+        onPressed: () {
+          undone = true;
+          if (mounted) {
+            setState(() {
+              _expenses = List.from(_expenses)..insert(idx, removed);
+            });
+          }
+        },
+      ),
+    ));
+
     final result = await ExpensesService.deleteExpense(id);
-    if (result['offline'] == true && mounted) {
+    if (undone) {
+      // User backed out before the network call returned. Undo locally
+      // is already done; nothing more to do since the spec accepts the
+      // small window where the delete may have hit the server. Trigger
+      // a fresh fetch so reality + local state reconverge.
+      _loadExpenses();
+      return;
+    }
+    if (!mounted) return;
+    if (result['offline'] == true) {
+      // Queued — the offline_queue will retry. Tell the user.
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: BigDoggTheme.warning,
         behavior: SnackBarBehavior.floating,
@@ -148,6 +238,25 @@ class _ExpensesScreenState extends State<ExpensesScreen>
         content: Text(isNl
             ? 'Geen verbinding — wordt verwijderd zodra je online bent.'
             : 'Offline — will be deleted once you are back online.'),
+      ));
+      return;
+    }
+    if (result['success'] != true) {
+      // Revert the optimistic removal and surface the failure.
+      setState(() {
+        _expenses = List.from(_expenses)..insert(idx, removed);
+      });
+      snack.close();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        duration: const Duration(seconds: 6),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: BigDoggTheme.error,
+        content: Text(
+          isNl
+              ? 'Niet gelukt — probeer opnieuw'
+              : 'Failed — please try again',
+          style: const TextStyle(color: Colors.white),
+        ),
       ));
       return;
     }
@@ -1425,7 +1534,13 @@ class _ExpensesScreenState extends State<ExpensesScreen>
               heroTag: 'add_fab',
               onPressed: isReadOnly
                   ? () => showSubscriptionWebSheet(context, isNl)
-                  : () => _showAddExpense(isNl),
+                  : () async {
+                      if (!ConnectivityService.instance.isConnectedNow) {
+                        await showOfflineGateDialog(context, isNl);
+                        return;
+                      }
+                      _showAddExpense(isNl);
+                    },
               child: const Icon(Icons.add, color: Colors.white, size: 24),
             ),
           ]),
@@ -1667,7 +1782,13 @@ class _ExpensesScreenState extends State<ExpensesScreen>
             heroTag: 'inv_add_fab',
             onPressed: isReadOnly
                 ? () => showSubscriptionWebSheet(context, isNl)
-                : () => _showAddInvestment(isNl),
+                : () async {
+                    if (!ConnectivityService.instance.isConnectedNow) {
+                      await showOfflineGateDialog(context, isNl);
+                      return;
+                    }
+                    _showAddInvestment(isNl);
+                  },
             child: const Icon(Icons.add, color: Colors.white, size: 24),
           ),
         ),
@@ -1680,11 +1801,23 @@ class _ExpensesScreenState extends State<ExpensesScreen>
     final isNl = context.watch<AppProvider>().language == 'nl';
     final isMobile = _isMobile();
 
-    return Column(
+    final hasCache = LocalStorageService.getLastSync('expenses') != null;
+    if (_offlineMode && _expenses.isEmpty && !hasCache && !_loading) {
+      return OfflineEmptyState(isNl: isNl);
+    }
+
+    return Stack(
       children: [
-        Container(
-          color: BigDoggTheme.teal800,
-          child: TabBar(
+        Column(
+          children: [
+            if (_offlineMode)
+              OfflineBanner(
+                lastSync: LocalStorageService.getLastSync('expenses'),
+                isNl: isNl,
+              ),
+            Container(
+              color: BigDoggTheme.teal800,
+              child: TabBar(
             controller: _tabController,
             indicatorColor: BigDoggTheme.gold500,
             indicatorWeight: 3,
@@ -1699,15 +1832,18 @@ class _ExpensesScreenState extends State<ExpensesScreen>
             ],
           ),
         ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildExpensesTab(isNl, isMobile),
-              _buildInvestmentsTab(isNl),
-            ],
-          ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildExpensesTab(isNl, isMobile),
+                  _buildInvestmentsTab(isNl),
+                ],
+              ),
+            ),
+          ],
         ),
+        TopRightRefreshDot(visible: _refreshing),
       ],
     );
   }

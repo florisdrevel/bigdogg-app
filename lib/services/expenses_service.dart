@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'api_cache.dart';
 import 'auth_service.dart';
+import 'local_storage_service.dart';
+import 'mem_cache.dart';
 import 'offline_queue.dart';
 
 class ExpensesService {
@@ -18,24 +20,39 @@ class ExpensesService {
   }
 
   static Future<Map<String, dynamic>> getExpenses() async {
-    return ApiCache.read(
+    return MemCache.readWithRefresh<Map<String, dynamic>>(
       key: 'expenses_list',
-      fetcher: () async {
-        final token = await _getToken();
-        final response = await http.get(
-          Uri.parse('$baseUrl/api/v1/expenses/'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-        );
-        final data = jsonDecode(response.body);
-        if (response.statusCode == 200) {
-          return {'success': true, 'expenses': data['expenses']};
-        }
-        return {'success': false, 'message': data['detail']};
-      },
+      ttl: const Duration(minutes: 5),
+      cacheIf: (v) => v['success'] == true,
+      fetcher: () => ApiCache.read(
+        key: 'expenses_list',
+        fetcher: () async {
+          final token = await _getToken();
+          final response = await http.get(
+            Uri.parse('$baseUrl/api/v1/expenses/'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          );
+          final data = jsonDecode(response.body);
+          if (response.statusCode == 200) {
+            return {'success': true, 'expenses': data['expenses']};
+          }
+          return {'success': false, 'message': data['detail']};
+        },
+      ),
     );
+  }
+
+  /// Drop caches that depend on the expenses list — dashboard overviews
+  /// aggregate expense totals so they go stale too.
+  static void _invalidateExpenseCaches() {
+    MemCache.invalidate('expenses_list');
+    MemCache.invalidatePrefix('overview_');
+    MemCache.invalidatePrefix('quarter_detail');
+    // Spec: any mutation forces a fresh dashboard fetch on next load.
+    LocalStorageService.remove('dashboard');
   }
 
   static Future<Map<String, dynamic>> createExpense({
@@ -56,7 +73,7 @@ class ExpensesService {
     };
     if (projectId != null) body['project_id'] = projectId;
 
-    return OfflineQueue.postOrEnqueue(
+    final result = await OfflineQueue.postOrEnqueue(
       url: '$baseUrl/api/v1/expenses/',
       headers: {
         'Authorization': 'Bearer $token',
@@ -65,6 +82,8 @@ class ExpensesService {
       body: body,
       label: 'Kosten: $description',
     );
+    _invalidateExpenseCaches();
+    return result;
   }
 
   static Future<Map<String, dynamic>> parseReceipt({
@@ -137,10 +156,12 @@ class ExpensesService {
 
   static Future<Map<String, dynamic>> deleteExpense(String expenseId) async {
     final token = await _getToken();
-    return OfflineQueue.deleteOrEnqueue(
+    final result = await OfflineQueue.deleteOrEnqueue(
       url: '$baseUrl/api/v1/expenses/$expenseId',
       headers: {'Authorization': 'Bearer $token'},
       label: 'Kosten verwijderen: $expenseId',
     );
+    _invalidateExpenseCaches();
+    return result;
   }
 }
