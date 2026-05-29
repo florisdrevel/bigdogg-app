@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../config/feature_flags.dart';
 import '../providers/app_provider.dart';
 import '../services/subscription_service.dart';
 import '../theme.dart';
@@ -120,9 +121,11 @@ Future<void> _launchAndRefresh(
   final isActive = sub['is_active'] == true;
 
   if (!outerCtx.mounted) return;
-  outerCtx
-      .read<AppProvider>()
-      .setSubscription(status: status, isActive: isActive);
+  outerCtx.read<AppProvider>().setSubscription(
+        status: status,
+        isActive: isActive,
+        daysLeft: (sub['days_left'] as num?)?.toInt(),
+      );
 
   if (!wasActive && isActive) {
     // Newly activated — celebrate.
@@ -156,6 +159,9 @@ class _PaywallModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsReaderMode) {
+      return _readerModeBody(context);
+    }
     final bullets = isNl
         ? const [
             '✓ Facturen versturen & bijhouden',
@@ -188,33 +194,32 @@ class _PaywallModal extends StatelessWidget {
             ),
           ),
 
-          // Logo badge
+          // Logo badge — white background with a thin gold ring so the
+          // dark teal/gold logo asset stays legible (was disappearing on
+          // the previous dark-teal gradient).
           Container(
-            width: 84,
-            height: 84,
+            width: 92,
+            height: 92,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  BigDoggTheme.teal800,
-                  BigDoggTheme.teal700,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(20),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                  color: BigDoggTheme.gold500.withOpacity(0.5), width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: BigDoggTheme.teal800.withOpacity(0.25),
-                  blurRadius: 16,
+                  color: BigDoggTheme.teal800.withOpacity(0.12),
+                  blurRadius: 18,
                   offset: const Offset(0, 6),
                 ),
               ],
             ),
             alignment: Alignment.center,
-            child: Image.asset(
-              'assets/images/logo.png',
-              width: 56,
-              height: 56,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.contain,
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -310,6 +315,89 @@ class _PaywallModal extends StatelessWidget {
                 fontFamily: 'PlusJakartaSans',
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Stripped-down body shown on iOS builds. No price, no upgrade copy,
+  /// no "subscribe" CTA — just a neutral "manage on bigdogg.nl" message
+  /// to satisfy Apple's anti-steering guidelines. The button still opens
+  /// the in-app web view so the user can sign up there if they want; we
+  /// just don't push them.
+  Widget _readerModeBody(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 22),
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: BigDoggTheme.lightBorder, width: 1.5),
+            ),
+            alignment: Alignment.center,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Image.asset('assets/images/logo.png',
+                  fit: BoxFit.contain),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            isNl
+                ? 'Beheer je account op bigdogg.nl'
+                : 'Manage your account at bigdogg.nl',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: BigDoggTheme.teal800,
+              fontFamily: 'PlusJakartaSans',
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _onActivatePressed(context),
+              icon: const Icon(Icons.open_in_new_rounded, size: 18),
+              label: Text(isNl ? 'Openen' : 'Open',
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: BigDoggTheme.teal800,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(isNl ? 'Sluiten' : 'Close',
+                style: TextStyle(color: Colors.grey[500], fontSize: 14)),
           ),
         ],
       ),

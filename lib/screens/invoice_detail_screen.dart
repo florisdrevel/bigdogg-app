@@ -223,12 +223,20 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     );
   }
 
-  Future<void> _sendEmail(bool isNl) async {
-    // Read-only mode (no active subscription) blocks sending invoices.
+  /// Returns true if the user is in read-only mode AND we surfaced the
+  /// paywall sheet for them — caller should bail. Returns false if the
+  /// action is allowed.
+  Future<bool> _blockedByReadOnly(bool isNl) async {
+    if (!mounted) return true;
     if (context.read<AppProvider>().isAppReadOnly) {
       await showSubscriptionWebSheet(context, isNl);
-      return;
+      return true;
     }
+    return false;
+  }
+
+  Future<void> _sendEmail(bool isNl) async {
+    if (await _blockedByReadOnly(isNl)) return;
     final client = _invoice!['clients'];
     final clientEmail =
         client?['email'] ?? _invoice!['client_email'] ?? '';
@@ -732,6 +740,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   BigDoggTheme.info,
                   Icons.send,
                   () async {
+                    if (await _blockedByReadOnly(isNl)) return;
                     await InvoicesService.updateStatus(
                         widget.invoiceId, 'sent');
                     _loadInvoice();
@@ -743,6 +752,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   BigDoggTheme.success,
                   Icons.check_circle_outline,
                   () async {
+                    if (await _blockedByReadOnly(isNl)) return;
                     await InvoicesService.updateStatus(
                         widget.invoiceId, 'paid');
                     _loadInvoice();
@@ -754,6 +764,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   BigDoggTheme.warning,
                   Icons.notifications_outlined,
                   () async {
+                    if (await _blockedByReadOnly(isNl)) return;
                     await InvoicesService.sendReminder(
                         widget.invoiceId);
                     if (mounted) {
@@ -779,6 +790,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                     BigDoggTheme.error,
                     Icons.warning_amber_outlined,
                     () async {
+                      if (await _blockedByReadOnly(isNl)) return;
                       await InvoicesService.updateStatus(
                           widget.invoiceId, 'overdue');
                       _loadInvoice();
@@ -793,6 +805,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                     BigDoggTheme.lightTextSecondary,
                     Icons.delete_outline,
                     () async {
+                      if (await _blockedByReadOnly(isNl)) return;
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(

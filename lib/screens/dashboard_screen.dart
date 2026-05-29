@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../services/notifications_service.dart';
 import '../services/push_service.dart';
 import '../services/offline_queue.dart';
+import '../config/feature_flags.dart';
 import '../services/subscription_service.dart';
 import '../widgets/subscription_web_widget.dart';
 import 'products_screen.dart';
@@ -152,6 +153,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       context.read<AppProvider>().setSubscription(
             status: (sub['status'] ?? '').toString(),
             isActive: sub['is_active'] == true,
+            daysLeft: (sub['days_left'] as num?)?.toInt(),
           );
     }
   }
@@ -564,7 +566,26 @@ Future<void> _refreshUnreadCount() async {
       ),
       body: Column(
         children: [
-          if (appProvider.showTrialBanner)
+          // Mutually exclusive banner stack: active-trial warning fires
+          // for trial users at <= 7 days left; trial-ended takes over
+          // once read-only mode is on. Both auto-hide while the paywall
+          // modal is up (see AppProvider.paywallVisible).
+          if (appProvider.showTrialWarningBanner)
+            _TrialWarningBanner(
+              isNl: isNl,
+              daysLeft: appProvider.subscriptionDaysLeft ?? 0,
+              onDismiss: () => appProvider.dismissTrialWarningBanner(),
+              onReferFriends: () {
+                // Jump to Settings (its tab index depends on whether
+                // Projects is enabled) and scroll to the referral
+                // section once that screen builds.
+                final settingsIdx =
+                    appProvider.projectsEnabled ? 7 : 6;
+                appProvider.requestNavigateToTab(settingsIdx);
+                appProvider.requestScrollToReferral();
+              },
+            )
+          else if (appProvider.showTrialBanner)
             _TrialEndedBanner(
               isNl: isNl,
               onDismiss: () => appProvider.dismissTrialBanner(),
@@ -610,6 +631,154 @@ Future<void> _refreshUnreadCount() async {
 }
 
 
+// ─── Trial-warning banner (active trial, <= 7 days left) ────────
+/// Two visual tiers driven by daysLeft:
+///   - daysLeft <= 3: red, urgency copy
+///   - daysLeft <= 7: amber, friendly nudge
+///
+/// On iOS (reader-mode) we drop the Subscribe CTA — only Refer-friends
+/// remains (referrals aren't a payment flow, so they're App Store-safe).
+class _TrialWarningBanner extends StatelessWidget {
+  final bool isNl;
+  final int daysLeft;
+  final VoidCallback onDismiss;
+  final VoidCallback onReferFriends;
+
+  const _TrialWarningBanner({
+    required this.isNl,
+    required this.daysLeft,
+    required this.onDismiss,
+    required this.onReferFriends,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final urgent = daysLeft <= 3;
+    final bg = urgent ? const Color(0xFFB91C1C) : const Color(0xFFD97706);
+
+    final fullCopyNl = urgent
+        ? 'Nog $daysLeft dagen! Daarna worden functies geblokkeerd · Start je abonnement of verwijs vrienden'
+        : 'Nog $daysLeft dagen gratis · Verwijs 2 vrienden voor een gratis maand · Abonneer op bigdogg.nl';
+    final fullCopyEn = urgent
+        ? '$daysLeft days left! Features will be blocked after this · Start your subscription or refer friends'
+        : '$daysLeft days left on trial · Refer 2 friends for a free month · Subscribe at bigdogg.nl';
+    final readerCopyNl = urgent
+        ? 'Nog $daysLeft dagen · Verwijs 2 vrienden voor een gratis maand'
+        : 'Nog $daysLeft dagen gratis · Verwijs 2 vrienden voor een gratis maand';
+    final readerCopyEn = urgent
+        ? '$daysLeft days left · Refer 2 friends for a free month'
+        : '$daysLeft days left on trial · Refer 2 friends for a free month';
+
+    final copy = kIsReaderMode
+        ? (isNl ? readerCopyNl : readerCopyEn)
+        : (isNl ? fullCopyNl : fullCopyEn);
+
+    return Material(
+      color: bg,
+      child: SafeArea(
+        bottom: false,
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 6, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    urgent
+                        ? Icons.error_outline_rounded
+                        : Icons.access_time_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      copy,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: isNl ? 'Sluiten' : 'Dismiss',
+                    icon: const Icon(Icons.close,
+                        color: Colors.white70, size: 16),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onDismiss,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  if (!kIsReaderMode) ...[
+                    Expanded(
+                      child: _bannerButton(
+                        label: isNl ? 'Abonneren' : 'Subscribe',
+                        filled: true,
+                        accent: bg,
+                        onTap: () => showPaywallModal(context, isNl),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: _bannerButton(
+                      label:
+                          isNl ? 'Vrienden uitnodigen' : 'Refer friends',
+                      filled: kIsReaderMode,
+                      accent: bg,
+                      onTap: onReferFriends,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _bannerButton({
+    required String label,
+    required bool filled,
+    required Color accent,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: filled ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: filled ? Colors.white : Colors.white70,
+            width: 1.2,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: filled ? accent : Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
 // ─── Trial-ended banner ──────────────────────────────────────────
 /// Slim, full-width tappable banner. Whole row launches the paywall
 /// modal so the conversion path is one tap away. The close button
@@ -623,6 +792,15 @@ class _TrialEndedBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // iOS / reader-mode: neutral copy, no price, no Subscribe-like
+    // verbiage. Web / Android: conversion-focused.
+    final label = kIsReaderMode
+        ? (isNl
+            ? 'Beheer je account op bigdogg.nl'
+            : 'Manage your account at bigdogg.nl')
+        : (isNl
+            ? 'Proefperiode afgelopen · Abonneer op bigdogg.nl · vanaf €9,99/maand'
+            : 'Trial ended · Subscribe at bigdogg.nl · from €9.99/month');
     return Material(
       color: BigDoggTheme.teal800,
       child: SafeArea(
@@ -634,14 +812,17 @@ class _TrialEndedBanner extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
             child: Row(
               children: [
-                const Icon(Icons.workspace_premium_rounded,
-                    color: BigDoggTheme.gold500, size: 18),
+                Icon(
+                  kIsReaderMode
+                      ? Icons.public_rounded
+                      : Icons.workspace_premium_rounded,
+                  color: BigDoggTheme.gold500,
+                  size: 18,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    isNl
-                        ? 'Proefperiode afgelopen · Abonneer op bigdogg.nl · vanaf €9,99/maand'
-                        : 'Trial ended · Subscribe at bigdogg.nl · from €9.99/month',
+                    label,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12.5,

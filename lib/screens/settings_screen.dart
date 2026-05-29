@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../config/feature_flags.dart';
 import '../services/subscription_service.dart';
 import '../widgets/subscription_web_widget.dart';
 import '../services/auth_service.dart';
@@ -26,6 +27,10 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  // Anchor for the trial-banner "Refer friends" CTA, which jumps to
+  // Settings and auto-scrolls to the referral section.
+  final GlobalKey _referralAnchor = GlobalKey();
+
   Map<String, dynamic>? _subscription;
   bool _loading = true;
   bool _stripeFeeExpanded = false;
@@ -609,14 +614,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // ── Bank statement PDF → Claude parse → import selected as expenses ──
   Future<void> _parseStatementPdf(bool isNl) async {
-    if (!kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(isNl
-            ? 'Importeren werkt momenteel via bigdogg.nl op je computer'
-            : 'Import currently works via bigdogg.nl on your computer'),
-      ));
-      return;
-    }
     final picked = await pickFiles(
       accept: '.pdf,application/pdf',
       multiple: false,
@@ -1563,6 +1560,23 @@ For questions: info@bigdogg.nl''';
     final isNl = context.watch<AppProvider>().language == 'nl';
     final appProvider = context.watch<AppProvider>();
 
+    // Consume a pending "scroll to referrals" request — comes from the
+    // dashboard trial-warning banner's "Refer friends" CTA.
+    if (appProvider.scrollToReferralPending) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        appProvider.consumeScrollToReferral();
+        final ctx = _referralAnchor.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            duration: const Duration(milliseconds: 450),
+            curve: Curves.easeOutCubic,
+            alignment: 0.1,
+          );
+        }
+      });
+    }
+
     if (_loading) return const Center(child: CircularProgressIndicator());
 
     final sub = _subscription;
@@ -1608,6 +1622,7 @@ For questions: info@bigdogg.nl''';
                 Text(statusText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 Text(statusDetail, style: TextStyle(color: statusColor, fontSize: 13)),
               ])),
+              _buildTrialChip(isNl, status, (daysLeft as num).toInt()),
             ]),
           ),
 
@@ -1909,7 +1924,10 @@ For questions: info@bigdogg.nl''';
           const SizedBox(height: 16),
 
           // ── 5a. INVITE A FRIEND ───────────────────────────────────
-          _buildReferralSection(isNl),
+          KeyedSubtree(
+            key: _referralAnchor,
+            child: _buildReferralSection(isNl),
+          ),
 
           const SizedBox(height: 16),
 
@@ -1978,6 +1996,65 @@ For questions: info@bigdogg.nl''';
     );
   }
 
+  /// Trial countdown / status chip rendered inside the subscription
+  /// card. Colour-coded by urgency:
+  ///   - active paid:        teal
+  ///   - trial, > 7 days:    teal
+  ///   - trial, <= 7 days:   orange
+  ///   - trial, <= 3 days:   red
+  ///   - trial expired:      red (tappable → paywall)
+  Widget _buildTrialChip(bool isNl, String status, int daysLeft) {
+    if (status == 'active') {
+      return _chip(
+        label: isNl ? 'Actief abonnement' : 'Active subscription',
+        bg: BigDoggTheme.teal700,
+      );
+    }
+    if (status == 'trial' && daysLeft > 0) {
+      Color bg;
+      if (daysLeft <= 3) {
+        bg = const Color(0xFFF44336);
+      } else if (daysLeft <= 7) {
+        bg = const Color(0xFFFF9800);
+      } else {
+        bg = BigDoggTheme.teal700;
+      }
+      return _chip(
+        label: isNl
+            ? 'Proefperiode: nog $daysLeft dagen'
+            : 'Trial: $daysLeft days remaining',
+        bg: bg,
+      );
+    }
+    // Trial expired or no subscription — tappable, opens paywall.
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => showPaywallModal(context, isNl),
+      child: _chip(
+        label: isNl ? 'Proefperiode verlopen' : 'Trial expired',
+        bg: const Color(0xFFF44336),
+      ),
+    );
+  }
+
+  Widget _chip({required String label, required Color bg}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   /// Permanent, non-intrusive path to the user's billing on bigdogg.nl.
   /// Active users get the Stripe customer portal; trial/expired users
   /// get the pricing page (both with email pre-filled). Always visible
@@ -1986,15 +2063,27 @@ For questions: info@bigdogg.nl''';
     final isActive = status == 'active';
     final label = isActive
         ? (isNl ? 'Abonnement beheren' : 'Manage subscription')
-        : (isNl ? 'Abonnement starten' : 'Start subscription');
+        : (kIsReaderMode
+            ? (isNl
+                ? 'Beheer je account op bigdogg.nl'
+                : 'Manage your account at bigdogg.nl')
+            : (isNl ? 'Abonnement starten' : 'Start subscription'));
     final subtitle = isActive
         ? (isNl
             ? 'Wijzig je betaalmethode of zeg op'
             : 'Change payment method or cancel')
-        : (isNl
-            ? 'Vanaf €9,99 / maand · 30 dagen gratis'
-            : 'From €9.99 / month · 30-day free trial');
-    final icon = isActive ? Icons.tune_rounded : Icons.workspace_premium_rounded;
+        : (kIsReaderMode
+            ? (isNl
+                ? 'Maak je account online compleet'
+                : 'Complete your account online')
+            : (isNl
+                ? 'Vanaf €9,99 / maand · 30 dagen gratis'
+                : 'From €9.99 / month · 30-day free trial'));
+    final icon = isActive
+        ? Icons.tune_rounded
+        : (kIsReaderMode
+            ? Icons.public_rounded
+            : Icons.workspace_premium_rounded);
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),

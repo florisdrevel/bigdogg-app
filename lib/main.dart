@@ -8,6 +8,7 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/client_onboarding_screen.dart';
+import 'screens/admin_churn_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/payment_success_screen.dart';
 import 'screens/pricing_screen.dart';
@@ -122,6 +123,12 @@ final _router = GoRouter(
       // status on webview dismiss and surfaces the welcome snackbar.
       path: '/payment-success',
       builder: (context, state) => const PaymentSuccessScreen(),
+    ),
+    GoRoute(
+      // Solo-founder churn dashboard. Auth via ?token=<cron_secret>.
+      // Open at: bigdogg.nl/#/admin/churn?token=<secret>&since=2026-01-01
+      path: '/admin/churn',
+      builder: (context, state) => const AdminChurnScreen(),
     ),
     GoRoute(
       path: '/register',

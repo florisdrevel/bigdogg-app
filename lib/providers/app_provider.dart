@@ -48,7 +48,15 @@ class AppProvider extends ChangeNotifier {
   String _subscriptionStatus = '';
   bool _subscriptionLoaded = false;
   bool _subscriptionIsActive = false;
+  // Trial days_left from backend /status. Null for non-trial users.
+  // Drives the trial countdown chip in Settings and the 7-day / 3-day
+  // warning banners on the dashboard.
+  int? _subscriptionDaysLeft;
   bool _trialBannerDismissed = false;
+  // Distinct dismiss flag for the active-trial warning banner (7-day /
+  // 3-day) so dismissing the trial warning doesn't suppress the
+  // post-expiry "Trial ended" banner and vice versa.
+  bool _trialWarningBannerDismissed = false;
 
   // Paywall modal session state.
   // [_paywallShownThisSession] gates the auto-popup on FAB taps so we
@@ -61,8 +69,20 @@ class AppProvider extends ChangeNotifier {
   String get subscriptionStatus => _subscriptionStatus;
   bool get subscriptionLoaded => _subscriptionLoaded;
   bool get isSubscriptionActive => _subscriptionIsActive;
+  int? get subscriptionDaysLeft => _subscriptionDaysLeft;
   bool get paywallShownThisSession => _paywallShownThisSession;
   bool get paywallVisible => _paywallVisible;
+
+  /// Whether the active-trial warning banner (7-day / 3-day) should
+  /// show. True for trial users with days_left in (0, 7]; false if
+  /// already dismissed this session, or while the paywall modal is up.
+  bool get showTrialWarningBanner {
+    if (_paywallVisible) return false;
+    if (_trialWarningBannerDismissed) return false;
+    if (_subscriptionStatus != 'trial') return false;
+    final d = _subscriptionDaysLeft;
+    return d != null && d > 0 && d <= 7;
+  }
 
   /// Read-only mode: user can still browse existing data, but cannot
   /// create new invoices / expenses / send invoices. True once we know
@@ -75,16 +95,22 @@ class AppProvider extends ChangeNotifier {
   bool get showTrialBanner =>
       isAppReadOnly && !_trialBannerDismissed && !_paywallVisible;
 
-  void setSubscription({required String status, required bool isActive}) {
+  void setSubscription({
+    required String status,
+    required bool isActive,
+    int? daysLeft,
+  }) {
     final wasActive = _subscriptionIsActive;
     _subscriptionStatus = status;
     _subscriptionIsActive = isActive;
+    _subscriptionDaysLeft = daysLeft;
     _subscriptionLoaded = true;
     // Successfully activating clears all the suppression flags so the
     // app feels fresh again — no stale "trial ended" banner, no
     // already-dismissed paywall to surprise the user later.
     if (!wasActive && isActive) {
       _trialBannerDismissed = false;
+      _trialWarningBannerDismissed = false;
       _paywallShownThisSession = false;
     }
     notifyListeners();
@@ -93,6 +119,25 @@ class AppProvider extends ChangeNotifier {
   void dismissTrialBanner() {
     _trialBannerDismissed = true;
     notifyListeners();
+  }
+
+  void dismissTrialWarningBanner() {
+    _trialWarningBannerDismissed = true;
+    notifyListeners();
+  }
+
+  // One-shot signal consumed by SettingsScreen: when set, the screen
+  // scrolls to its referral section after build. Used by the trial
+  // warning banner's "Refer friends" CTA so users don't have to hunt
+  // for it inside Settings.
+  bool _scrollToReferralPending = false;
+  bool get scrollToReferralPending => _scrollToReferralPending;
+  void requestScrollToReferral() {
+    _scrollToReferralPending = true;
+    notifyListeners();
+  }
+  void consumeScrollToReferral() {
+    _scrollToReferralPending = false;
   }
 
   void markPaywallShownThisSession() {
