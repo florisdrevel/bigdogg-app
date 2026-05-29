@@ -41,11 +41,24 @@ Future<Uri> _buildWebUrl(String pathWithHash) async {
   return Uri.parse('$kBigDoggWebOrigin$pathWithHash$query');
 }
 
-/// Open [url] inside the in-app web view (Chrome Custom Tabs on Android,
-/// SFSafariViewController on iOS) so the user never fully leaves the app.
-/// Falls back to the external browser when the in-app view is unavailable
-/// (e.g. on web or older devices).
+/// Open [url] in the user's browser.
+///
+/// In reader-mode (any native build — iOS + Android) we use
+/// `LaunchMode.externalApplication` so the link launches the default
+/// browser as a separate task. This is the unambiguous "outside the
+/// app" pattern that Apple's anti-steering and Google Play Billing
+/// policies both accept — there's no in-app webview wrapping the
+/// payment flow, so the store can't claim the transaction is "in" the
+/// app.
+///
+/// On web the parameter is ignored; the chooser screen handles its own
+/// same-window redirect.
 Future<void> _openInAppWebView(Uri url) async {
+  // Reader-mode = native. Skip the in-app webview entirely.
+  if (kIsReaderMode) {
+    await launchUrl(url, mode: LaunchMode.externalApplication);
+    return;
+  }
   try {
     final ok = await launchUrl(url, mode: LaunchMode.inAppWebView);
     if (!ok) {
@@ -105,11 +118,17 @@ Future<void> _showPaywallModal(BuildContext outerCtx, bool isNl) async {
 /// After the in-app web view closes, give Stripe's webhook a moment to
 /// flip the subscription row, then refetch status. If the user is now
 /// active, push that into AppProvider and surface a brief snackbar.
+///
+/// In reader-mode the launch opens the user's external browser as a
+/// separate task — the await returns immediately and the user isn't
+/// "back" yet. The dashboard's app-resume listener will pick up the
+/// status change instead, so we skip the post-launch poll.
 Future<void> _launchAndRefresh(
     BuildContext outerCtx, Uri url, bool isNl) async {
   final wasActive =
       outerCtx.read<AppProvider>().isSubscriptionActive;
   await _openInAppWebView(url);
+  if (kIsReaderMode) return;
   // Stripe's checkout.session.completed webhook usually lands within a
   // second — wait briefly before re-checking so we don't race ahead of
   // the backend writing the new row.
@@ -174,12 +193,17 @@ class _PaywallModal extends StatelessWidget {
             '✓ AI-powered accounting',
           ];
 
+    // Android's gesture-nav bar overlaps the bottom of bottom-sheets;
+    // padding has to take MediaQuery.viewPadding into account so the
+    // "Maybe later" button is fully visible. SafeArea(top: false) +
+    // explicit padding does the trick.
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 28),
+      padding: EdgeInsets.fromLTRB(24, 14, 24, 28 + bottomInset),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -327,12 +351,13 @@ class _PaywallModal extends StatelessWidget {
   /// the in-app web view so the user can sign up there if they want; we
   /// just don't push them.
   Widget _readerModeBody(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 28),
+      padding: EdgeInsets.fromLTRB(24, 14, 24, 28 + bottomInset),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

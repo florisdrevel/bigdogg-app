@@ -1,20 +1,24 @@
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// True when the current build must hide all in-app subscribe CTAs and
-/// pricing — i.e. Apple App Store iOS builds.
+/// pricing — i.e. ANY native build (iOS + Android).
 ///
-/// Apple App Store Guideline 3.1.1 / 3.1.3 still penalises "steering"
-/// users to outside payment for digital subscriptions. Until BigDogg
-/// either qualifies for the External Purchase Link Entitlement or ships
-/// proper Apple In-App Purchase, iOS shows only a neutral "Manage
-/// subscription on bigdogg.nl" surface — no price, no Subscribe button,
-/// no upgrade copy.
+/// Why both platforms now:
 ///
-/// Web and Android keep the conversion-focused flow.
+///   * Apple App Store (Guideline 3.1.1 / 3.1.3) still penalises
+///     "steering" users to outside payment for digital subscriptions.
+///   * Google Play Developer Policy requires Play Billing for digital
+///     subscriptions in apps distributed via the Play Store, except in
+///     EU/EEA/UK/India where alternative billing is permitted under DMA.
 ///
-/// Use `defaultTargetPlatform` rather than `dart:io` Platform so this
-/// stays compile-safe on Flutter web (no `dart:io`).
+/// To avoid paying 15–30% to either store, the native app shows zero
+/// pricing, zero "Subscribe" CTAs, and only directs users to
+/// bigdogg.nl in their default external browser to manage their
+/// account. All marketing and subscription flow lives on the web.
+///
+/// Web build is unchanged — full conversion-focused chooser, Stripe
+/// Checkout directly, no platform fees because no app store is involved.
 bool get kIsReaderMode {
   if (kIsWeb) return false;
-  return defaultTargetPlatform == TargetPlatform.iOS;
+  return true;
 }

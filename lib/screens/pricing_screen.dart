@@ -186,8 +186,8 @@ class _PricingScreenState extends State<PricingScreen> {
         const SizedBox(height: 10),
         Text(
           t(
-            'Drie manieren om met BigDogg te werken — kies wat past bij hoe vaak je administratie doet.',
-            'Three ways to use BigDogg — pick what fits how you work.',
+            'Features van deze tijd, voor een eerlijke prijs.',
+            'Modern features at an honest price.',
           ),
           textAlign: TextAlign.center,
           style: const TextStyle(
