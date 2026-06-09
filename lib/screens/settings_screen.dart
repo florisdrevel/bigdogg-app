@@ -1345,37 +1345,15 @@ For questions: info@bigdogg.nl''';
                 fontSize: 13, color: BigDoggTheme.lightTextSecondary),
           ),
           const SizedBox(height: 12),
-          // Live PSD2 connect is built but not production-ready yet:
-          // dimmed + tap-blocked with a small "Binnenkort" pill. The
-          // statement-import section below stays fully interactive.
+          // Bank-connect is live for everyone. (Previously dimmed +
+          // tap-blocked behind a "coming soon" pill during beta.)
           Opacity(
-            opacity: 0.5,
+            opacity: 1.0,
             child: AbsorbPointer(
-              absorbing: true,
+              absorbing: false,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: BigDoggTheme.gold500.withOpacity(0.18),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        isNl
-                            ? 'Live koppeling — binnenkort beschikbaar'
-                            : 'Live sync — coming soon',
-                        style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: BigDoggTheme.gold600),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
                   if (_loadingBank)
                     const Center(child: CircularProgressIndicator())
                   else if (connected) ...[
