@@ -8,14 +8,14 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0f0f0f;
-            color: #e0e0e0;
+            background: #F5F3EF;
+            color: #1B3A4B;
             min-height: 100vh;
         }
         header {
-            background: #1a1a1a;
-            border-bottom: 1px solid #2a2a2a;
-            padding: 20px 40px;
+            background: #ffffff;
+            border-bottom: 1px solid #E2DDD6;
+            padding: 18px 32px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -23,75 +23,71 @@
         .logo {
             font-size: 24px;
             font-weight: 800;
-            color: #ffffff;
+            color: #1B3A4B;
             text-decoration: none;
             letter-spacing: -0.5px;
         }
-        .logo span { color: #f97316; }
-        .lang-toggle {
-            display: flex;
-            gap: 8px;
-        }
+        .logo span { color: #C9A96E; }
+        .lang-toggle { display: flex; gap: 8px; }
         .lang-btn {
-            padding: 8px 18px;
+            padding: 7px 16px;
             border-radius: 8px;
-            border: 1px solid #333;
+            border: 1px solid #E2DDD6;
             background: transparent;
-            color: #999;
+            color: #4A6572;
             cursor: pointer;
             font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
+            font-weight: 600;
+            transition: all 0.15s;
         }
         .lang-btn.active {
-            background: #f97316;
-            border-color: #f97316;
+            background: #1B3A4B;
+            border-color: #1B3A4B;
             color: #fff;
         }
-        .container {
-            max-width: 780px;
-            margin: 60px auto;
-            padding: 0 24px 80px;
+        .container { max-width: 760px; margin: 40px auto; padding: 0 20px 64px; }
+        .card {
+            background: #ffffff;
+            border: 1px solid #E2DDD6;
+            border-radius: 14px;
+            padding: 36px 40px 44px;
         }
         h1 {
-            font-size: 36px;
+            font-size: 30px;
             font-weight: 800;
-            color: #ffffff;
-            margin-bottom: 8px;
+            color: #1B3A4B;
             letter-spacing: -0.5px;
         }
-        .subtitle {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 48px;
+        .gold-rule {
+            height: 3px;
+            width: 100%;
+            background: #C9A96E;
+            border-radius: 2px;
+            margin: 14px 0 6px;
         }
+        .subtitle { color: #9CA3AF; font-size: 13px; margin-bottom: 28px; }
         h2 {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 700;
-            color: #ffffff;
-            margin: 36px 0 12px;
+            color: #1B3A4B;
+            margin: 30px 0 10px;
         }
-        p, li {
-            font-size: 15px;
-            line-height: 1.75;
-            color: #aaa;
-        }
-        ul {
-            padding-left: 20px;
-            margin: 8px 0;
-        }
+        p, li { font-size: 15px; line-height: 1.7; color: #4A6572; }
+        strong { color: #1B3A4B; }
+        ul { padding-left: 20px; margin: 8px 0; }
         li { margin-bottom: 6px; }
-        a { color: #f97316; text-decoration: none; }
-        a:hover { text-decoration: underline; }
+        a { color: #1B3A4B; text-decoration: underline; text-underline-offset: 2px; }
+        a:hover { color: #C9A96E; }
         .highlight-box {
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            border-left: 3px solid #f97316;
+            background: #F5F3EF;
+            border: 1px solid #E2DDD6;
+            border-left: 3px solid #C9A96E;
             border-radius: 8px;
-            padding: 16px 20px;
+            padding: 14px 18px;
             margin: 16px 0;
         }
-        .highlight-box p { color: #ccc; }
+        .highlight-box p { color: #1B3A4B; }
+        .footer { text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 28px; }
         [data-lang] { display: none; }
         [data-lang].active { display: block; }
     </style>
@@ -107,10 +103,12 @@
 </header>
 
 <div class="container">
+  <div class="card">
 
     <!-- DUTCH -->
     <div data-lang="nl" class="active">
         <h1>Privacybeleid</h1>
+        <div class="gold-rule"></div>
         <p class="subtitle">Laatst bijgewerkt: april 2025</p>
 
         <p>BigDogg respecteert jouw privacy en gaat zorgvuldig om met jouw persoonsgegevens. In dit privacybeleid leggen we uit welke gegevens we verzamelen, waarom we dat doen en hoe we ze beschermen.</p>
@@ -124,6 +122,7 @@
             <li>Bedrijfsnaam, adres en BTW-nummer (voor factuurgegevens)</li>
             <li>Bankrekeningnummer (optioneel, voor vermelding op facturen)</li>
             <li>Factuur- en uitgavengegevens die je zelf invoert</li>
+            <li>Banktransacties (optioneel, bij koppeling via een PSD2-provider of import van een afschrift)</li>
             <li>Abonnementsgegevens (via Stripe)</li>
         </ul>
 
@@ -148,6 +147,7 @@
         <ul>
             <li><strong>Supabase</strong> – databaseopslag en authenticatie (EU, Frankfurt)</li>
             <li><strong>Stripe</strong> – betalingsverwerking</li>
+            <li><strong>TrueLayer</strong> – beveiligde bankkoppeling (PSD2, alleen leestoegang)</li>
             <li><strong>Resend</strong> – transactionele e-mail</li>
             <li><strong>Railway</strong> – serverhosting</li>
             <li><strong>Anthropic</strong> – AI-functionaliteit voor factuurverwerking</li>
@@ -159,7 +159,7 @@
         <ul>
             <li>Recht op inzage in jouw gegevens</li>
             <li>Recht op correctie van onjuiste gegevens</li>
-            <li>Recht op verwijdering (via accountverwijdering in de app)</li>
+            <li>Recht op verwijdering (via accountverwijdering in de app of <a href="https://bigdogg.nl/delete-account.html">bigdogg.nl/delete-account.html</a>)</li>
             <li>Recht op bezwaar tegen verwerking</li>
             <li>Recht op dataportabiliteit</li>
         </ul>
@@ -168,12 +168,13 @@
         <p>Alle gegevens worden versleuteld opgeslagen en verstuurd via HTTPS. Wij passen technische en organisatorische maatregelen toe om jouw gegevens te beschermen tegen ongeautoriseerde toegang.</p>
 
         <h2>8. Contact</h2>
-        <p>Heb je vragen over dit privacybeleid of wil je gebruik maken van jouw rechten? Stuur een e-mail naar <a href="mailto:privacy@bigdogg.nl">privacy@bigdogg.nl</a>.</p>
+        <p>Heb je vragen over dit privacybeleid of wil je gebruik maken van jouw rechten? Stuur een e-mail naar <a href="mailto:info@bigdogg.nl">info@bigdogg.nl</a>.</p>
     </div>
 
     <!-- ENGLISH -->
     <div data-lang="en">
         <h1>Privacy Policy</h1>
+        <div class="gold-rule"></div>
         <p class="subtitle">Last updated: April 2025</p>
 
         <p>BigDogg respects your privacy and handles your personal data with care. This privacy policy explains what data we collect, why we collect it, and how we protect it.</p>
@@ -187,6 +188,7 @@
             <li>Company name, address and VAT number (for invoice data)</li>
             <li>Bank account number (optional, for display on invoices)</li>
             <li>Invoice and expense data you enter yourself</li>
+            <li>Bank transactions (optional, when connecting via a PSD2 provider or importing a statement)</li>
             <li>Subscription data (via Stripe)</li>
         </ul>
 
@@ -211,6 +213,7 @@
         <ul>
             <li><strong>Supabase</strong> – database storage and authentication (EU, Frankfurt)</li>
             <li><strong>Stripe</strong> – payment processing</li>
+            <li><strong>TrueLayer</strong> – secure bank connection (PSD2, read-only access)</li>
             <li><strong>Resend</strong> – transactional email</li>
             <li><strong>Railway</strong> – server hosting</li>
             <li><strong>Anthropic</strong> – AI functionality for invoice processing</li>
@@ -222,7 +225,7 @@
         <ul>
             <li>Right of access to your data</li>
             <li>Right to rectification of incorrect data</li>
-            <li>Right to erasure (via account deletion in the app)</li>
+            <li>Right to erasure (via account deletion in the app or <a href="https://bigdogg.nl/delete-account.html">bigdogg.nl/delete-account.html</a>)</li>
             <li>Right to object to processing</li>
             <li>Right to data portability</li>
         </ul>
@@ -231,9 +234,11 @@
         <p>All data is stored encrypted and transmitted via HTTPS. We apply technical and organisational measures to protect your data against unauthorised access.</p>
 
         <h2>8. Contact</h2>
-        <p>Do you have questions about this privacy policy or would you like to exercise your rights? Send an email to <a href="mailto:privacy@bigdogg.nl">privacy@bigdogg.nl</a>.</p>
+        <p>Do you have questions about this privacy policy or would you like to exercise your rights? Send an email to <a href="mailto:info@bigdogg.nl">info@bigdogg.nl</a>.</p>
     </div>
 
+  </div>
+  <p class="footer">BigDogg · bigdogg.nl</p>
 </div>
 
 <script>
