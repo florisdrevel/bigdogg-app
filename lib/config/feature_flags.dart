@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 /// True when the current build must hide all in-app subscribe CTAs and
 /// pricing — i.e. ANY native build (iOS + Android).
@@ -21,4 +22,13 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 bool get kIsReaderMode {
   if (kIsWeb) return false;
   return true;
+}
+
+/// On iOS, additionally hide the external "Open → bigdogg.nl" button so the
+/// paywall is purely informational — avoids App Store Guideline 3.1.1
+/// anti-steering rejection. Android keeps the external link (permitted, and
+/// explicitly so in the EU/EEA under the DMA). Web is unaffected.
+bool get kHideExternalPurchaseLink {
+  if (kIsWeb) return false;
+  return defaultTargetPlatform == TargetPlatform.iOS;
 }

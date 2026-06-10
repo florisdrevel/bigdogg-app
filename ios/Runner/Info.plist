@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Bigdogg App</string>
+	<string>BigDogg</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -66,5 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>BigDogg gebruikt de camera om bonnetjes en documenten te fotograferen voor je administratie.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>BigDogg gebruikt de microfoon voor spraakinvoer bij het maken van facturen en offertes.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>BigDogg gebruikt je foto's om bonnetjes en bankafschriften te uploaden voor je administratie.</string>
 </dict>
 </plist>

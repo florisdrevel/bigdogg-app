@@ -401,23 +401,38 @@ class _PaywallModal extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _onActivatePressed(context),
-              icon: const Icon(Icons.open_in_new_rounded, size: 18),
-              label: Text(isNl ? 'Openen' : 'Open',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: BigDoggTheme.teal800,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+          // iOS: informational only (no external-purchase button) to satisfy
+          // App Store anti-steering. Android keeps the convenience link.
+          if (kHideExternalPurchaseLink)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                isNl
+                    ? 'Je abonnement beheer je op onze website. Log daar in met hetzelfde account om verder te gaan.'
+                    : 'Your subscription is managed on our website. Sign in there with the same account to continue.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 14, color: Colors.grey[600], height: 1.45),
+              ),
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _onActivatePressed(context),
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                label: Text(isNl ? 'Openen' : 'Open',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: BigDoggTheme.teal800,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
               ),
             ),
-          ),
           const SizedBox(height: 8),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
