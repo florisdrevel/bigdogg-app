@@ -315,7 +315,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   Future<void> _downloadReport(bool isNl) async {
     setState(() => _downloading = true);
-    final bytes = await BankingService.fetchReportPdf(matchedOnly: _matchedOnly);
+    final bytes = await BankingService.fetchReportPdf(
+      matchedOnly: _matchedOnly,
+      lang: isNl ? 'nl' : 'en',
+    );
     if (!mounted) return;
     setState(() => _downloading = false);
     if (bytes == null) {
