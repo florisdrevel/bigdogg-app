@@ -191,6 +191,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       builder: (ctx) => _TransactionSheet(
         tx: tx,
         isNl: isNl,
+        // Targets already linked to OTHER transactions — excluded from the
+        // invoice picker so the same invoice can't be linked twice.
+        linkedTargetIds: <String>{
+          for (final t in _transactions)
+            if (t['id'] != tx['id'] && t['link'] is Map)
+              if (const ['invoice', 'expense', 'investment']
+                      .contains((t['link'] as Map)['type']) &&
+                  (t['link'] as Map)['linked_id'] != null)
+                (t['link'] as Map)['linked_id'].toString(),
+        },
         onChanged: (updated) {
           // Replace the tx in our list with the updated one (fresh link).
           final idx = _transactions.indexWhere((t) => t['id'] == tx['id']);
@@ -560,10 +570,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 class _TransactionSheet extends StatefulWidget {
   final Map<String, dynamic> tx;
   final bool isNl;
+  final Set<String> linkedTargetIds;
   final void Function(Map<String, dynamic> updated) onChanged;
   const _TransactionSheet({
     required this.tx,
     required this.isNl,
+    required this.linkedTargetIds,
     required this.onChanged,
   });
 
@@ -990,9 +1002,15 @@ class _TransactionSheetState extends State<_TransactionSheet> {
       Navigator.pop(context);
     } else {
       setState(() => _busy = false);
+      final raw = result['message']?.toString() ?? 'Error';
+      final msg = raw.contains('already_linked')
+          ? (widget.isNl
+              ? 'Dit is al aan een andere transactie gekoppeld.'
+              : 'This is already linked to another transaction.')
+          : raw;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: BigDoggTheme.error,
-        content: Text(result['message']?.toString() ?? 'Error'),
+        content: Text(msg),
       ));
     }
   }
@@ -1052,10 +1070,23 @@ class _TransactionSheetState extends State<_TransactionSheet> {
       return;
     }
     final invoices = (result['invoices'] as List?) ?? const [];
-    final unpaid = invoices.where((i) => (i['status']?.toString() ?? '') != 'paid').toList();
-    if (unpaid.isEmpty) {
+    // Show paid AND unpaid invoices — you may want to match a payment to an
+    // invoice you already marked paid manually. Exclude invoices already
+    // linked to another transaction (one-to-one).
+    final available = invoices
+        .where((i) => !widget.linkedTargetIds.contains(i['id']?.toString()))
+        .toList()
+      ..sort((a, b) {
+        // Unpaid first, then paid.
+        final ap = (a['status']?.toString() ?? '') == 'paid' ? 1 : 0;
+        final bp = (b['status']?.toString() ?? '') == 'paid' ? 1 : 0;
+        return ap.compareTo(bp);
+      });
+    if (available.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(widget.isNl ? 'Geen openstaande facturen' : 'No unpaid invoices'),
+        content: Text(widget.isNl
+            ? 'Geen koppelbare facturen'
+            : 'No linkable invoices'),
       ));
       return;
     }
@@ -1097,19 +1128,45 @@ class _TransactionSheetState extends State<_TransactionSheet> {
               Expanded(
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: unpaid.length,
+                  itemCount: available.length,
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (_, i) {
-                    final inv = unpaid[i] as Map<String, dynamic>;
+                    final inv = available[i] as Map<String, dynamic>;
                     final invNum = inv['invoice_number']?.toString() ?? '';
                     final clientName = inv['client_name']?.toString() ?? '';
                     final clientCo = inv['client_company']?.toString() ?? '';
                     final total = (inv['total_incl_btw'] as num?)?.toDouble() ?? 0;
+                    final isPaid = (inv['status']?.toString() ?? '') == 'paid';
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        invNum,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      title: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              invNum,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isPaid) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: BigDoggTheme.successBg,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                widget.isNl ? 'Betaald' : 'Paid',
+                                style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: BigDoggTheme.success),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       subtitle: Text(
                         clientCo.isNotEmpty ? clientCo : clientName,
