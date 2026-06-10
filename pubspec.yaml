@@ -25,6 +25,9 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   connectivity_plus: ^6.0.1
+  # Native share sheet for the PDF transactions report on mobile
+  # (web uses an in-browser download via dart:html instead).
+  printing: ^5.13.0
 
 dev_dependencies:
   flutter_test:

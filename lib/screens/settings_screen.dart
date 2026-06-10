@@ -569,14 +569,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _importBankStatement(bool isNl) async {
-    if (!kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(isNl
-            ? 'Importeren werkt momenteel via bigdogg.nl op je computer'
-            : 'Import currently works via bigdogg.nl on your computer'),
-      ));
-      return;
-    }
     final picked = await pickFiles(
       accept: '.sta,.940,.mt940,.txt,.xml,.camt,.pdf,application/xml,text/plain,application/pdf',
       multiple: false,

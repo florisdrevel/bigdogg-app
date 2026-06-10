@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -227,7 +226,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         elevation: 0,
         centerTitle: false,
         actions: [
-          if (kIsWeb && !_loading && _error == null && _transactions.isNotEmpty)
+          if (!_loading && _error == null && _transactions.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: 4),
               child: IconButton(
