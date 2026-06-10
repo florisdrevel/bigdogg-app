@@ -290,4 +290,23 @@ class BankingService {
       return {'success': false, 'message': 'Connection error'};
     }
   }
+
+  /// Fetch the linked-transactions report as PDF bytes. When
+  /// [matchedOnly] is true the report excludes unmatched + private
+  /// transactions (no personal entries). Returns null on failure.
+  static Future<Uint8List?> fetchReportPdf({required bool matchedOnly}) async {
+    final token = await _getToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/v1/banking/report?matched_only=$matchedOnly'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 }

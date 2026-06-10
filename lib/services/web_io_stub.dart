@@ -1,9 +1,16 @@
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 // image_picker exports its own `PickedFile` class — hide it so our local
 // model (web_io_types.PickedFile) stays unambiguous.
 import 'package:image_picker/image_picker.dart' hide PickedFile;
 import 'web_io_types.dart';
 export 'web_io_types.dart';
+
+// Native (Android/iOS/desktop) no-op: the in-browser download isn't
+// available off-web. The report download button is web-only (kIsWeb-gated),
+// so this is never reached there.
+void downloadBytes(String filename, Uint8List bytes,
+    {String mimeType = 'application/octet-stream'}) {}
 
 // Native (Android / iOS / desktop) implementation of pickFiles. Web has
 // its own copy in web_io_web.dart that uses dart:html.

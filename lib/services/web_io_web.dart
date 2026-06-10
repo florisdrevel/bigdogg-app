@@ -7,6 +7,21 @@ export 'web_io_types.dart';
 
 String getUserAgent() => html.window.navigator.userAgent;
 
+/// Trigger a browser download of in-memory bytes (e.g. a PDF fetched from
+/// the backend). Web-only; the native stub is a no-op.
+void downloadBytes(String filename, Uint8List bytes,
+    {String mimeType = 'application/octet-stream'}) {
+  final blob = html.Blob(<Uint8List>[bytes], mimeType);
+  final url = html.Url.createObjectUrlFromBlob(blob);
+  final anchor = html.AnchorElement(href: url)
+    ..setAttribute('download', filename)
+    ..style.display = 'none';
+  html.document.body?.append(anchor);
+  anchor.click();
+  anchor.remove();
+  html.Url.revokeObjectUrl(url);
+}
+
 Future<List<PickedFile>?> pickFiles({
   bool camera = false,
   String accept = '*/*',

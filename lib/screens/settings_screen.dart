@@ -1460,6 +1460,16 @@ For questions: info@bigdogg.nl''';
             style: const TextStyle(
                 fontSize: 11, color: BigDoggTheme.lightTextHint),
           ),
+          const SizedBox(height: 6),
+          Text(
+            isNl
+                ? 'Live koppeling ondersteunt momenteel alleen Revolut. Bankier je bij een andere bank? Importeer dan hieronder een bankafschrift.'
+                : 'Live connection currently supports Revolut only. With another bank? Import a statement below instead.',
+            style: const TextStyle(
+                fontSize: 11,
+                color: BigDoggTheme.warning,
+                fontWeight: FontWeight.w500),
+          ),
           const SizedBox(height: 14),
           const Divider(height: 1, color: BigDoggTheme.lightBorder),
           const SizedBox(height: 14),
@@ -1532,6 +1542,28 @@ For questions: info@bigdogg.nl''';
               ),
             ),
           ),
+          // Once a statement is imported (and no live bank is connected),
+          // give the same entry into the Transactions screen so the user
+          // can match expenses/invoices exactly like a connected account.
+          if (_bankStatus?['has_transactions'] == true && !connected) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/transactions'),
+                icon: const Icon(Icons.receipt_long,
+                    size: 16, color: BigDoggTheme.teal800),
+                label: Text(isNl ? 'Bekijk transacties' : 'View transactions'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: BigDoggTheme.teal800,
+                  side: const BorderSide(color: BigDoggTheme.teal700),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

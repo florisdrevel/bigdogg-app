@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../services/banking_service.dart';
 import '../services/invoices_service.dart';
+import '../services/web_io.dart';
 import '../theme.dart';
 
 /// Bank-transactions screen with auto-matching against invoices and
@@ -26,6 +28,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _transactions = const [];
+  bool _matchedOnly = false;
+  bool _downloading = false;
+
+  bool _isMatched(Map<String, dynamic> tx) {
+    final t = (tx['link'] as Map<String, dynamic>?)?['type']?.toString();
+    return t == 'invoice' || t == 'expense' || t == 'investment';
+  }
+
+  List<Map<String, dynamic>> get _visible =>
+      _matchedOnly ? _transactions.where(_isMatched).toList() : _transactions;
 
   @override
   void initState() {
@@ -214,20 +226,100 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
+        actions: [
+          if (kIsWeb && !_loading && _error == null && _transactions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: IconButton(
+                tooltip: isNl ? 'Download rapport (PDF)' : 'Download report (PDF)',
+                icon: _downloading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.download_outlined),
+                onPressed: _downloading ? null : () => _downloadReport(isNl),
+              ),
+            ),
+        ],
       ),
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _load,
-                child: _error != null
-                    ? _buildError(isNl)
-                    : _transactions.isEmpty
-                        ? _buildEmpty(isNl)
-                        : _buildList(isNl),
+            : Column(
+                children: [
+                  if (_error == null && _transactions.isNotEmpty)
+                    _buildFilterBar(isNl),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: _load,
+                      child: _error != null
+                          ? _buildError(isNl)
+                          : _visible.isEmpty
+                              ? _buildEmpty(isNl)
+                              : _buildList(isNl),
+                    ),
+                  ),
+                ],
               ),
       ),
     );
+  }
+
+  Widget _buildFilterBar(bool isNl) {
+    final matchedCount = _transactions.where(_isMatched).length;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
+      decoration: const BoxDecoration(
+        color: BigDoggTheme.lightSurface,
+        border: Border(bottom: BorderSide(color: BigDoggTheme.lightBorder)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.link, size: 16, color: BigDoggTheme.teal800),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isNl ? 'Alleen gekoppelde tonen' : 'Show matched only',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: BigDoggTheme.teal800,
+              ),
+            ),
+          ),
+          Text(
+            '$matchedCount/${_transactions.length}',
+            style: const TextStyle(
+                fontSize: 11, color: BigDoggTheme.lightTextHint),
+          ),
+          Switch(
+            value: _matchedOnly,
+            activeColor: BigDoggTheme.teal800,
+            onChanged: (v) => setState(() => _matchedOnly = v),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _downloadReport(bool isNl) async {
+    setState(() => _downloading = true);
+    final bytes = await BankingService.fetchReportPdf(matchedOnly: _matchedOnly);
+    if (!mounted) return;
+    setState(() => _downloading = false);
+    if (bytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.error,
+        content: Text(isNl ? 'Download mislukt' : 'Download failed'),
+      ));
+      return;
+    }
+    final name = _matchedOnly
+        ? 'bigdogg-transacties-gekoppeld.pdf'
+        : 'bigdogg-transacties.pdf';
+    downloadBytes(name, bytes, mimeType: 'application/pdf');
   }
 
   Widget _buildError(bool isNl) {
@@ -325,7 +417,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             size: 64, color: BigDoggTheme.lightTextHint),
         const SizedBox(height: 12),
         Text(
-          isNl ? 'Nog geen transacties gevonden' : 'No transactions yet',
+          (_matchedOnly && _transactions.isNotEmpty)
+              ? (isNl ? 'Geen gekoppelde transacties' : 'No matched transactions')
+              : (isNl ? 'Nog geen transacties gevonden' : 'No transactions yet'),
           textAlign: TextAlign.center,
           style: const TextStyle(
               fontWeight: FontWeight.bold,
@@ -337,7 +431,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   Widget _buildList(bool isNl) {
     final grouped = <String, List<Map<String, dynamic>>>{};
-    for (final tx in _transactions) {
+    for (final tx in _visible) {
       final d = (tx['date'] ?? '') as String;
       grouped.putIfAbsent(d, () => []).add(tx);
     }
