@@ -1093,6 +1093,7 @@ class _OverviewScreenState extends State<OverviewScreen>
             _overviewRow(isNl ? 'Totale BTW te betalen' : 'Total VAT to pay', '\u20ac${a['total_btw_to_pay']}', color: BigDoggTheme.error),
           ]),
           const SizedBox(height: 16),
+          _buildTaxReserveCard(isNl, a),
           _buildKorChecker(isNl, a),
           const SizedBox(height: 16),
           SizedBox(
@@ -1191,6 +1192,65 @@ class _OverviewScreenState extends State<OverviewScreen>
           fontSize: large ? 15 : 14, color: color ?? BigDoggTheme.lightTextPrimary)),
     ]),
   );
+
+  // Group thousands with dots (Dutch style), whole euros: 15278 -> "€ 15.278".
+  String _eur0(num v) =>
+      '€ ${v.round().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')}';
+
+  // ── Reserveer voor de belasting (conservative income-tax guideline) ──────
+  // Presented as guidance, never as an assessment. Hidden when there is no
+  // profit to reserve against (reserve == 0).
+  Widget _buildTaxReserveCard(bool isNl, Map<String, dynamic> a) {
+    final tr = a['tax_reserve'];
+    if (tr is! Map) return const SizedBox.shrink();
+    final reserve = (tr['reserve'] as num?)?.toDouble() ?? 0;
+    if (reserve <= 0) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: BigDoggTheme.gold500.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.45)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.savings_outlined, size: 18, color: BigDoggTheme.gold600),
+                const SizedBox(width: 8),
+                Text(
+                  isNl ? 'Reserveer voor de belasting' : 'Set aside for income tax',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 14, color: BigDoggTheme.teal800),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isNl
+                  ? 'Reserveer minimaal ~${_eur0(reserve)} voor de inkomstenbelasting.'
+                  : 'Set aside at least ~${_eur0(reserve)} for income tax.',
+              style: const TextStyle(
+                  fontWeight: FontWeight.w800, fontSize: 19, color: BigDoggTheme.teal800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isNl
+                  ? 'Dit is een richtlijn, geen belastingadvies — persoonlijke aftrekposten kunnen dit bedrag verlagen. Bewust voorzichtig berekend, zodat je niet te weinig opzij zet.'
+                  : 'This is a guideline, not tax advice — personal deductions may lower this amount. Deliberately calculated on the safe side so you don\'t reserve too little.',
+              style: const TextStyle(
+                  fontSize: 12, height: 1.45, color: BigDoggTheme.lightTextSecondary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   // ── KOR checker ───────────────────────────────────────────
   // KOR = kleineondernemersregeling. Under €20,000 revenue you may opt out
