@@ -155,11 +155,27 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
       ),
       _Step(
         tabIndex: 4,
+        icon: Icons.savings_outlined,
+        titleNl: 'Overzicht — Reserveer voor de belasting',
+        titleEn: 'Overview — Set aside for income tax',
+        bodyNl: 'Schakel naar "Dit jaar". Onderaan toont BigDogg hoeveel je ongeveer opzij moet zetten voor de inkomstenbelasting — berekend op basis van je winst, de ondernemersaftrek en de standaard heffingskortingen. Het is een richtlijn, geen belastingadvies; heb je ook loon uit dienstbetrekking, reserveer dan wat meer.',
+        bodyEn: 'Switch to "This year". At the bottom BigDogg shows roughly how much to set aside for income tax — based on your profit, the entrepreneur deductions and the standard tax credits. It is a guideline, not tax advice; if you also have salaried income, set aside a bit more.',
+      ),
+      _Step(
+        tabIndex: 4,
         icon: Icons.access_time_rounded,
         titleNl: 'Overzicht — Urenregistratie',
         titleEn: 'Overview — Hours tracker',
         bodyNl: 'Bovenin in het kwartaaloverzicht kun je handmatig je uren te registreren. BigDogg houdt bij of je het urencriterium van 1.225 uur haalt — belangrijk voor de zelfstandigenaftrek.',
         bodyEn: 'At the top of the quarterly overview you are able to manually log your hours. BigDogg tracks whether you meet the 1,225-hour criterion — key for the self-employed tax deduction.',
+      ),
+      _Step(
+        tabIndex: 4,
+        icon: Icons.directions_car_outlined,
+        titleNl: 'Overzicht — Kilometerregistratie',
+        titleEn: 'Overview — Mileage log',
+        bodyNl: 'Onder de urenregistratie houd je je zakelijke ritten bij: datum, vertrek, bestemming, doel en kilometers. BigDogg telt €0,23 per zakelijke kilometer mee als aftrekpost in je jaarrapport. Leg elke rit apart vast — dat eist de Belastingdienst.',
+        bodyEn: 'Below the hours tracker you log your business trips: date, from, to, purpose and kilometres. BigDogg counts €0.23 per business kilometre as a deduction in your annual report. Log each trip separately — the tax office requires it.',
       ),
       if (proj)
         _Step(

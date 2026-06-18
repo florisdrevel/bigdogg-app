@@ -287,8 +287,48 @@ final _router = GoRouter(
   ],
 );
 
-class BigdoggApp extends StatelessWidget {
+class BigdoggApp extends StatefulWidget {
   const BigdoggApp({super.key});
+
+  @override
+  State<BigdoggApp> createState() => _BigdoggAppState();
+}
+
+class _BigdoggAppState extends State<BigdoggApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    AuthService.sessionExpired.addListener(_onSessionExpired);
+  }
+
+  @override
+  void dispose() {
+    AuthService.sessionExpired.removeListener(_onSessionExpired);
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void _onSessionExpired() {
+    if (!AuthService.sessionExpired.value) return;
+    AuthService.sessionExpired.value = false;
+    // The session is genuinely gone (refresh token rejected). Clear stale
+    // creds + caches and route to login — replacing the old "offline"
+    // dead-end that forced a manual log-out/in. Device prefs (theme,
+    // language, walkthrough-seen) survive via logout()'s preserve list.
+    AuthService.logout().whenComplete(() => _router.go('/login'));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Foregrounding: proactively refresh so a token that expired while
+      // backgrounded is renewed before any screen fires a request (and a
+      // truly-dead session routes to login via the listener above).
+      // ignore: unawaited_futures
+      AuthService.ensureFreshToken();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

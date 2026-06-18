@@ -1518,7 +1518,9 @@ class _OverviewScreenState extends State<OverviewScreen>
     final tr = a['tax_reserve'];
     if (tr is! Map) return const SizedBox.shrink();
     final reserve = (tr['reserve'] as num?)?.toDouble() ?? 0;
-    if (reserve <= 0) return const SizedBox.shrink();
+    final winst = (tr['winst_onderneming'] as num?)?.toDouble() ?? 0;
+    // Nothing meaningful to show before there's any profit at all.
+    if (winst <= 0 && reserve <= 0) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -1546,17 +1548,21 @@ class _OverviewScreenState extends State<OverviewScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              isNl
-                  ? 'Reserveer minimaal ~${_eur0(reserve)} voor de inkomstenbelasting.'
-                  : 'Set aside at least ~${_eur0(reserve)} for income tax.',
+              reserve > 0
+                  ? (isNl
+                      ? 'Reserveer minimaal ~${_eur0(reserve)} voor de inkomstenbelasting.'
+                      : 'Set aside at least ~${_eur0(reserve)} for income tax.')
+                  : (isNl
+                      ? 'Je hoeft waarschijnlijk niets opzij te zetten voor de inkomstenbelasting.'
+                      : 'You likely don\'t need to set anything aside for income tax.'),
               style: const TextStyle(
                   fontWeight: FontWeight.w800, fontSize: 19, color: BigDoggTheme.teal800),
             ),
             const SizedBox(height: 6),
             Text(
               isNl
-                  ? 'Dit is een richtlijn, geen belastingadvies — persoonlijke aftrekposten kunnen dit bedrag verlagen. Bewust voorzichtig berekend, zodat je niet te weinig opzij zet.'
-                  : 'This is a guideline, not tax advice — personal deductions may lower this amount. Deliberately calculated on the safe side so you don\'t reserve too little.',
+                  ? 'Dit is een richtlijn, geen belastingadvies — gebaseerd op je winst, de ondernemersaftrek en de standaard heffingskortingen. Heb je ook loon uit dienstbetrekking? Dan moet je waarschijnlijk meer reserveren.'
+                  : 'This is a guideline, not tax advice — based on your profit, the entrepreneur deductions and the standard tax credits. Also have income from employment? Then you should likely set aside more.',
               style: const TextStyle(
                   fontSize: 12, height: 1.45, color: BigDoggTheme.lightTextSecondary),
             ),

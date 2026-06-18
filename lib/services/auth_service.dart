@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
@@ -7,14 +8,26 @@ import 'api_cache.dart';
 import 'mem_cache.dart';
 import 'local_storage_service.dart';
 
+/// Outcome of a token-refresh attempt. Lets callers distinguish a dead
+/// session (→ route to /login) from a transient network failure (→ serve
+/// cache / stay put), instead of lumping both into a misleading "offline".
+enum TokenStatus { ok, expired, networkError }
+
 class AuthService {
   static const String baseUrl = ApiConfig.baseUrl;
 
-  // Single-flight guard for refreshToken(). Supabase rotates refresh
+  // Single-flight guard for token refresh. Supabase rotates refresh
   // tokens on each use, so concurrent refreshes race — one rotation
   // invalidates the others and the user ends up silently logged out.
   // Every caller awaits the same in-flight Completer.
-  static Completer<bool>? _refreshInFlight;
+  static Completer<TokenStatus>? _refreshInFlight;
+
+  /// Fires (value=true) when the session is genuinely gone — i.e. a refresh
+  /// was attempted and the server REJECTED the refresh token (expired /
+  /// revoked), as opposed to a transient network failure. The app listens
+  /// and routes to /login, instead of showing a misleading "offline" state
+  /// that forced a manual log-out/log-in. Reset on a successful login.
+  static final ValueNotifier<bool> sessionExpired = ValueNotifier<bool>(false);
 
   static Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -79,6 +92,8 @@ class AuthService {
         // the user will land on /login again next visit even though the
         // token is still in storage — same as a session-only login.
         await prefs.setBool('remember_me', rememberMe);
+        // Fresh session — clear any stale "session expired" signal.
+        sessionExpired.value = false;
         return {'success': true, 'data': data};
       }
       return {'success': false, 'message': data['detail'] ?? 'Invalid email or password'};
@@ -87,67 +102,89 @@ class AuthService {
     }
   }
 
-  /// Force-refresh the Supabase session. Concurrent callers share one
-  /// in-flight refresh — see [_refreshInFlight].
-  static Future<bool> refreshToken() async {
+  /// Force-refresh the Supabase session, reporting WHY it failed so callers
+  /// can tell "session expired → go to login" apart from "offline → serve
+  /// cache". Concurrent callers share one in-flight refresh.
+  static Future<TokenStatus> _refreshStatus() async {
     final pending = _refreshInFlight;
     if (pending != null) return pending.future;
-    final completer = Completer<bool>();
+    final completer = Completer<TokenStatus>();
     _refreshInFlight = completer;
     try {
       final prefs = await SharedPreferences.getInstance();
       final refreshToken = prefs.getString('refresh_token');
       if (refreshToken == null || refreshToken.isEmpty) {
-        completer.complete(false);
-        return false;
+        completer.complete(TokenStatus.expired);
+        return TokenStatus.expired;
       }
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/v1/auth/refresh'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'refresh_token': refreshToken}),
-      ).timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        await prefs.setString('access_token', data['access_token']);
-        await prefs.setString('refresh_token', data['refresh_token']);
-        completer.complete(true);
-        return true;
+      try {
+        final response = await http.post(
+          Uri.parse('$baseUrl/api/v1/auth/refresh'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'refresh_token': refreshToken}),
+        ).timeout(const Duration(seconds: 10));
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          await prefs.setString('access_token', data['access_token']);
+          await prefs.setString('refresh_token', data['refresh_token']);
+          completer.complete(TokenStatus.ok);
+          return TokenStatus.ok;
+        }
+        // Distinguish a genuinely rejected refresh token (dead session) from
+        // a transient server error. Only the former should bounce the user to
+        // login; a 5xx/429 blip just means "try later" → treat as offline.
+        final code = response.statusCode;
+        final st = (code == 400 || code == 401 || code == 403)
+            ? TokenStatus.expired
+            : TokenStatus.networkError;
+        completer.complete(st);
+        return st;
+      } catch (_) {
+        // Couldn't reach the server (timeout / no network) → NOT expired,
+        // just offline. Caller should serve cache, never route to login.
+        completer.complete(TokenStatus.networkError);
+        return TokenStatus.networkError;
       }
-      completer.complete(false);
-      return false;
-    } catch (_) {
-      completer.complete(false);
-      return false;
     } finally {
       _refreshInFlight = null;
     }
   }
 
-  /// Refresh only if the cached access_token is missing or within five
-  /// minutes of expiry. Cheaper than [refreshToken] — avoids burning a
-  /// rotation every time the dashboard mounts/resumes.
-  static Future<bool> refreshTokenIfNeeded() async {
+  /// Back-compat boolean wrapper (true only on a successful refresh).
+  static Future<bool> refreshToken() async =>
+      (await _refreshStatus()) == TokenStatus.ok;
+
+  /// Ensure we hold a usable access token, refreshing if it's missing or
+  /// within five minutes of expiry. The network refresh runs on its OWN
+  /// budget — callers MUST invoke this OUTSIDE any short data-call timeout
+  /// (e.g. before [ApiCache.read]) so a slow refresh never trips the offline
+  /// detector. Returns the refresh outcome.
+  static Future<TokenStatus> ensureFreshToken() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token');
-    if (token == null || token.isEmpty) return refreshToken();
+    if (token == null || token.isEmpty) return _refreshStatus();
     try {
       final parts = token.split('.');
-      if (parts.length != 3) return refreshToken();
+      if (parts.length != 3) return _refreshStatus();
       final payload = jsonDecode(
         utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
       ) as Map<String, dynamic>;
       final exp = payload['exp'];
-      if (exp is! int) return refreshToken();
+      if (exp is! int) return _refreshStatus();
       final expiresAt =
           DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
       final remaining =
           expiresAt.difference(DateTime.now().toUtc()).inSeconds;
-      if (remaining < 300) return refreshToken();
-      return true;
+      if (remaining < 300) return _refreshStatus();
+      return TokenStatus.ok;
     } catch (_) {
-      return refreshToken();
+      return _refreshStatus();
     }
   }
+
+  /// Back-compat boolean wrapper used by existing call sites.
+  static Future<bool> refreshTokenIfNeeded() async =>
+      (await ensureFreshToken()) == TokenStatus.ok;
 
   static Future<Map<String, dynamic>> resetPassword(String email) async {
     try {
