@@ -44,7 +44,7 @@ android {
         applicationId = "nl.bigdogg.app"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
-        versionCode = 4
+        versionCode = 5
         versionName = "1.0.0"
     }
 
