@@ -375,6 +375,11 @@ class _OverviewScreenState extends State<OverviewScreen>
   bool _loadingHours = true;
   bool _hoursExpanded = false;
 
+  // Kilometerregistratie (per-trip business-mileage log)
+  Map<String, dynamic>? _tripsData;
+  bool _loadingTrips = true;
+  bool _tripsExpanded = false;
+
   // KOR checker (collapsible)
   bool _korExpanded = false;
 
@@ -399,6 +404,7 @@ class _OverviewScreenState extends State<OverviewScreen>
     _loadQuarterly();
     _loadAnnual();
     _loadHours();
+    _loadTrips();
   }
 
   void _bootstrapDashboardFromCache() {
@@ -511,6 +517,311 @@ class _OverviewScreenState extends State<OverviewScreen>
       return;
     }
     _loadHours();
+  }
+
+  // ── Kilometerregistratie ────────────────────────────────────────────────
+  Future<void> _loadTrips() async {
+    setState(() => _loadingTrips = true);
+    try {
+      final token = await _getToken();
+      final r = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/trips/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (r.statusCode == 200) {
+        setState(() { _tripsData = jsonDecode(r.body); _loadingTrips = false; });
+      } else {
+        setState(() => _loadingTrips = false);
+      }
+    } catch (_) { setState(() => _loadingTrips = false); }
+  }
+
+  Future<void> _addTrip(Map<String, dynamic> body) async {
+    final token = await _getToken();
+    final result = await OfflineQueue.postOrEnqueue(
+      url: '${ApiConfig.baseUrl}/api/v1/trips/',
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: body,
+      label: 'Rit: ${body['km']}km ${body['trip_date']}',
+    );
+    if (result['offline'] == true && mounted) {
+      final isNl = context.read<AppProvider>().language == 'nl';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.warning,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        content: Text(isNl
+            ? 'Geen verbinding — rit wordt later verstuurd.'
+            : 'Offline — trip will be sent later.'),
+      ));
+    }
+    _loadTrips();
+  }
+
+  Future<void> _deleteTrip(String id) async {
+    final token = await _getToken();
+    final result = await OfflineQueue.deleteOrEnqueue(
+      url: '${ApiConfig.baseUrl}/api/v1/trips/$id',
+      headers: {'Authorization': 'Bearer $token'},
+      label: 'Rit verwijderen: $id',
+    );
+    if (result['offline'] == true && mounted) {
+      final isNl = context.read<AppProvider>().language == 'nl';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: BigDoggTheme.warning,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        content: Text(isNl
+            ? 'Geen verbinding — wordt verwijderd zodra je online bent.'
+            : 'Offline — will be deleted once you are back online.'),
+      ));
+      return;
+    }
+    _loadTrips();
+  }
+
+  void _showAddTripDialog(bool isNl) {
+    final fromCtrl = TextEditingController();
+    final toCtrl = TextEditingController();
+    final purposeCtrl = TextEditingController();
+    final kmCtrl = TextEditingController();
+    String date = DateTime.now().toIso8601String().substring(0, 10);
+    bool isBusiness = true;
+
+    showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
+          title: Text(isNl ? 'Rit registreren' : 'Log trip'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx, initialDate: DateTime.parse(date),
+                      firstDate: DateTime(2000), lastDate: DateTime.now(),
+                    );
+                    if (picked != null) setSt(() => date = picked.toIso8601String().substring(0, 10));
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(labelText: isNl ? 'Datum' : 'Date'),
+                    child: Text(date),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: fromCtrl,
+                  decoration: InputDecoration(labelText: isNl ? 'Vertrekadres' : 'From address'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: toCtrl,
+                  decoration: InputDecoration(labelText: isNl ? 'Bestemming' : 'Destination'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: purposeCtrl,
+                  decoration: InputDecoration(labelText: isNl ? 'Doel van de rit' : 'Purpose'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: kmCtrl,
+                  decoration: InputDecoration(labelText: isNl ? 'Kilometers' : 'Kilometres'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: isBusiness,
+                  onChanged: (v) => setSt(() => isBusiness = v),
+                  title: Text(isBusiness
+                      ? (isNl ? 'Zakelijk' : 'Business')
+                      : (isNl ? 'Privé' : 'Private')),
+                  subtitle: Text(
+                    isNl ? 'Alleen zakelijke km tellen mee voor de aftrek' : 'Only business km count toward the deduction',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  activeColor: BigDoggTheme.teal800,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(isNl ? 'Annuleren' : 'Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                final km = double.tryParse(kmCtrl.text.replaceAll(',', '.'));
+                if (km == null || km <= 0) return;
+                if (fromCtrl.text.trim().isEmpty ||
+                    toCtrl.text.trim().isEmpty ||
+                    purposeCtrl.text.trim().isEmpty) return;
+                Navigator.pop(ctx);
+                _addTrip({
+                  'trip_date': date,
+                  'from_address': fromCtrl.text.trim(),
+                  'to_address': toCtrl.text.trim(),
+                  'purpose': purposeCtrl.text.trim(),
+                  'is_business': isBusiness,
+                  'km': km,
+                });
+              },
+              child: Text(isNl ? 'Opslaan' : 'Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTripsCard(bool isNl) {
+    if (_loadingTrips) return const SizedBox.shrink();
+
+    final businessKm = (_tripsData?['total_business_km'] as num? ?? 0).toDouble();
+    final quarterKm = (_tripsData?['quarter_business_km'] as num? ?? 0).toDouble();
+    final deduction = (_tripsData?['km_deduction_eur'] as num? ?? 0).toDouble();
+    final rate = (_tripsData?['km_rate'] as num? ?? 0.23).toDouble();
+    final entries = (_tripsData?['entries'] as List? ?? []).take(8).toList();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: BigDoggTheme.lightSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: BigDoggTheme.lightBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: BigDoggTheme.teal800,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
+            ),
+            child: GestureDetector(
+              onTap: () => setState(() => _tripsExpanded = !_tripsExpanded),
+              child: Row(
+                children: [
+                  const Icon(Icons.directions_car_outlined, color: Colors.white70, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(isNl ? 'Kilometerregistratie' : 'Mileage log',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                  ),
+                  Icon(_tripsExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.white70, size: 20),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () { setState(() => _tripsExpanded = true); _showAddTripDialog(isNl); },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: BigDoggTheme.gold500.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: BigDoggTheme.gold500.withOpacity(0.5)),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.add, size: 14, color: BigDoggTheme.gold500),
+                        const SizedBox(width: 4),
+                        Text(isNl ? 'Rit toevoegen' : 'Log trip',
+                            style: const TextStyle(fontSize: 11, color: BigDoggTheme.gold500, fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Collapsed: quarter km + year deduction summary
+          if (!_tripsExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(isNl ? 'Zakelijk dit kwartaal' : 'Business this quarter', style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+                  Text('${quarterKm.toStringAsFixed(0)} km', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
+                ])),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(isNl ? 'Aftrek dit jaar' : 'Deduction this year', style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+                  Text(_eur0(deduction), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
+                ])),
+              ]),
+            ),
+
+          if (_tripsExpanded)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(isNl ? 'Zakelijk dit jaar' : 'Business this year', style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+                      Text('${businessKm.toStringAsFixed(0)} km', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
+                    ])),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(isNl ? 'Aftrek (× €${rate.toStringAsFixed(2)})' : 'Deduction (× €${rate.toStringAsFixed(2)})', style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextSecondary)),
+                      Text(_eur0(deduction), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: BigDoggTheme.teal800)),
+                    ])),
+                  ]),
+                  const SizedBox(height: 12),
+                  if (entries.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(isNl ? 'Nog geen ritten geregistreerd.' : 'No trips logged yet.',
+                          style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextHint)),
+                    )
+                  else
+                    ...entries.map((e) {
+                      final isB = e['is_business'] == true;
+                      final km = (e['km'] as num? ?? 0).toDouble();
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 64,
+                              child: Text(e['trip_date']?.toString() ?? '',
+                                  style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextHint)),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text('${e['from_address'] ?? ''} → ${e['to_address'] ?? ''}',
+                                    style: const TextStyle(fontSize: 12, color: BigDoggTheme.lightTextPrimary),
+                                    overflow: TextOverflow.ellipsis),
+                                Text(
+                                  '${e['purpose'] ?? ''}${isB ? '' : (isNl ? ' · privé' : ' · private')}',
+                                  style: TextStyle(fontSize: 11, color: isB ? BigDoggTheme.lightTextSecondary : BigDoggTheme.lightTextHint),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ]),
+                            ),
+                            const SizedBox(width: 6),
+                            Text('${km.toStringAsFixed(0)} km',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                                    color: isB ? BigDoggTheme.teal800 : BigDoggTheme.lightTextHint)),
+                            const SizedBox(width: 4),
+                            GestureDetector(
+                              onTap: () => _deleteTrip(e['id'].toString()),
+                              child: const Icon(Icons.close, size: 14, color: BigDoggTheme.lightTextHint),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   void _showAddHoursDialog(bool isNl) {
@@ -989,6 +1300,9 @@ class _OverviewScreenState extends State<OverviewScreen>
 
           // Hours card
           _buildHoursCard(isNl),
+
+          // Kilometer log card (mirrors the hours card)
+          _buildTripsCard(isNl),
 
           _sectionTitle(isNl ? 'Omzet' : 'Revenue'),
           _overviewCard([
