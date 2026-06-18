@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -14,6 +15,7 @@ import '../services/subscription_service.dart';
 import '../services/local_storage_service.dart';
 import '../widgets/subscription_web_widget.dart';
 import '../widgets/offline_chrome.dart';
+import '../services/web_io.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Invoice Detail Sheet
@@ -886,17 +888,91 @@ class _OverviewScreenState extends State<OverviewScreen>
     final lang = isNl ? 'nl' : 'en';
     String url = '${ApiConfig.baseUrl}/api/v1/reports/btw/pdf?token=$token&lang=$lang';
     if (quarter != null && year != null) url += '&quarter=$quarter&year=$year';
-    final uri = Uri.parse(url);
-    try {
-      if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(isNl ? 'Kan rapport niet openen' : 'Could not open report'),
-          backgroundColor: BigDoggTheme.error,
-        ));
+    final fname = quarter != null && year != null
+        ? 'bigdogg-btw-Q$quarter-$year.pdf'
+        : 'bigdogg-btw.pdf';
+    await _openReportPdf(url, fname, isNl);
+  }
+
+  // ── Shared PDF fetch-and-open ─────────────────────────────────────────────
+  // Native: show an in-app loading overlay, download the PDF bytes, then hand
+  // them to the system viewer/share sheet (downloadBytes → Printing.sharePdf)
+  // — instead of kicking the user out to a blank browser tab. Web keeps the
+  // browser/new-tab behaviour, which is the expected download UX there.
+  Future<void> _openReportPdf(String url, String filename, bool isNl) async {
+    if (kIsWeb) {
+      final uri = Uri.parse(url);
+      try {
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      } catch (_) {
+        if (mounted) _reportDownloadError(isNl);
       }
+      return;
     }
+
+    _showReportLoadingDialog(isNl);
+    try {
+      final resp = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 90));
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
+        downloadBytes(filename, resp.bodyBytes, mimeType: 'application/pdf');
+      } else if (mounted) {
+        _reportDownloadError(isNl);
+      }
+    } catch (_) {
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (mounted) _reportDownloadError(isNl);
+    }
+  }
+
+  void _showReportLoadingDialog(bool isNl) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 44, height: 44,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(BigDoggTheme.teal800),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(isNl ? 'Rapport wordt voorbereid…' : 'Preparing your report…',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold,
+                      color: BigDoggTheme.teal800, fontFamily: 'PlusJakartaSans')),
+              const SizedBox(height: 8),
+              Text(
+                isNl
+                    ? 'Even geduld — de PDF opent zo automatisch.'
+                    : 'One moment — the PDF will open automatically.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.45),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _reportDownloadError(bool isNl) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(isNl ? 'Kan rapport niet openen' : 'Could not open report'),
+      backgroundColor: BigDoggTheme.error,
+    ));
   }
 
   void _onDownloadAnnualReportTapped(bool isNl, int year) async {
@@ -914,56 +990,10 @@ class _OverviewScreenState extends State<OverviewScreen>
       return;
     }
 
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 68, height: 68,
-                decoration: BoxDecoration(color: BigDoggTheme.teal800.withOpacity(0.08), shape: BoxShape.circle),
-                child: const Icon(Icons.picture_as_pdf_outlined, size: 34, color: BigDoggTheme.teal800),
-              ),
-              const SizedBox(height: 20),
-              Text(isNl ? 'Rapport wordt geopend' : 'Opening report',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: BigDoggTheme.teal800, fontFamily: 'PlusJakartaSans')),
-              const SizedBox(height: 10),
-              Text(
-                isNl ? 'Je jaarrapport $year wordt geopend als PDF in een nieuw tabblad.'
-                    : 'Your $year annual report is opening as a PDF in a new tab.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: BigDoggTheme.teal800,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text(isNl ? 'Sluiten' : 'Close',
-                      style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'PlusJakartaSans')),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
     final token = await InvoicesService.getToken();
     final lang = isNl ? 'nl' : 'en';
     final url = '${ApiConfig.baseUrl}/api/v1/reports/annual/pdf?token=$token&year=$year&lang=$lang';
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await _openReportPdf(url, 'bigdogg-jaarrapport-$year.pdf', isNl);
   }
 
   void _showPaywallDialog(bool isNl) {
