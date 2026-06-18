@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -15,7 +14,7 @@ import '../services/subscription_service.dart';
 import '../services/local_storage_service.dart';
 import '../widgets/subscription_web_widget.dart';
 import '../widgets/offline_chrome.dart';
-import '../services/web_io.dart';
+import '../services/pdf_opener.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Invoice Detail Sheet
@@ -891,88 +890,7 @@ class _OverviewScreenState extends State<OverviewScreen>
     final fname = quarter != null && year != null
         ? 'bigdogg-btw-Q$quarter-$year.pdf'
         : 'bigdogg-btw.pdf';
-    await _openReportPdf(url, fname, isNl);
-  }
-
-  // ── Shared PDF fetch-and-open ─────────────────────────────────────────────
-  // Native: show an in-app loading overlay, download the PDF bytes, then hand
-  // them to the system viewer/share sheet (downloadBytes → Printing.sharePdf)
-  // — instead of kicking the user out to a blank browser tab. Web keeps the
-  // browser/new-tab behaviour, which is the expected download UX there.
-  Future<void> _openReportPdf(String url, String filename, bool isNl) async {
-    if (kIsWeb) {
-      final uri = Uri.parse(url);
-      try {
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
-      } catch (_) {
-        if (mounted) _reportDownloadError(isNl);
-      }
-      return;
-    }
-
-    _showReportLoadingDialog(isNl);
-    try {
-      final resp = await http
-          .get(Uri.parse(url))
-          .timeout(const Duration(seconds: 90));
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
-      if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
-        downloadBytes(filename, resp.bodyBytes, mimeType: 'application/pdf');
-      } else if (mounted) {
-        _reportDownloadError(isNl);
-      }
-    } catch (_) {
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
-      if (mounted) _reportDownloadError(isNl);
-    }
-  }
-
-  void _showReportLoadingDialog(bool isNl) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                width: 44, height: 44,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(BigDoggTheme.teal800),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(isNl ? 'Rapport wordt voorbereid…' : 'Preparing your report…',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold,
-                      color: BigDoggTheme.teal800, fontFamily: 'PlusJakartaSans')),
-              const SizedBox(height: 8),
-              Text(
-                isNl
-                    ? 'Even geduld — de PDF opent zo automatisch.'
-                    : 'One moment — the PDF will open automatically.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.45),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _reportDownloadError(bool isNl) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(isNl ? 'Kan rapport niet openen' : 'Could not open report'),
-      backgroundColor: BigDoggTheme.error,
-    ));
+    await openPdfInApp(context, url: url, filename: fname, isNl: isNl);
   }
 
   void _onDownloadAnnualReportTapped(bool isNl, int year) async {
@@ -993,7 +911,7 @@ class _OverviewScreenState extends State<OverviewScreen>
     final token = await InvoicesService.getToken();
     final lang = isNl ? 'nl' : 'en';
     final url = '${ApiConfig.baseUrl}/api/v1/reports/annual/pdf?token=$token&year=$year&lang=$lang';
-    await _openReportPdf(url, 'bigdogg-jaarrapport-$year.pdf', isNl);
+    await openPdfInApp(context, url: url, filename: 'bigdogg-jaarrapport-$year.pdf', isNl: isNl);
   }
 
   void _showPaywallDialog(bool isNl) {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../services/quotes_service.dart';
+import '../services/pdf_opener.dart';
 import '../services/email_service.dart';
 import '../services/api_config.dart';
 import '../providers/app_provider.dart';
@@ -60,17 +60,9 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
   Future<void> _downloadPdf(bool isNl) async {
     final token = await QuotesService.getToken();
     if (token == null) return;
-    final url = Uri.parse(
-      '${ApiConfig.baseUrl}/api/v1/quotes/${widget.quoteId}/pdf?token=$token',
-    );
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(isNl ? 'Kon PDF niet openen' : 'Could not open PDF'),
-      ));
-    }
+    final url =
+        '${ApiConfig.baseUrl}/api/v1/quotes/${widget.quoteId}/pdf?token=$token';
+    await openPdfInApp(context, url: url, filename: 'bigdogg-offerte.pdf', isNl: isNl);
   }
 
   Future<void> _sendEmail(bool isNl) async {

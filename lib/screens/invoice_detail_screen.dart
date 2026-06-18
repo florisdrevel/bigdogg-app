@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../services/pdf_opener.dart';
 import '../services/invoices_service.dart';
 import '../services/email_service.dart';
 import '../services/payments_service.dart';
@@ -81,18 +81,9 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
 
   Future<void> _downloadPdf(bool isNl) async {
     final token = await InvoicesService.getToken();
-    final url = '${ApiConfig.baseUrl}/api/v1/pdf/${widget.invoiceId}';
-    final uri = Uri.parse('$url?token=$token');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(isNl ? 'Kan PDF niet openen' : 'Could not open PDF'),
-          backgroundColor: BigDoggTheme.error,
-        ));
-      }
-    }
+    final url =
+        '${ApiConfig.baseUrl}/api/v1/pdf/${widget.invoiceId}?token=$token';
+    await openPdfInApp(context, url: url, filename: 'bigdogg-factuur.pdf', isNl: isNl);
   }
 
   // Per-invoice payment-link toggle. Optimistically flips the local
