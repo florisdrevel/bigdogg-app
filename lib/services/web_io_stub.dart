@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 // image_picker exports its own `PickedFile` class — hide it so our local
 // model (web_io_types.PickedFile) stays unambiguous.
 import 'package:image_picker/image_picker.dart' hide PickedFile;
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import 'web_io_types.dart';
 export 'web_io_types.dart';
@@ -14,6 +17,24 @@ export 'web_io_types.dart';
 void downloadBytes(String filename, Uint8List bytes,
     {String mimeType = 'application/octet-stream'}) {
   unawaited(Printing.sharePdf(bytes: bytes, filename: filename));
+}
+
+// Native: write the PDF to a temp file and OPEN it in the device's default
+// viewer (ACTION_VIEW) — so the user sees the document, not a share sheet.
+// Falls back to the share sheet only if no viewer app is available. Web has
+// its own copy that opens the PDF in a new browser tab.
+Future<void> openPdfFile(String filename, Uint8List bytes) async {
+  try {
+    final dir = await getTemporaryDirectory();
+    final path = '${dir.path}/$filename';
+    await File(path).writeAsBytes(bytes, flush: true);
+    final result = await OpenFilex.open(path, type: 'application/pdf');
+    if (result.type != ResultType.done) {
+      unawaited(Printing.sharePdf(bytes: bytes, filename: filename));
+    }
+  } catch (_) {
+    unawaited(Printing.sharePdf(bytes: bytes, filename: filename));
+  }
 }
 
 // Native (Android / iOS / desktop) implementation of pickFiles. Web has

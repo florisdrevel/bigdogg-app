@@ -41,7 +41,7 @@ Future<void> openPdfInApp(
         await http.get(Uri.parse(url)).timeout(const Duration(seconds: 90));
     if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
     if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
-      downloadBytes(filename, resp.bodyBytes, mimeType: 'application/pdf');
+      await openPdfFile(filename, resp.bodyBytes);
     } else if (context.mounted) {
       _error(context, isNl);
     }

@@ -22,6 +22,14 @@ void downloadBytes(String filename, Uint8List bytes,
   html.Url.revokeObjectUrl(url);
 }
 
+/// Web: open the PDF in a new browser tab for viewing. (On web, callers
+/// normally hand off to launchUrl before reaching this; kept for parity.)
+Future<void> openPdfFile(String filename, Uint8List bytes) async {
+  final blob = html.Blob(<Uint8List>[bytes], 'application/pdf');
+  final url = html.Url.createObjectUrlFromBlob(blob);
+  html.window.open(url, '_blank');
+}
+
 Future<List<PickedFile>?> pickFiles({
   bool camera = false,
   String accept = '*/*',

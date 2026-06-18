@@ -1,7 +1,7 @@
 name: bigdogg_app
 description: "BigDogg - Smart invoicing for Dutch ZZP'ers"
 publish_to: 'none'
-version: 1.0.0+3
+version: 1.0.0+4
 
 environment:
   sdk: ^3.11.4
@@ -28,6 +28,10 @@ dependencies:
   # Native share sheet for the PDF transactions report on mobile
   # (web uses an in-browser download via dart:html instead).
   printing: ^5.13.0
+  # Open a downloaded PDF directly in the device's default viewer
+  # (ACTION_VIEW) instead of the share sheet. path_provider gives a temp dir.
+  path_provider: ^2.1.0
+  open_filex: ^4.4.0
 
 dev_dependencies:
   flutter_test:
