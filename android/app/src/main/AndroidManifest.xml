@@ -4,10 +4,14 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-    <!-- image_picker / file_picker merge in video + audio media permissions we
-         never use. Strip them so the app only requests photo access (which is
-         declared in Play Console) and carries no unused media permissions. -->
+    <!-- The app captures via CAMERA and picks files via the Storage Access
+         Framework (file_picker) + the Android Photo Picker — none of which
+         need persistent media access. Google's policy requires the Photo
+         Picker (no permission) for one-off image selection, so strip every
+         READ_MEDIA_* permission the plugins (image_picker/file_picker) merge
+         in. Gallery selection still works via the Photo Picker on Android 13+
+         and via READ_EXTERNAL_STORAGE (<= API 32) on older devices. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove"/>
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove"/>
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
