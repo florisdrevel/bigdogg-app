@@ -1,0 +1,50 @@
+# Codemagic CI — build the iOS app on a cloud Mac and ship it to App Store
+# Connect / TestFlight, entirely from Windows (no local Mac needed).
+#
+# ONE-TIME SETUP in the Codemagic UI before the first build:
+#   1. Connect this GitHub repo (florisdrevel/bigdogg-app).
+#   2. Teams/Integrations → Apple Developer Portal / App Store Connect →
+#      add your App Store Connect API key (.p8 + Key ID + Issuer ID).
+#      Name the integration EXACTLY:  BigDogg App Store Connect
+#      (or rename it below to match what you choose).
+#   3. Start build → pick the "ios-appstore" workflow.
+#
+# The API key lets Codemagic create the signing certificate + provisioning
+# profile automatically and upload the build — no certificates to manage.
+
+workflows:
+  ios-appstore:
+    name: BigDogg iOS — App Store
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: BigDogg App Store Connect
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: nl.bigdogg.bigdoggApp
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Install CocoaPods
+        script: find . -name "Podfile" -execdir pod install \;
+      - name: Apply signing profiles to the Xcode project
+        script: xcode-project use-profiles
+      - name: Build signed IPA
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Upload to TestFlight automatically. Leave App Store submission
+        # manual (you'll press Submit in App Store Connect after filling the
+        # listing). Flip to true later for fully-automated releases.
+        submit_to_testflight: true
+        submit_to_app_store: false
