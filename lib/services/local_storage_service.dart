@@ -11,7 +11,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 /// successful network sync timestamp, used by the offline banner and
 /// the Settings "last synced" row.
 ///
-/// Allowed keys: 'invoices', 'expenses', 'dashboard', 'clients'.
+/// Keys in use: 'invoices', 'expenses', 'dashboard', 'clients', 'hours',
+/// 'trips', 'products', 'projects', 'investments'. (`oldestLastSync()`
+/// only tracks the original four for the Settings "last synced" row.)
 class LocalStorageService {
   static const String _boxName = 'bigdogg_cache';
   static Box<String>? _box;

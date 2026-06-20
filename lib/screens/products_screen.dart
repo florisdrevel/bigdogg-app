@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/products_service.dart';
+import '../services/local_storage_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 
@@ -18,16 +19,31 @@ class _ProductsScreenState extends State<ProductsScreen> {
   @override
   void initState() {
     super.initState();
+    _bootstrapFromCache();
     _loadProducts();
   }
 
+  /// Synchronous Hive read so the list paints on the first frame and
+  /// revisiting the tab never flashes a spinner.
+  void _bootstrapFromCache() {
+    final cached = LocalStorageService.get('products');
+    if (cached is List && cached.isNotEmpty) {
+      _products = cached;
+      _loading = false;
+    }
+  }
+
   Future<void> _loadProducts() async {
-    setState(() => _loading = true);
+    if (_products.isEmpty) setState(() => _loading = true);
     final result = await ProductsService.getProducts();
+    if (!mounted) return;
     setState(() {
       _loading = false;
       if (result['success']) _products = result['products'];
     });
+    if (result['success']) {
+      await LocalStorageService.save('products', result['products']);
+    }
   }
 
   void _showProductDialog(bool isNl, {Map<String, dynamic>? existing}) {

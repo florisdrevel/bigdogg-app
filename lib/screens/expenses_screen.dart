@@ -74,6 +74,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
     _appProvider.addListener(_onAppProviderChange);
     _filterQuarter = _currentQuarter;
     _bootstrapExpensesFromCache();
+    _bootstrapInvestmentsFromCache();
     _loadExpenses();
     _loadInvestments();
   }
@@ -84,6 +85,15 @@ class _ExpensesScreenState extends State<ExpensesScreen>
     if (cached is List && cached.isNotEmpty) {
       _expenses = cached;
       _loading = false;
+    }
+  }
+
+  /// Same cache-first paint for the Investeringen sub-tab.
+  void _bootstrapInvestmentsFromCache() {
+    final cached = LocalStorageService.get('investments');
+    if (cached is List && cached.isNotEmpty) {
+      _investments = cached;
+      _loadingInvestments = false;
     }
   }
 
@@ -148,7 +158,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   }
 
   Future<void> _loadInvestments() async {
-    setState(() => _loadingInvestments = true);
+    if (_investments.isEmpty) setState(() => _loadingInvestments = true);
     try {
       final token = await _getToken();
       final r = await http.get(
@@ -156,10 +166,12 @@ class _ExpensesScreenState extends State<ExpensesScreen>
         headers: {'Authorization': 'Bearer $token'},
       );
       if (r.statusCode == 200) {
+        final fresh = (jsonDecode(r.body)['investments'] as List?) ?? const [];
         setState(() {
-          _investments = jsonDecode(r.body)['investments'] ?? [];
+          _investments = fresh;
           _loadingInvestments = false;
         });
+        await LocalStorageService.save('investments', fresh);
       } else {
         setState(() => _loadingInvestments = false);
       }

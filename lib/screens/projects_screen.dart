@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_config.dart';
 import '../services/offline_queue.dart';
+import '../services/local_storage_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 
@@ -23,8 +24,18 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     return prefs.getString('access_token');
   }
 
+  /// Paint instantly from the last cached list so revisiting the tab never
+  /// flashes a spinner; the network refresh updates in place underneath.
+  void _bootstrapFromCache() {
+    final cached = LocalStorageService.get('projects');
+    if (cached is List && cached.isNotEmpty) {
+      _projects = cached;
+      _loading = false;
+    }
+  }
+
   Future<void> _load() async {
-    setState(() => _loading = true);
+    if (_projects.isEmpty) setState(() => _loading = true);
     try {
       final token = await _getToken();
       final r = await http.get(
@@ -33,7 +44,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       );
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
-        setState(() { _projects = data['projects'] ?? []; _loading = false; });
+        final fresh = (data['projects'] as List?) ?? const [];
+        setState(() { _projects = fresh; _loading = false; });
+        await LocalStorageService.save('projects', fresh);
       } else {
         setState(() => _loading = false);
       }
@@ -140,7 +153,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() { super.initState(); _bootstrapFromCache(); _load(); }
 
   void _showCreateDialog(bool isNl) {
     final nameCtrl = TextEditingController();
