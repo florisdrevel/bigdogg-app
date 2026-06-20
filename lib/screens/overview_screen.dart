@@ -414,6 +414,19 @@ class _OverviewScreenState extends State<OverviewScreen>
       _quarterly = cached;
       _loadingQuarterly = false;
     }
+    // Bootstrap the hours + km cards from cache too, so the whole Overview
+    // paints in one frame instead of those cards popping in later, after their
+    // own network calls return. They refresh silently in the background.
+    final hours = LocalStorageService.get('hours');
+    if (hours is Map) {
+      _hoursData = Map<String, dynamic>.from(hours);
+      _loadingHours = false;
+    }
+    final trips = LocalStorageService.get('trips');
+    if (trips is Map) {
+      _tripsData = Map<String, dynamic>.from(trips);
+      _loadingTrips = false;
+    }
   }
 
   @override
@@ -458,19 +471,24 @@ class _OverviewScreenState extends State<OverviewScreen>
   }
 
   Future<void> _loadHours() async {
-    setState(() => _loadingHours = true);
+    // Only show the loading state on a cold start (no cache). With cache the
+    // card is already on screen with last-known values; refresh silently.
+    if (_hoursData == null) setState(() => _loadingHours = true);
     try {
       final token = await _getToken();
       final r = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/v1/hours/'),
         headers: {'Authorization': 'Bearer $token'},
       );
+      if (!mounted) return;
       if (r.statusCode == 200) {
-        setState(() { _hoursData = jsonDecode(r.body); _loadingHours = false; });
+        final data = Map<String, dynamic>.from(jsonDecode(r.body) as Map);
+        setState(() { _hoursData = data; _loadingHours = false; });
+        await LocalStorageService.save('hours', data);
       } else {
         setState(() => _loadingHours = false);
       }
-    } catch (_) { setState(() => _loadingHours = false); }
+    } catch (_) { if (mounted) setState(() => _loadingHours = false); }
   }
 
   Future<void> _addHours(double hours, String date, String description) async {
@@ -522,19 +540,24 @@ class _OverviewScreenState extends State<OverviewScreen>
 
   // ── Kilometerregistratie ────────────────────────────────────────────────
   Future<void> _loadTrips() async {
-    setState(() => _loadingTrips = true);
+    // Cache-aware like _loadHours: only spin on a cold start, refresh silently
+    // when the card is already showing cached values.
+    if (_tripsData == null) setState(() => _loadingTrips = true);
     try {
       final token = await _getToken();
       final r = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/v1/trips/'),
         headers: {'Authorization': 'Bearer $token'},
       );
+      if (!mounted) return;
       if (r.statusCode == 200) {
-        setState(() { _tripsData = jsonDecode(r.body); _loadingTrips = false; });
+        final data = Map<String, dynamic>.from(jsonDecode(r.body) as Map);
+        setState(() { _tripsData = data; _loadingTrips = false; });
+        await LocalStorageService.save('trips', data);
       } else {
         setState(() => _loadingTrips = false);
       }
-    } catch (_) { setState(() => _loadingTrips = false); }
+    } catch (_) { if (mounted) setState(() => _loadingTrips = false); }
   }
 
   Future<void> _addTrip(Map<String, dynamic> body) async {
