@@ -47,6 +47,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
   String? _filterStatus;
   int? _filterQuarter;
   int? _filterMonth;
+  int _filterYear = DateTime.now().year;
   String _sortBy = 'date_desc';
 
   // Overdue (>14d) banner — dismissed-per-invoice persisted in SharedPreferences
@@ -80,6 +81,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
     });
     _appProvider.addListener(_onAppProviderChange);
     _filterQuarter = _currentQuarter;
+    _filterYear = _currentYear;
     _bootstrapInvoicesFromCache();
     _loadInvoices();
     _loadDismissedOverdue();
@@ -284,7 +286,10 @@ class _InvoicesScreenState extends State<InvoicesScreen>
       list = list.where((inv) {
         final date = inv['invoice_date'] as String?;
         if (date == null) return false;
-        return int.tryParse(date.split('-')[1]) == _filterMonth;
+        final parts = date.split('-');
+        final year = int.tryParse(parts[0]) ?? 0;
+        final month = int.tryParse(parts[1]) ?? 0;
+        return year == _filterYear && month == _filterMonth;
       }).toList();
     } else if (_filterQuarter != null) {
       final months = {
@@ -296,8 +301,10 @@ class _InvoicesScreenState extends State<InvoicesScreen>
       list = list.where((inv) {
         final date = inv['invoice_date'] as String?;
         if (date == null) return false;
-        final month = int.tryParse(date.split('-')[1]) ?? 0;
-        return months.contains(month);
+        final parts = date.split('-');
+        final year = int.tryParse(parts[0]) ?? 0;
+        final month = int.tryParse(parts[1]) ?? 0;
+        return year == _filterYear && months.contains(month);
       }).toList();
     }
 
@@ -347,6 +354,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
       _filterStatus != null ||
       _filterMonth != null ||
       _filterQuarter != _currentQuarter ||
+      _filterYear != _currentYear ||
       _sortBy != 'date_desc';
 
   /// Display name for a client. `??` alone isn't enough because the
@@ -369,10 +377,10 @@ class _InvoicesScreenState extends State<InvoicesScreen>
               'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December']
           : ['January', 'February', 'March', 'April', 'May', 'June',
               'July', 'August', 'September', 'October', 'November', 'December'];
-      return '${months[_filterMonth! - 1]} $_currentYear';
+      return '${months[_filterMonth! - 1]} $_filterYear';
     }
     if (_filterQuarter != null) {
-      return 'Q$_filterQuarter $_currentYear';
+      return 'Q$_filterQuarter $_filterYear';
     }
     return isNl ? 'Alle facturen' : 'All invoices';
   }
@@ -582,6 +590,28 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                         }),
                       ),
                       const SizedBox(height: 16),
+                      Text(isNl ? 'Jaar' : 'Year',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: BigDoggTheme.lightTextSecondary)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: List.generate(3, (i) {
+                          final year = _currentYear - (2 - i);
+                          return _filterChip(
+                            year.toString(),
+                            _filterYear == year,
+                            () {
+                              setSheetState(() => _filterYear = year);
+                              setState(() => _filterYear = year);
+                            },
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 16),
                       Text(isNl ? 'Sorteren' : 'Sort by',
                           style: const TextStyle(
                               fontWeight: FontWeight.w600,
@@ -623,6 +653,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                               _filterStatus = null;
                               _filterQuarter = _currentQuarter;
                               _filterMonth = null;
+                              _filterYear = _currentYear;
                               _sortBy = 'date_desc';
                             });
                             Navigator.pop(context);
@@ -1384,6 +1415,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                                 _filterStatus = null;
                                 _filterQuarter = _currentQuarter;
                                 _filterMonth = null;
+                                _filterYear = _currentYear;
                                 _sortBy = 'date_desc';
                               }),
                               child: Text(isNl
