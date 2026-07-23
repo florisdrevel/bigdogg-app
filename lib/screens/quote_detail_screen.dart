@@ -26,11 +26,20 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
   @override
   void initState() {
     super.initState();
+    // Paint instantly from the in-memory cache if this quote was opened
+    // earlier this session; the cold fetch only spins the first time.
+    final cached = QuotesService.peekQuote(widget.quoteId);
+    if (cached != null) {
+      _quote = cached['quote'] as Map<String, dynamic>?;
+      _lines = (cached['lines'] as List?) ?? [];
+      _loading = false;
+    }
     _load();
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    // Only spin on a cold open (nothing cached); otherwise refresh quietly.
+    if (_quote == null) setState(() => _loading = true);
     final result = await QuotesService.getQuote(widget.quoteId);
     if (!mounted) return;
     setState(() {

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'api_cache.dart';
 import 'auth_service.dart';
+import 'mem_cache.dart';
 import 'offline_queue.dart';
 
 class ProfileService {
@@ -17,24 +18,42 @@ class ProfileService {
     return prefs.getString('access_token');
   }
 
+  /// Synchronous peek into the in-memory profile cache, used by the
+  /// Profile screen to populate its fields instantly on a revisit before
+  /// the silent background refresh lands. Null if not cached this session.
+  static Map<String, dynamic>? peekProfile() {
+    final cached = MemCache.read<Map<String, dynamic>>('profile');
+    if (cached != null && cached['success'] == true) return cached;
+    return null;
+  }
+
+  /// 5-minute in-memory cache with stale-while-revalidate. ApiCache stays
+  /// the offline disk fallback inside the fetcher. Repeat opens of the
+  /// Profile screen render instantly; a stale open refreshes in the
+  /// background.
   static Future<Map<String, dynamic>> getProfile() async {
-    return ApiCache.read(
+    return MemCache.readWithRefresh<Map<String, dynamic>>(
       key: 'profile',
-      fetcher: () async {
-        final token = await _getToken();
-        final response = await http.get(
-          Uri.parse('$baseUrl/api/v1/profile/'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-        );
-        final data = jsonDecode(response.body);
-        if (response.statusCode == 200) {
-          return {'success': true, 'profile': data['profile']};
-        }
-        return {'success': false, 'message': data['detail']};
-      },
+      ttl: const Duration(minutes: 5),
+      cacheIf: (v) => v['success'] == true,
+      fetcher: () => ApiCache.read(
+        key: 'profile',
+        fetcher: () async {
+          final token = await _getToken();
+          final response = await http.get(
+            Uri.parse('$baseUrl/api/v1/profile/'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          );
+          final data = jsonDecode(response.body);
+          if (response.statusCode == 200) {
+            return {'success': true, 'profile': data['profile']};
+          }
+          return {'success': false, 'message': data['detail']};
+        },
+      ),
     );
   }
 
@@ -56,7 +75,7 @@ class ProfileService {
     bool? defaultExcludePaymentLink,
   }) async {
     final token = await _getToken();
-    return OfflineQueue.postOrEnqueue(
+    final result = await OfflineQueue.postOrEnqueue(
       url: '$baseUrl/api/v1/profile/',
       headers: {
         'Authorization': 'Bearer $token',
@@ -81,6 +100,9 @@ class ProfileService {
       },
       label: 'Profiel bijwerken',
     );
+    // Drop the cached profile so the next read reflects the edit.
+    MemCache.invalidate('profile');
+    return result;
   }
 
   static Future<Map<String, dynamic>> uploadLogo({
@@ -114,6 +136,8 @@ class ProfileService {
       final response = await http.Response.fromStream(streamed);
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
+        // New logo invalidates the cached profile (logo_url changed).
+        MemCache.invalidate('profile');
         return {'success': true, 'logo_url': data['logo_url']};
       }
       return {'success': false, 'message': data['detail'] ?? 'Upload failed'};

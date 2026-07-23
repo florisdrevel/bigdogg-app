@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'api_cache.dart';
 import 'auth_service.dart';
+import 'mem_cache.dart';
 import 'offline_queue.dart';
 
 class QuotesService {
@@ -38,28 +39,52 @@ class QuotesService {
     );
   }
 
+  /// Synchronous peek into the in-memory cache for a single quote. The
+  /// detail screen calls this to paint instantly on a revisit before the
+  /// silent background refresh lands. Null if not cached this session.
+  static Map<String, dynamic>? peekQuote(String quoteId) {
+    final cached = MemCache.read<Map<String, dynamic>>('quote:$quoteId');
+    if (cached != null && cached['success'] == true) return cached;
+    return null;
+  }
+
+  /// Drop the in-memory caches a quote mutation makes stale so the detail
+  /// screen re-fetches fresh data on its next load.
+  static void _invalidateQuoteCaches(String quoteId) {
+    MemCache.invalidate('quote:$quoteId');
+  }
+
+  /// 5-minute in-memory cache with stale-while-revalidate, keyed per quote.
+  /// ApiCache stays the offline disk fallback inside the fetcher. A repeat
+  /// open returns the RAM cache instantly; a stale open serves cache and
+  /// refreshes in the background.
   static Future<Map<String, dynamic>> getQuote(String quoteId) async {
-    return ApiCache.read(
+    return MemCache.readWithRefresh<Map<String, dynamic>>(
       key: 'quote:$quoteId',
-      fetcher: () async {
-        final token = await _getToken();
-        final response = await http.get(
-          Uri.parse('$baseUrl/api/v1/quotes/$quoteId'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-        );
-        final data = jsonDecode(response.body);
-        if (response.statusCode == 200) {
-          return {
-            'success': true,
-            'quote': data['quote'],
-            'lines': data['lines']
-          };
-        }
-        return {'success': false, 'message': data['detail']};
-      },
+      ttl: const Duration(minutes: 5),
+      cacheIf: (v) => v['success'] == true,
+      fetcher: () => ApiCache.read(
+        key: 'quote:$quoteId',
+        fetcher: () async {
+          final token = await _getToken();
+          final response = await http.get(
+            Uri.parse('$baseUrl/api/v1/quotes/$quoteId'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          );
+          final data = jsonDecode(response.body);
+          if (response.statusCode == 200) {
+            return {
+              'success': true,
+              'quote': data['quote'],
+              'lines': data['lines']
+            };
+          }
+          return {'success': false, 'message': data['detail']};
+        },
+      ),
     );
   }
 
@@ -93,7 +118,7 @@ class QuotesService {
     String status,
   ) async {
     final token = await _getToken();
-    return OfflineQueue.putOrEnqueue(
+    final result = await OfflineQueue.putOrEnqueue(
       url: '$baseUrl/api/v1/quotes/$quoteId',
       headers: {
         'Authorization': 'Bearer $token',
@@ -102,15 +127,19 @@ class QuotesService {
       body: {'status': status},
       label: 'Offerte status → $status',
     );
+    _invalidateQuoteCaches(quoteId);
+    return result;
   }
 
   static Future<Map<String, dynamic>> deleteQuote(String quoteId) async {
     final token = await _getToken();
-    return OfflineQueue.deleteOrEnqueue(
+    final result = await OfflineQueue.deleteOrEnqueue(
       url: '$baseUrl/api/v1/quotes/$quoteId',
       headers: {'Authorization': 'Bearer $token'},
       label: 'Offerte verwijderen: $quoteId',
     );
+    _invalidateQuoteCaches(quoteId);
+    return result;
   }
 
   static Future<Map<String, dynamic>> convertToInvoice(String quoteId) async {
@@ -122,6 +151,8 @@ class QuotesService {
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
+        // Converting flips the quote to "converted" — drop its detail cache.
+        _invalidateQuoteCaches(quoteId);
         return {
           'success': true,
           'invoice_id': data['invoice_id'],

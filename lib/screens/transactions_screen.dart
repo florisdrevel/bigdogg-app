@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../services/banking_service.dart';
 import '../services/invoices_service.dart';
+import '../services/local_storage_service.dart';
 import '../services/web_io.dart';
 import '../theme.dart';
 
@@ -41,25 +42,47 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   @override
   void initState() {
     super.initState();
+    _bootstrapFromCache();
     _load();
   }
 
   bool _focusHandled = false;
 
+  /// Paint the last-known transactions synchronously so the screen opens
+  /// in one frame instead of flashing a spinner while the network call
+  /// runs. The list refreshes silently in the background via [_load].
+  void _bootstrapFromCache() {
+    final cached = LocalStorageService.get('transactions');
+    if (cached is List && cached.isNotEmpty) {
+      _transactions = cached
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      _loading = false;
+    }
+  }
+
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    // Only show the spinner on a cold start (no cached rows). With cache the
+    // list is already on screen; refresh quietly without a loading flash.
+    if (_transactions.isEmpty) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     final result = await BankingService.getTransactions(pageSize: 100);
     if (!mounted) return;
     if (result['success'] == true) {
       final data = result['data'] as Map<String, dynamic>?;
       final list = (data?['transactions'] as List?) ?? const [];
+      final parsed = list.cast<Map<String, dynamic>>();
       setState(() {
-        _transactions = list.cast<Map<String, dynamic>>();
+        _transactions = parsed;
         _loading = false;
+        _error = null;
       });
+      LocalStorageService.save('transactions', parsed);
       // Deep-link: open the sheet on the requested transaction once.
       if (!_focusHandled &&
           widget.focusTxId != null &&
@@ -79,9 +102,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         }
       }
     } else {
+      // Refresh failed. If cached rows are already on screen, keep them and
+      // stay silent — never replace a usable list with an error page. Only
+      // surface the error on a genuine cold start.
       setState(() {
-        _error = result['message']?.toString() ?? 'transactions_error';
         _loading = false;
+        if (_transactions.isEmpty) {
+          _error = result['message']?.toString() ?? 'transactions_error';
+        }
       });
     }
   }

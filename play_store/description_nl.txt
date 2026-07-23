@@ -15,7 +15,9 @@ KERNFUNCTIES
 • Investeringen & afschrijvingen — registreer eenvoudig en zie de jaarlijkse afschrijving terug in je rapporten.
 • Kwartaal BTW-rapport — eén klik, complete PDF, klaar voor de Belastingdienst.
 • Jaarrapport met AI-belastingtips — BigDogg vindt aftrekposten die je over het hoofd zag.
+• Reserveer voor de belasting — zie in één oogopslag hoeveel je opzij moet zetten voor de inkomstenbelasting, berekend op basis van je winst en aftrekposten.
 • Urenregistratie — houd je uren bij voor het urencriterium van 1.225 uur (zelfstandigenaftrek).
+• Kilometerregistratie — leg je zakelijke ritten vast; BigDogg telt €0,23 per kilometer mee als aftrekpost in je jaarrapport.
 • Historische import — sleep oude facturen als PDF erin, AI organiseert je geschiedenis en bouwt direct een jaarrapport.
 • Tweetalig — schakel direct tussen Nederlands en Engels. Ideaal voor expats en internationale klanten.
 

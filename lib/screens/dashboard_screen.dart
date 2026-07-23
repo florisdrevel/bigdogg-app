@@ -982,6 +982,12 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
   @override
   void initState() {
     super.initState();
+    // Paint instantly from the last-fetched list; the refresh lands silently.
+    final cached = NotificationsService.peek();
+    if (cached != null) {
+      _items = cached;
+      _loading = false;
+    }
     _load();
   }
 

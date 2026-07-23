@@ -14,7 +14,6 @@ import '../widgets/subscription_web_widget.dart';
 import '../services/auth_service.dart';
 import '../services/referral_service.dart';
 import '../services/banking_service.dart';
-import '../services/expenses_service.dart';
 import '../services/accountants_service.dart';
 import '../services/api_config.dart';
 import '../providers/app_provider.dart';
@@ -78,12 +77,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _bootstrapFromCache();
     _loadStatus();
     _loadStripeStatus();
     _loadReferralStats();
     _loadBankStatus();
     _loadAccountants();
     _loadInvoicePrefs();
+  }
+
+  /// Paint every Settings section synchronously from its last-known cached
+  /// value so the screen opens fully rendered instead of full-screen
+  /// spinning on the subscription call and inline-spinning each section.
+  /// Every loader below refreshes its slice silently in the background.
+  void _bootstrapFromCache() {
+    final sub = LocalStorageService.get('subscription');
+    if (sub is Map) {
+      _subscription = Map<String, dynamic>.from(sub);
+      _loading = false;
+    }
+    final bank = LocalStorageService.get('bank_status');
+    if (bank is Map) {
+      _bankStatus = Map<String, dynamic>.from(bank);
+      _loadingBank = false;
+    }
+    final ref = LocalStorageService.get('referral_stats');
+    if (ref is Map) {
+      _referralStats = Map<String, dynamic>.from(ref);
+      _loadingReferral = false;
+    }
+    final stripe = LocalStorageService.get('stripe_status');
+    if (stripe is Map) {
+      _stripeStatus = Map<String, dynamic>.from(stripe);
+    }
+    final accts = LocalStorageService.get('accountant_links');
+    if (accts is List) {
+      _accountantLinks = accts
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      _loadingAccountants = false;
+    }
+    // The payment-link toggle rides on the profile, already MemCached by
+    // ProfileService — read it synchronously so the switch is correct at once.
+    final prof = ProfileService.peekProfile();
+    if (prof != null && prof['profile'] is Map) {
+      _defaultExcludePaymentLink =
+          (prof['profile'] as Map)['default_exclude_payment_link'] == true;
+    }
   }
 
   Future<void> _loadInvoicePrefs() async {
@@ -120,7 +161,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadAccountants() async {
-    setState(() => _loadingAccountants = true);
+    // No spinner toggle here: _loadingAccountants starts true (cold open) and
+    // is flipped to false by _bootstrapFromCache when a cached list exists —
+    // an empty list is a valid "loaded" state, so a warm open never spins.
     final all = await AccountantsService.listInvites();
     if (!mounted) return;
     final now = DateTime.now();
@@ -139,6 +182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _accountantLinks = active;
       _loadingAccountants = false;
     });
+    LocalStorageService.save('accountant_links', active);
   }
 
   Future<void> _inviteAccountant(bool isNl) async {
@@ -393,13 +437,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadReferralStats() async {
-    setState(() => _loadingReferral = true);
+    if (_referralStats == null) setState(() => _loadingReferral = true);
     final stats = await ReferralService.getStats();
     if (!mounted) return;
     setState(() {
       _referralStats = stats;
       _loadingReferral = false;
     });
+    LocalStorageService.save('referral_stats', stats);
   }
 
   Future<void> _generateReferralLink(bool isNl) async {
@@ -465,31 +510,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadStatus() async {
-    setState(() => _loading = true);
+    // Only full-screen spin on a cold start; with cache the screen is already
+    // rendered and we refresh the subscription quietly.
+    if (_subscription == null) setState(() => _loading = true);
     final result = await SubscriptionService.getStatus();
+    if (!mounted) return;
     setState(() {
       _loading = false;
       if (result['success']) _subscription = result['subscription'];
     });
+    if (result['success'] && result['subscription'] != null) {
+      LocalStorageService.save('subscription', result['subscription']);
+    }
   }
 
   Future<void> _loadStripeStatus() async {
-    setState(() => _loadingStripe = true);
+    if (_stripeStatus == null) setState(() => _loadingStripe = true);
     final result = await PaymentsService.getConnectStatus();
+    if (!mounted) return;
     setState(() {
       _loadingStripe = false;
       if (result['success']) _stripeStatus = result;
     });
+    if (result['success'] == true) {
+      LocalStorageService.save('stripe_status', result);
+    }
   }
 
   Future<void> _loadBankStatus() async {
-    setState(() => _loadingBank = true);
+    if (_bankStatus == null) setState(() => _loadingBank = true);
     final result = await BankingService.getStatus();
     if (!mounted) return;
     setState(() {
       _loadingBank = false;
       _bankStatus = result;
     });
+    if (result['success'] != false) {
+      LocalStorageService.save('bank_status', result);
+    }
   }
 
   Future<void> _connectBank(bool isNl) async {

@@ -76,37 +76,58 @@ class InvoicesService {
 
   /// Drop every cache touched by an invoice mutation. The list itself
   /// must reload; quarterly / annual overviews aggregate invoice totals
-  /// so they're stale too.
+  /// so they're stale too. The single-invoice detail cache is dropped so
+  /// the detail screen re-fetches after a status change / edit.
   static void _invalidateInvoiceCaches() {
     MemCache.invalidate('invoices_list');
+    MemCache.invalidatePrefix('invoice:'); // per-invoice detail caches
     MemCache.invalidatePrefix('overview_');
     MemCache.invalidatePrefix('quarter_detail');
     // Spec: any mutation forces a fresh dashboard fetch on next load.
     LocalStorageService.remove('dashboard');
   }
 
+  /// Synchronous peek into the in-memory cache for a single invoice. The
+  /// detail screen calls this to paint instantly on a revisit (complete
+  /// data we already fetched this session) before the silent background
+  /// refresh lands. Returns null if not cached this session.
+  static Map<String, dynamic>? peekInvoice(String invoiceId) {
+    final cached = MemCache.read<Map<String, dynamic>>('invoice:$invoiceId');
+    if (cached != null && cached['success'] == true) return cached;
+    return null;
+  }
+
+  /// 5-minute in-memory cache with stale-while-revalidate, keyed per
+  /// invoice. ApiCache stays the offline disk fallback inside the fetcher.
+  /// A repeat open returns the RAM cache instantly; a stale open serves
+  /// cache and refreshes in the background.
   static Future<Map<String, dynamic>> getInvoice(String invoiceId) async {
-    return ApiCache.read(
+    return MemCache.readWithRefresh<Map<String, dynamic>>(
       key: 'invoice:$invoiceId',
-      fetcher: () async {
-        final token = await getToken();
-        final response = await http.get(
-          Uri.parse('$baseUrl/api/v1/invoices/$invoiceId'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-        );
-        final data = jsonDecode(response.body);
-        if (response.statusCode == 200) {
-          return {
-            'success': true,
-            'invoice': data['invoice'],
-            'lines': data['lines'],
-          };
-        }
-        return {'success': false, 'message': data['detail']};
-      },
+      ttl: const Duration(minutes: 5),
+      cacheIf: (v) => v['success'] == true,
+      fetcher: () => ApiCache.read(
+        key: 'invoice:$invoiceId',
+        fetcher: () async {
+          final token = await getToken();
+          final response = await http.get(
+            Uri.parse('$baseUrl/api/v1/invoices/$invoiceId'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          );
+          final data = jsonDecode(response.body);
+          if (response.statusCode == 200) {
+            return {
+              'success': true,
+              'invoice': data['invoice'],
+              'lines': data['lines'],
+            };
+          }
+          return {'success': false, 'message': data['detail']};
+        },
+      ),
     );
   }
 

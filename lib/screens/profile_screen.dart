@@ -59,7 +59,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    // Populate fields instantly from the in-memory cache when we've loaded
+    // the profile earlier this session, so the screen opens fully rendered
+    // instead of flashing a spinner. The fresh copy lands silently below.
+    final cached = ProfileService.peekProfile();
+    if (cached != null && cached['profile'] != null) {
+      _applyProfile(cached['profile']);
+      _loading = false;
+    }
     _loadProfile();
+  }
+
+  /// Copy a profile map into the form controllers + colour/logo state.
+  /// Shared by the cache bootstrap and the network load so they can't
+  /// drift apart.
+  void _applyProfile(dynamic p) {
+    _businessNameController.text = p['business_name'] ?? '';
+    _fullNameController.text = p['full_name'] ?? '';
+    _addressController.text = p['address'] ?? '';
+    _postcodeController.text = p['postcode'] ?? '';
+    _cityController.text = p['city'] ?? '';
+    _kvkController.text = p['kvk_number'] ?? '';
+    _btwController.text = p['btw_number'] ?? '';
+    _ibanController.text = p['iban'] ?? '';
+    _bankAccountNameController.text = p['bank_account_name'] ?? '';
+    _logoUrl = p['logo_url'];
+    _invoicePrimary = (p['invoice_primary_color']?.toString() ?? '').isNotEmpty
+        ? p['invoice_primary_color']
+        : _defaultPrimary;
+    _invoiceAccent = (p['invoice_accent_color']?.toString() ?? '').isNotEmpty
+        ? p['invoice_accent_color']
+        : _defaultAccent;
   }
 
   bool _isMobile() {
@@ -72,28 +102,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
-    setState(() => _loading = true);
+    // Only spin on a cold start (no cached profile populated). With cache the
+    // form is already filled; refresh quietly in place.
+    if (_loading) setState(() => _loading = true);
     final result = await ProfileService.getProfile();
+    if (!mounted) return;
     setState(() {
       _loading = false;
       if (result['success'] && result['profile'] != null) {
-        final p = result['profile'];
-        _businessNameController.text = p['business_name'] ?? '';
-        _fullNameController.text = p['full_name'] ?? '';
-        _addressController.text = p['address'] ?? '';
-        _postcodeController.text = p['postcode'] ?? '';
-        _cityController.text = p['city'] ?? '';
-        _kvkController.text = p['kvk_number'] ?? '';
-        _btwController.text = p['btw_number'] ?? '';
-        _ibanController.text = p['iban'] ?? '';
-        _bankAccountNameController.text = p['bank_account_name'] ?? '';
-        _logoUrl = p['logo_url'];
-        _invoicePrimary = (p['invoice_primary_color']?.toString() ?? '').isNotEmpty
-            ? p['invoice_primary_color']
-            : _defaultPrimary;
-        _invoiceAccent = (p['invoice_accent_color']?.toString() ?? '').isNotEmpty
-            ? p['invoice_accent_color']
-            : _defaultAccent;
+        _applyProfile(result['profile']);
       }
     });
   }

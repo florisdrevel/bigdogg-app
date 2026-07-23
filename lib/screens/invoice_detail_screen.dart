@@ -33,13 +33,25 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   @override
   void initState() {
     super.initState();
+    // Paint instantly from the in-memory cache if this invoice was opened
+    // earlier this session; the cold fetch only shows a spinner the first
+    // time. Fresh data still lands silently via _loadInvoice().
+    final cached = InvoicesService.peekInvoice(widget.invoiceId);
+    if (cached != null) {
+      _invoice = cached['invoice'] as Map<String, dynamic>?;
+      _lines = (cached['lines'] as List?) ?? [];
+      _loading = false;
+    }
     _loadInvoice();
     _loadPaymentLinkPreference();
   }
 
   Future<void> _loadInvoice() async {
-    setState(() => _loading = true);
+    // Only spin on a cold open (nothing cached). With cache the screen is
+    // already rendered; refresh quietly in place.
+    if (_invoice == null) setState(() => _loading = true);
     final result = await InvoicesService.getInvoice(widget.invoiceId);
+    if (!mounted) return;
     setState(() {
       _loading = false;
       if (result['success']) {

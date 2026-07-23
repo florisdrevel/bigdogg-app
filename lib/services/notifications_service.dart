@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
 import 'auth_service.dart';
+import 'mem_cache.dart';
 
 /// In-app notifications. The backend inserts rows server-side
 /// (invoice paid / quote accepted / client onboarded); the app polls
@@ -17,6 +18,11 @@ class NotificationsService {
     return prefs.getString('access_token');
   }
 
+  /// Synchronous peek into the last-fetched notifications list so the bell
+  /// sheet paints instantly on open before the refresh lands. Null if not
+  /// fetched yet this session.
+  static List<dynamic>? peek() => MemCache.read<List<dynamic>>('notifications_list');
+
   static Future<List<dynamic>> list({int limit = 50}) async {
     final token = await _getToken();
     try {
@@ -26,10 +32,14 @@ class NotificationsService {
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        return (data['notifications'] as List?) ?? [];
+        final items = (data['notifications'] as List?) ?? [];
+        MemCache.write('notifications_list', items);
+        return items;
       }
     } catch (_) {}
-    return [];
+    // On error fall back to the cached list (if any) so the sheet keeps
+    // showing the last-known notifications instead of going blank.
+    return MemCache.read<List<dynamic>>('notifications_list') ?? [];
   }
 
   static Future<int> unreadCount() async {

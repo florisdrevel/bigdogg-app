@@ -15,7 +15,9 @@ KEY FEATURES
 • Investments & depreciation — log easily and see annual depreciation in your reports.
 • Quarterly VAT report — one click, complete PDF, ready for the Belastingdienst.
 • Annual report with AI tax tips — BigDogg finds deductions you missed.
+• Set aside for income tax — see at a glance how much to reserve for income tax, calculated from your profit and deductions.
 • Hours tracker — log your hours toward the 1,225-hour criterion (self-employed deduction).
+• Mileage log — record your business trips; BigDogg counts €0.23 per kilometre as a deduction in your annual report.
 • Historical import — drag old PDF invoices in, AI organises your history and builds an annual report instantly.
 • Bilingual — toggle between Dutch and English instantly. Perfect for expats and international clients.
 
