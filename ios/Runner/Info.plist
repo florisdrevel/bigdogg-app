@@ -72,6 +72,10 @@
 	<string>BigDogg gebruikt de microfoon voor spraakinvoer bij het maken van facturen en offertes.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>BigDogg gebruikt je foto's om bonnetjes en bankafschriften te uploaden voor je administratie.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>BigDogg gebruikt spraakherkenning om je gesproken invoer om te zetten naar tekst bij het maken van facturen en offertes.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>BigDogg gebruikt je locatie niet actief voor eigen functionaliteit.</string>
 	<!-- App uses only standard HTTPS encryption → exempt. Avoids the
 	     export-compliance prompt on every App Store Connect upload. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
