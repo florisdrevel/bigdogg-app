@@ -169,7 +169,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _pickFiles(bool isNl,
       {bool camera = false, required bool forExpenses}) async {
-    if (!kIsWeb) return;
     final picked = await pickFiles(
       camera: camera,
       accept: camera
