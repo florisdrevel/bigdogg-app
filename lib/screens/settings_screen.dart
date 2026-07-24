@@ -2286,7 +2286,15 @@ For questions: info@bigdogg.nl''';
       borderRadius: BorderRadius.circular(12),
       onTap: () {
         if (isActive) {
-          openManageSubscription(context, isNl);
+          // iOS: no external billing link, even for an already-active
+          // subscriber — showPaywallModal's reader-mode body is
+          // informational-only there (App Store 3.1.1 anti-steering).
+          // Android/web keep the direct portal link.
+          if (kHideExternalPurchaseLink) {
+            showPaywallModal(context, isNl);
+          } else {
+            openManageSubscription(context, isNl);
+          }
         } else {
           showPaywallModal(context, isNl);
         }
