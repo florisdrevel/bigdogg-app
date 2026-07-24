@@ -111,42 +111,62 @@ class AuthService {
     final completer = Completer<TokenStatus>();
     _refreshInFlight = completer;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final refreshToken = prefs.getString('refresh_token');
-      if (refreshToken == null || refreshToken.isEmpty) {
-        completer.complete(TokenStatus.expired);
-        return TokenStatus.expired;
-      }
-      try {
-        final response = await http.post(
-          Uri.parse('$baseUrl/api/v1/auth/refresh'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'refresh_token': refreshToken}),
-        ).timeout(const Duration(seconds: 10));
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          await prefs.setString('access_token', data['access_token']);
-          await prefs.setString('refresh_token', data['refresh_token']);
-          completer.complete(TokenStatus.ok);
-          return TokenStatus.ok;
-        }
-        // Distinguish a genuinely rejected refresh token (dead session) from
-        // a transient server error. Only the former should bounce the user to
-        // login; a 5xx/429 blip just means "try later" → treat as offline.
-        final code = response.statusCode;
-        final st = (code == 400 || code == 401 || code == 403)
-            ? TokenStatus.expired
-            : TokenStatus.networkError;
-        completer.complete(st);
-        return st;
-      } catch (_) {
-        // Couldn't reach the server (timeout / no network) → NOT expired,
-        // just offline. Caller should serve cache, never route to login.
-        completer.complete(TokenStatus.networkError);
-        return TokenStatus.networkError;
-      }
+      final status = await _attemptRefresh();
+      completer.complete(status);
+      return status;
     } finally {
       _refreshInFlight = null;
+    }
+  }
+
+  /// One refresh HTTP round-trip, with a single retry on an apparent
+  /// rejection. This is a false-logout guard, not a security relaxation:
+  /// Supabase rotates the refresh token on every use but honors a short
+  /// reuse-interval grace period, so presenting the same token again
+  /// shortly after succeeds instead of erroring — which is exactly what
+  /// covers two real races we hit in practice: (a) our own earlier refresh
+  /// succeeded server-side but the HTTP response never reached the app
+  /// (backgrounded mid-request, dropped connection), and (b) another
+  /// browser tab rotated the same token a moment ago (web's
+  /// SharedPreferences is plain localStorage — tabs share it, but nothing
+  /// coordinates who refreshes). Either way the token on disk is still
+  /// "the last one we know about", so retrying it is safe and correct; a
+  /// genuinely dead session just fails the same way twice, one extra
+  /// round-trip before we log the user out.
+  static Future<TokenStatus> _attemptRefresh({bool isRetry = false}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final refreshToken = prefs.getString('refresh_token');
+    if (refreshToken == null || refreshToken.isEmpty) {
+      return TokenStatus.expired;
+    }
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/auth/refresh'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'refresh_token': refreshToken}),
+      ).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        await prefs.setString('access_token', data['access_token']);
+        await prefs.setString('refresh_token', data['refresh_token']);
+        return TokenStatus.ok;
+      }
+      // Distinguish a genuinely rejected refresh token (dead session) from
+      // a transient server error. Only the former should bounce the user to
+      // login; a 5xx/429 blip just means "try later" → treat as offline.
+      final code = response.statusCode;
+      if (code != 400 && code != 401 && code != 403) {
+        return TokenStatus.networkError;
+      }
+      if (!isRetry) {
+        await Future.delayed(const Duration(milliseconds: 1500));
+        return _attemptRefresh(isRetry: true);
+      }
+      return TokenStatus.expired;
+    } catch (_) {
+      // Couldn't reach the server (timeout / no network) → NOT expired,
+      // just offline. Caller should serve cache, never route to login.
+      return TokenStatus.networkError;
     }
   }
 
