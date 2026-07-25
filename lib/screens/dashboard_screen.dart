@@ -45,11 +45,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   int _pendingOffline = 0;
   Timer? _notifTimer;
 
-  // Keep the Supabase access token fresh. Default lifetime is ~1 hour;
-  // we refresh every 30 minutes from anywhere the app stays open so
-  // tokens never silently expire on the user.
-  Timer? _refreshTimer;
-
   @override
   void initState() {
     super.initState();
@@ -69,9 +64,18 @@ class _DashboardScreenState extends State<DashboardScreen>
     // refreshTokenIfNeeded() skips the network call when the JWT still
     // has >5 min left, which avoids rotating the refresh_token on every
     // app open and prevents the race that used to log users out.
+    //
+    // No periodic background refresh timer here on purpose: every real
+    // data request already ensures a fresh token first (ApiCache.read /
+    // each service's own refreshTokenIfNeeded() call), so a standalone
+    // timer only added extra unattended refresh attempts — and each one
+    // was a chance to get interrupted mid-request by the OS backgrounding
+    // the app, which strands the refresh_token in a used-but-not-yet-
+    // rotated-locally state that can never recover (Supabase's reuse
+    // grace window is short, and a late retry can trip its
+    // compromised-token detection and kill the whole session). That was
+    // the actual cause of "still logs out after a while" on native.
     AuthService.refreshTokenIfNeeded();
-    _refreshTimer = Timer.periodic(const Duration(minutes: 20),
-        (_) => AuthService.refreshTokenIfNeeded());
     _refreshSubscriptionStatus();
     // Make sure FCM is registered for this device. Idempotent: the
     // backend upserts on (user_id, fcm_token), so calling this at
@@ -123,7 +127,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _notifTimer?.cancel();
-    _refreshTimer?.cancel();
     super.dispose();
   }
 
