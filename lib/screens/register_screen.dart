@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
@@ -122,6 +123,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
     setState(() => _loading = false);
     if (result['success']) {
+      TextInput.finishAutofillContext();
       if (mounted) {
         showDialog(
           context: context,
@@ -222,7 +224,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         child: Padding(
                           padding: const EdgeInsets.all(32),
-                          child: Column(
+                          child: AutofillGroup(
+                            child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -257,6 +260,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               TextField(
                                 controller: _nameController,
                                 focusNode: _nameFocus,
+                                autofillHints: const [AutofillHints.name],
                                 decoration: InputDecoration(labelText: t('Volledige naam', 'Full name')),
                                 textInputAction: TextInputAction.next,
                                 onSubmitted: (_) => FocusScope.of(context).requestFocus(_emailFocus),
@@ -265,6 +269,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               TextField(
                                 controller: _emailController,
                                 focusNode: _emailFocus,
+                                autofillHints: const [AutofillHints.newUsername],
                                 decoration: const InputDecoration(labelText: 'Email'),
                                 keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
@@ -274,6 +279,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               TextField(
                                 controller: _passwordController,
                                 focusNode: _passwordFocus,
+                                autofillHints: const [AutofillHints.newPassword],
                                 decoration: InputDecoration(
                                   labelText: t('Wachtwoord', 'Password'),
                                   suffixIcon: ExcludeFocus(
@@ -330,6 +336,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               TextField(
                                 controller: _confirmController,
                                 focusNode: _confirmFocus,
+                                autofillHints: const [AutofillHints.newPassword],
                                 decoration: InputDecoration(
                                   labelText: t('Wachtwoord bevestigen', 'Confirm password'),
                                   suffixIcon: ExcludeFocus(
@@ -364,6 +371,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                             ],
+                          ),
                           ),
                         ),
                       ),

@@ -169,17 +169,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _pickFiles(bool isNl,
       {bool camera = false, required bool forExpenses}) async {
-    final picked = await pickFiles(
-      camera: camera,
-      accept: camera
-          ? 'image/*'
-          : 'application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.webp,.heic',
-      multiple: true,
-    );
+    List<PickedFile>? picked;
+    try {
+      picked = await pickFiles(
+        camera: camera,
+        accept: camera
+            ? 'image/*'
+            : 'application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.webp,.heic',
+        multiple: true,
+      );
+    } catch (e) {
+      // A picker failure (e.g. no camera app resolvable, permission denied)
+      // must not silently no-op the button — surface it so the user isn't
+      // left tapping "Camera"/"Files" with nothing visibly happening.
+      setState(() {
+        _error = camera
+            ? (isNl
+                ? 'Camera kon niet worden geopend. Probeer "Bestanden" in plaats daarvan.'
+                : 'Could not open the camera. Try "Files" instead.')
+            : (isNl
+                ? 'Bestandenkiezer kon niet worden geopend.'
+                : 'Could not open the file picker.');
+      });
+      return;
+    }
     if (picked == null || picked.isEmpty) return;
     final names = picked.map((p) => p.name).toList();
     final bytes = picked.map((p) => p.bytes).toList();
     setState(() {
+      _error = null;
       if (forExpenses) {
         _expenseFilesBytes = bytes;
         _expenseFileNames = names;

@@ -57,6 +57,14 @@
         <intent>
             <action android:name="android.speech.RecognitionService"/>
         </intent>
+        <!-- Required on Android 11+ (targetSdk 30+) package-visibility rules:
+             without this, PackageManager can't resolve the camera app for
+             image_picker's ImageSource.camera, it throws no_available_camera,
+             and the Camera button on Import old invoices/expenses silently
+             does nothing. -->
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE"/>
+        </intent>
     </queries>
 
 </manifest>

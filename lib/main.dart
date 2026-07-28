@@ -139,6 +139,8 @@ final _router = GoRouter(
       // Kick a refresh so the dashboard opens with a valid access token
       // even if the cached one expired while the app was closed.
       // Fire-and-forget; refreshTokenIfNeeded no-ops when still fresh.
+      debugPrint('[Auth] cold-start redirect: firing refresh (hasRefresh='
+          '$hasRefresh, hasAccess=$hasAccess) → /dashboard');
       // ignore: unawaited_futures
       AuthService.refreshTokenIfNeeded();
       return '/dashboard';
@@ -312,6 +314,7 @@ class _BigdoggAppState extends State<BigdoggApp> with WidgetsBindingObserver {
   void _onSessionExpired() {
     if (!AuthService.sessionExpired.value) return;
     AuthService.sessionExpired.value = false;
+    debugPrint('[Auth] sessionExpired fired → logging out and routing to /login');
     // The session is genuinely gone (refresh token rejected). Clear stale
     // creds + caches and route to login — replacing the old "offline"
     // dead-end that forced a manual log-out/in. Device prefs (theme,
@@ -325,6 +328,7 @@ class _BigdoggAppState extends State<BigdoggApp> with WidgetsBindingObserver {
       // Foregrounding: proactively refresh so a token that expired while
       // backgrounded is renewed before any screen fires a request (and a
       // truly-dead session routes to login via the listener above).
+      debugPrint('[Auth] app resumed → firing ensureFreshToken');
       // ignore: unawaited_futures
       AuthService.ensureFreshToken();
     }

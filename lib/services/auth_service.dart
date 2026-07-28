@@ -85,6 +85,8 @@ class AuthService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('access_token', data['access_token']);
         await prefs.setString('refresh_token', data['refresh_token']);
+        await prefs.setInt(
+            'refresh_token_saved_at', DateTime.now().millisecondsSinceEpoch);
         await prefs.setString('user_id', data['user']['id']);
         await prefs.setString('full_name', data['user']['full_name']);
         await prefs.setString('user_email', data['user']['email']);
@@ -137,18 +139,30 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final refreshToken = prefs.getString('refresh_token');
     if (refreshToken == null || refreshToken.isEmpty) {
+      debugPrint('[Auth] refresh: no stored refresh_token, isRetry=$isRetry');
       return TokenStatus.expired;
     }
+    // Diagnostic only: age of the stored refresh_token, to tell "server
+    // rejected a fresh token" apart from "we've been carrying a stale,
+    // already-rotated token for a while" when a failure is investigated.
+    final savedAtMs = prefs.getInt('refresh_token_saved_at');
+    final ageSec = savedAtMs == null
+        ? null
+        : ((DateTime.now().millisecondsSinceEpoch - savedAtMs) / 1000).round();
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/v1/auth/refresh'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'refresh_token': refreshToken}),
       ).timeout(const Duration(seconds: 10));
+      debugPrint('[Auth] refresh: HTTP ${response.statusCode}, '
+          'isRetry=$isRetry, storedTokenAgeSec=$ageSec');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         await prefs.setString('access_token', data['access_token']);
         await prefs.setString('refresh_token', data['refresh_token']);
+        await prefs.setInt(
+            'refresh_token_saved_at', DateTime.now().millisecondsSinceEpoch);
         return TokenStatus.ok;
       }
       // Distinguish a genuinely rejected refresh token (dead session) from
@@ -156,16 +170,22 @@ class AuthService {
       // login; a 5xx/429 blip just means "try later" → treat as offline.
       final code = response.statusCode;
       if (code != 400 && code != 401 && code != 403) {
+        debugPrint('[Auth] refresh: treating ${response.statusCode} as '
+            'networkError (not 400/401/403)');
         return TokenStatus.networkError;
       }
       if (!isRetry) {
         await Future.delayed(const Duration(milliseconds: 1500));
         return _attemptRefresh(isRetry: true);
       }
+      debugPrint('[Auth] refresh: EXPIRED after retry, HTTP $code, '
+          'storedTokenAgeSec=$ageSec → routing to /login');
       return TokenStatus.expired;
-    } catch (_) {
+    } catch (e) {
       // Couldn't reach the server (timeout / no network) → NOT expired,
       // just offline. Caller should serve cache, never route to login.
+      debugPrint('[Auth] refresh: exception "$e", isRetry=$isRetry → '
+          'treating as networkError');
       return TokenStatus.networkError;
     }
   }
