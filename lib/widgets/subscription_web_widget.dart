@@ -408,8 +408,8 @@ class _PaywallModal extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
                 isNl
-                    ? 'Je abonnement beheer je op onze website. Log daar in met hetzelfde account om verder te gaan.'
-                    : 'Your subscription is managed on our website. Sign in there with the same account to continue.',
+                    ? 'Je account beheer je op onze website. Log daar in met hetzelfde account om verder te gaan.'
+                    : 'Your account is managed on our website. Sign in there with the same account to continue.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 14, color: Colors.grey[600], height: 1.45),

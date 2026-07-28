@@ -2259,16 +2259,22 @@ For questions: info@bigdogg.nl''';
   Widget _buildSubscriptionActionRow(bool isNl, String status) {
     final isActive = status == 'active';
     final label = isActive
-        ? (isNl ? 'Abonnement beheren' : 'Manage subscription')
+        ? (kIsReaderMode
+            ? (isNl ? 'Account beheren' : 'Manage account')
+            : (isNl ? 'Abonnement beheren' : 'Manage subscription'))
         : (kIsReaderMode
             ? (isNl
                 ? 'Beheer je account op bigdogg.nl'
                 : 'Manage your account at bigdogg.nl')
             : (isNl ? 'Abonnement starten' : 'Start subscription'));
     final subtitle = isActive
-        ? (isNl
-            ? 'Wijzig je betaalmethode of zeg op'
-            : 'Change payment method or cancel')
+        ? (kIsReaderMode
+            ? (isNl
+                ? 'Beheer instellingen op bigdogg.nl'
+                : 'Manage settings at bigdogg.nl')
+            : (isNl
+                ? 'Wijzig je betaalmethode of zeg op'
+                : 'Change payment method or cancel'))
         : (kIsReaderMode
             ? (isNl
                 ? 'Maak je account online compleet'
