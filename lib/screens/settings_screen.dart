@@ -1092,7 +1092,11 @@ BigDogg is een online boekhoud- en facturatiedienst voor zelfstandigen en ZZP'er
 BigDogg biedt tools voor facturatie, uitgavenbeheer, BTW-overzichten en financiële rapportages. Wij streven naar correctheid en beschikbaarheid van onze diensten, maar bieden geen garanties met betrekking tot volledigheid of geschiktheid voor specifieke fiscale of juridische doeleinden.
 
 3. ABONNEMENT EN BETALING
-Het abonnement bedraagt €11,99 per maand of €119,88 per jaar (€9,99 effectief per maand). Na een gratis proefperiode van 30 dagen wordt er overgegaan op een betaald abonnement, tenzij je vóór het einde van de proefperiode opzegt. Opzegging kan op elk moment via de instellingen in de app. Je behoudt toegang tot het einde van de lopende betaalperiode.
+Je start met een gratis proefperiode van 30 dagen. Hiervoor is geen betaalmethode vereist en er vindt geen automatische incasso of omzetting naar een betaald abonnement plaats. Na afloop van de proefperiode moet je zelf actief een betaald abonnement starten via bigdogg.nl om de dienst te blijven gebruiken; gebeurt dit niet, dan vervalt simpelweg de toegang.
+
+Je kunt je proefperiode gratis verlengen via het referralprogramma in de app: voor elke 2 vrienden die zich via jouw referral aanmelden, krijg je 1 gratis extra maand, tot een maximum van 3 bonusmaanden (90 extra dagen). Zolang je nog bonusmaanden hebt, blijft de app gratis te gebruiken zonder dat je een abonnement hoeft te starten.
+
+Het betaalde abonnement bedraagt €11,99 per maand of €119,88 per jaar (€9,99 effectief per maand) en wordt afgesloten via bigdogg.nl. Opzegging kan op elk moment via de instellingen in de app. Je behoudt toegang tot het einde van de lopende betaalperiode.
 
 4. VERANTWOORDELIJKHEID VOOR ADMINISTRATIE
 BigDogg ondersteunt jou bij je administratie, maar de volledige verantwoordelijkheid voor de juistheid, volledigheid en tijdige indiening van je belastingaangiftes, facturen en overige administratieve verplichtingen ligt bij jou als gebruiker.
@@ -1127,7 +1131,11 @@ BigDogg is an online accounting and invoicing service for freelancers in the Net
 BigDogg provides tools for invoicing, expense management, VAT overviews and financial reporting. We strive for accuracy and availability but make no guarantees regarding completeness or suitability for specific tax or legal purposes.
 
 3. SUBSCRIPTION AND PAYMENT
-The subscription fee is €11.99 per month or €119.88 per year (effectively €9.99 / month). After a 30-day free trial, a paid subscription begins unless cancelled before the end of the trial. You may cancel at any time via the settings in the app.
+You start with a 30-day free trial. No payment method is required to start it, and it does not automatically charge you or convert into a paid subscription. After the trial ends, you must actively start a paid subscription via bigdogg.nl to continue using the service; if you don't, access simply ends.
+
+You can extend your trial for free through the in-app referral program: for every 2 friends who sign up via your referral, you get 1 free extra month, up to a maximum of 3 bonus months (90 extra days). As long as you have bonus months remaining, the app stays free to use without starting a subscription.
+
+The paid subscription costs €11.99 per month or €119.88 per year (effectively €9.99 / month) and is started via bigdogg.nl. You may cancel at any time via the settings in the app. You retain access until the end of the current billing period.
 
 4. RESPONSIBILITY FOR YOUR ADMINISTRATION
 Full responsibility for the accuracy, completeness and timely submission of your tax returns rests with you as the user. We strongly encourage you to regularly create local backups of all your invoices and financial documents.
