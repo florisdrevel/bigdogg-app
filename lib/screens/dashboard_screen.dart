@@ -13,6 +13,7 @@ import '../services/offline_queue.dart';
 import '../config/feature_flags.dart';
 import '../services/subscription_service.dart';
 import '../widgets/subscription_web_widget.dart';
+import '../widgets/ios_install_banner.dart';
 import 'products_screen.dart';
 import 'clients_screen.dart';
 import 'invoices_screen.dart';
@@ -569,6 +570,7 @@ Future<void> _refreshUnreadCount() async {
       ),
       body: Column(
         children: [
+          IosInstallBanner(isNl: isNl),
           // Mutually exclusive banner stack: active-trial warning fires
           // for trial users at <= 7 days left; trial-ended takes over
           // once read-only mode is on. Both auto-hide while the paywall

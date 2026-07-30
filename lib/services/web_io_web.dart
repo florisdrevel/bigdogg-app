@@ -7,6 +7,11 @@ export 'web_io_types.dart';
 
 String getUserAgent() => html.window.navigator.userAgent;
 
+/// True when the page is already running installed (Added to Home Screen /
+/// launched as a standalone PWA) rather than inside a normal browser tab.
+bool isStandaloneWebApp() =>
+    html.window.matchMedia('(display-mode: standalone)').matches;
+
 /// Trigger a browser download of in-memory bytes (e.g. a PDF fetched from
 /// the backend). Web-only; the native stub is a no-op.
 void downloadBytes(String filename, Uint8List bytes,

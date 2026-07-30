@@ -1554,18 +1554,41 @@ class _LandingScreenState extends State<LandingScreen> {
   }
 
   // ─── App store badges ────────────────────────────────────────────
-  // iOS app isn't live yet — flip to true once it ships.
-  static const bool iosAppLive = false;
+  // No native iOS App Store listing: Apple's Guideline 3.1.1 requires any
+  // subscription content gated behind an outside purchase to also be sold
+  // via In-App Purchase, and BigDogg doesn't qualify for the reader-app
+  // exception that lets apps like Netflix skip that. Rather than pay
+  // Apple's cut, iOS distribution is the installable web app (Add to Home
+  // Screen) instead — this badge points there.
   static const String _playUrl =
       'https://play.google.com/store/apps/details?id=nl.bigdogg.app';
-  static const String _appStoreUrl =
-      'https://apps.apple.com/nl/app/bigdogg/id000000000';
 
   Future<void> _openStoreUrl(String url) async {
     final uri = Uri.parse(url);
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {/* best effort */}
+  }
+
+  void _showIosInstallInstructions(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t('Installeer op je iPhone/iPad', 'Install on your iPhone/iPad')),
+        content: Text(
+          t(
+            'Open bigdogg.nl in Safari, tik op het deel-icoon onderin, en kies "Zet op beginscherm". BigDogg verschijnt dan als app-icoon op je toestel.',
+            'Open bigdogg.nl in Safari, tap the Share icon at the bottom, then choose "Add to Home Screen". BigDogg will appear as an app icon on your device.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(t('Begrepen', 'Got it')),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildAppStoreSection(bool isWide) {
@@ -1575,35 +1598,13 @@ class _LandingScreenState extends State<LandingScreen> {
       bottomLine: 'Google Play',
       onTap: () => _openStoreUrl(_playUrl),
     );
-    final appStore = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _storeBadge(
-          icon: Icons.apple,
-          topLine: t('Download in de', 'Download on the'),
-          bottomLine: 'App Store',
-          onTap: iosAppLive ? () => _openStoreUrl(_appStoreUrl) : null,
-        ),
-        if (!iosAppLive) ...[
-          const SizedBox(height: 6),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              color: BigDoggTheme.lightBorder,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              t('Binnenkort', 'Coming Soon'),
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: BigDoggTheme.lightTextSecondary,
-              ),
-            ),
-          ),
-        ],
-      ],
+    final appStore = Builder(
+      builder: (ctx) => _storeBadge(
+        icon: Icons.ios_share_rounded,
+        topLine: t('Toevoegen aan', 'Add to'),
+        bottomLine: t('Beginscherm', 'Home Screen'),
+        onTap: () => _showIosInstallInstructions(ctx),
+      ),
     );
 
     return Container(

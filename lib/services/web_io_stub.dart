@@ -48,6 +48,9 @@ Future<void> openPdfFile(String filename, Uint8List bytes) async {
 
 String getUserAgent() => '';
 
+// Native builds are already an installed app — nothing to nudge.
+bool isStandaloneWebApp() => true;
+
 Future<List<PickedFile>?> pickFiles({
   bool camera = false,
   String accept = '*/*',
