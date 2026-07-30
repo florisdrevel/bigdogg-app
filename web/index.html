@@ -5,7 +5,13 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- viewport-fit=cover is required for Safari to expose
+       env(safe-area-inset-*) to the page at all — without it, an
+       installed-to-homescreen PWA reports zero bottom inset even on
+       notch/home-indicator iPhones, so Flutter's SafeArea/MediaQuery
+       padding silently does nothing and content runs under the
+       home-indicator / rounded-corner zone. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
   <!-- ─── Primary SEO ────────────────────────────────────── -->
   <title>BigDogg — Boekhouden voor ZZP'ers | Beter & Goedkoper dan Moneybird</title>

@@ -598,26 +598,33 @@ Future<void> _refreshUnreadCount() async {
           Expanded(child: screens[safeIndex]),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: BigDoggTheme.teal800,
-          border: const Border(top: BorderSide(color: BigDoggTheme.teal900, width: 1)),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: safeIndex,
-          onTap: (index) {
-            if (!showWalkthrough) setState(() => _currentIndex = index);
-          },
-          backgroundColor: Colors.transparent,
-          selectedItemColor: BigDoggTheme.gold500,
-          unselectedItemColor: BigDoggTheme.teal400,
-          selectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w600, fontSize: 11, fontFamily: 'PlusJakartaSans'),
-          unselectedLabelStyle: const TextStyle(
-              fontSize: 11, fontFamily: 'PlusJakartaSans'),
-          type: BottomNavigationBarType.fixed,
-          elevation: 0,
-          items: _getNavItems(isNl, projectsEnabled),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        // Bottom padding keeps the bar clear of the iPhone home-indicator
+        // gesture zone instead of letting labels sit right against it.
+        child: Container(
+          decoration: BoxDecoration(
+            color: BigDoggTheme.teal800,
+            border: const Border(top: BorderSide(color: BigDoggTheme.teal900, width: 1)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: BottomNavigationBar(
+            currentIndex: safeIndex,
+            onTap: (index) {
+              if (!showWalkthrough) setState(() => _currentIndex = index);
+            },
+            backgroundColor: Colors.transparent,
+            selectedItemColor: BigDoggTheme.gold500,
+            unselectedItemColor: BigDoggTheme.teal400,
+            selectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'PlusJakartaSans'),
+            unselectedLabelStyle: const TextStyle(
+                fontSize: 12, fontFamily: 'PlusJakartaSans'),
+            iconSize: 27,
+            type: BottomNavigationBarType.fixed,
+            elevation: 0,
+            items: _getNavItems(isNl, projectsEnabled),
+          ),
         ),
       ),
     );

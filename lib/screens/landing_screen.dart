@@ -1571,14 +1571,86 @@ class _LandingScreenState extends State<LandingScreen> {
   }
 
   void _showIosInstallInstructions(BuildContext context) {
+    final steps = [
+      (
+        Icons.language_rounded,
+        t('Open bigdogg.nl in Safari', 'Open bigdogg.nl in Safari'),
+        t('Werkt alleen in Safari, niet in Chrome of een andere browser.',
+            'Only works in Safari — not Chrome or another browser.'),
+      ),
+      (
+        Icons.ios_share_rounded,
+        t('Tik op het deel-icoon', 'Tap the Share icon'),
+        t('Het vierkantje met het pijltje omhoog, onderin (of bovenin op iPad) de balk.',
+            'The square icon with an arrow pointing up, in the bottom bar (or top bar on iPad).'),
+      ),
+      (
+        Icons.add_box_outlined,
+        t('Kies "Zet op beginscherm"', 'Choose "Add to Home Screen"'),
+        t('Scroll in het menu naar beneden tot je deze optie ziet.',
+            'Scroll down the menu until you see this option.'),
+      ),
+      (
+        Icons.check_circle_outline_rounded,
+        t('Tik op "Voeg toe"', 'Tap "Add"'),
+        t('BigDogg verschijnt als app-icoon op je beginscherm.',
+            'BigDogg appears as an app icon on your home screen.'),
+      ),
+    ];
+
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(t('Installeer op je iPhone/iPad', 'Install on your iPhone/iPad')),
-        content: Text(
-          t(
-            'Open bigdogg.nl in Safari, tik op het deel-icoon onderin, en kies "Zet op beginscherm". BigDogg verschijnt dan als app-icoon op je toestel.',
-            'Open bigdogg.nl in Safari, tap the Share icon at the bottom, then choose "Add to Home Screen". BigDogg will appear as an app icon on your device.',
+        title: Text(
+            t('Installeer op je iPhone/iPad', 'Install on your iPhone/iPad')),
+        content: SizedBox(
+          width: 340,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < steps.length; i++)
+                Padding(
+                  padding: EdgeInsets.only(
+                      bottom: i == steps.length - 1 ? 0 : 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: BigDoggTheme.teal800,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(steps[i].$1, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${i + 1}. ${steps[i].$2}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 14),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              steps[i].$3,
+                              style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: BigDoggTheme.lightTextSecondary,
+                                  height: 1.3),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
         ),
         actions: [
@@ -1601,7 +1673,7 @@ class _LandingScreenState extends State<LandingScreen> {
     final appStore = Builder(
       builder: (ctx) => _storeBadge(
         icon: Icons.ios_share_rounded,
-        topLine: t('Toevoegen aan', 'Add to'),
+        topLine: t('Voor iPhone/iPad', 'For iPhone/iPad'),
         bottomLine: t('Beginscherm', 'Home Screen'),
         onTap: () => _showIosInstallInstructions(ctx),
       ),
