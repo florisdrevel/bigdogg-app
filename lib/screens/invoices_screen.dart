@@ -7,6 +7,7 @@ import 'dart:async';
 import '../services/invoices_service.dart';
 import '../services/clients_service.dart';
 import '../services/products_service.dart';
+import '../services/product_groups_service.dart';
 import '../services/quotes_service.dart';
 import '../services/local_storage_service.dart';
 import '../services/connectivity_service.dart';
@@ -939,6 +940,13 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                   icon: const Icon(Icons.add),
                   label: Text(isNl ? 'Regel toevoegen' : 'Add line'),
                 ),
+                TextButton.icon(
+                  onPressed: () => _showApplyGroup(context, isNl, (newLines) {
+                    setDialogState(() => lines.addAll(newLines));
+                  }),
+                  icon: const Icon(Icons.library_add_outlined),
+                  label: Text(isNl ? 'Groep toevoegen' : 'Add group'),
+                ),
               ],
             ),
           ),
@@ -1284,6 +1292,163 @@ class _InvoicesScreenState extends State<InvoicesScreen>
         ),
       ),
     );
+  }
+
+  void _showApplyGroup(BuildContext ctx, bool isNl,
+      Function(List<Map<String, dynamic>>) onAddLines) async {
+    final result = await ProductGroupsService.getGroups();
+    if (!mounted) return;
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+          backgroundColor: BigDoggTheme.error,
+          content: Text(isNl ? 'Groepen laden mislukt.' : 'Failed to load groups.')));
+      return;
+    }
+    final groups = (result['groups'] as List?) ?? [];
+    if (groups.isEmpty) {
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+          content: Text(isNl
+              ? 'Nog geen groepen. Maak er een aan bij Producten.'
+              : 'No groups yet. Create one under Products.')));
+      return;
+    }
+
+    Map<String, dynamic> selectedGroup = groups.first as Map<String, dynamic>;
+    final qtyControllers = <String, TextEditingController>{};
+    void buildControllers(Map<String, dynamic> group) {
+      for (final c in qtyControllers.values) {
+        c.dispose();
+      }
+      qtyControllers.clear();
+      for (final it in (group['items'] as List? ?? [])) {
+        qtyControllers[it['product_id'] as String] = TextEditingController();
+      }
+    }
+
+    buildControllers(selectedGroup);
+
+    await showDialog(
+      context: ctx,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => AlertDialog(
+          title: Text(isNl ? 'Groep toevoegen' : 'Add group'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (groups.length > 1)
+                  DropdownButtonFormField<String>(
+                    value: selectedGroup['id'] as String,
+                    decoration:
+                        InputDecoration(labelText: isNl ? 'Groep' : 'Group'),
+                    items: groups
+                        .map<DropdownMenuItem<String>>((g) =>
+                            DropdownMenuItem<String>(
+                              value: g['id'] as String,
+                              child: Text(g['name'] ?? ''),
+                            ))
+                        .toList(),
+                    onChanged: (val) {
+                      final g = groups.firstWhere((g) => g['id'] == val)
+                          as Map<String, dynamic>;
+                      setSheet(() {
+                        selectedGroup = g;
+                        buildControllers(g);
+                      });
+                    },
+                  ),
+                const SizedBox(height: 4),
+                Text(isNl ? 'Vul de aantallen in:' : 'Fill in the quantities:',
+                    style: const TextStyle(
+                        fontSize: 12, color: BigDoggTheme.lightTextSecondary)),
+                const SizedBox(height: 4),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: ((selectedGroup['items'] as List? ?? [])
+                        .map<Widget>((it) {
+                      final pid = it['product_id'] as String;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(it['name'] ?? '',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w500)),
+                                  Text(
+                                      '\u20ac${it['unit_price']} (${it['btw_rate']}% BTW)',
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          color:
+                                              BigDoggTheme.lightTextSecondary)),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              width: 60,
+                              child: TextField(
+                                controller: qtyControllers[pid],
+                                textAlign: TextAlign.center,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                decoration: const InputDecoration(
+                                    isDense: true, hintText: '0'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList()),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(isNl ? 'Annuleren' : 'Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                final newLines = <Map<String, dynamic>>[];
+                for (final it in (selectedGroup['items'] as List? ?? [])) {
+                  final pid = it['product_id'] as String;
+                  final qty = double.tryParse(
+                      (qtyControllers[pid]?.text ?? '')
+                          .trim()
+                          .replaceAll(',', '.'));
+                  if (qty == null || qty <= 0) continue;
+                  final price = (it['unit_price'] is num)
+                      ? (it['unit_price'] as num).toDouble()
+                      : double.tryParse(it['unit_price'].toString()) ?? 0;
+                  newLines.add({
+                    'description': it['name'] ?? '',
+                    'quantity': qty,
+                    'unit': it['unit'] ?? 'fixed',
+                    'unit_price_ex_btw': price,
+                    'btw_rate': it['btw_rate'] ?? 21,
+                    'product_id': pid,
+                  });
+                }
+                Navigator.pop(ctx);
+                if (newLines.isNotEmpty) onAddLines(newLines);
+              },
+              child: Text(isNl ? 'Toevoegen' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+    for (final c in qtyControllers.values) {
+      c.dispose();
+    }
   }
 
   // ─── Tab bodies ─────────────────────────────────────────────
