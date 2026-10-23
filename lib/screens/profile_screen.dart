@@ -27,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _btwController = TextEditingController();
   final _ibanController = TextEditingController();
   final _bankAccountNameController = TextEditingController();
+  final _invoiceNumberStartController = TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
@@ -83,6 +84,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _btwController.text = p['btw_number'] ?? '';
     _ibanController.text = p['iban'] ?? '';
     _bankAccountNameController.text = p['bank_account_name'] ?? '';
+    _invoiceNumberStartController.text =
+        (p['invoice_number_start'] ?? '').toString() == '0'
+            ? ''
+            : (p['invoice_number_start'] ?? '').toString();
     _logoUrl = p['logo_url'];
     _invoicePrimary = (p['invoice_primary_color']?.toString() ?? '').isNotEmpty
         ? p['invoice_primary_color']
@@ -156,6 +161,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       onboardingComplete: true,
       invoicePrimaryColor: _invoicePrimary,
       invoiceAccentColor: _invoiceAccent,
+      invoiceNumberStart:
+          int.tryParse(_invoiceNumberStartController.text.trim()),
     );
     setState(() {
       _saving = false;
@@ -717,6 +724,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     hintText: isNl
                         ? 'Bijv. Jan de Vries (als dit afwijkt van je bedrijfsnaam)'
                         : 'E.g. Jan de Vries (if different from your company name)',
+                    hintMaxLines: 2,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _invoiceNumberStartController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: isNl
+                        ? 'Startnummer facturen (optioneel)'
+                        : 'Invoice start number (optional)',
+                    hintText: isNl
+                        ? 'Bijv. 100001 — dan start je reeks bij 2026-100001'
+                        : 'E.g. 100001 — your series then starts at 2026-100001',
                     hintMaxLines: 2,
                   ),
                 ),
