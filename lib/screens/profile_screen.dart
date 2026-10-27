@@ -27,6 +27,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _btwController = TextEditingController();
   final _ibanController = TextEditingController();
   final _bankAccountNameController = TextEditingController();
+  final _bicController = TextEditingController();
+  final _invoiceFooterController = TextEditingController();
+  final _invoiceDefaultMessageController = TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
@@ -83,6 +86,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _btwController.text = p['btw_number'] ?? '';
     _ibanController.text = p['iban'] ?? '';
     _bankAccountNameController.text = p['bank_account_name'] ?? '';
+    _bicController.text = p['bic'] ?? '';
+    _invoiceFooterController.text = p['invoice_footer'] ?? '';
+    _invoiceDefaultMessageController.text = p['invoice_default_message'] ?? '';
     _logoUrl = p['logo_url'];
     _invoicePrimary = (p['invoice_primary_color']?.toString() ?? '').isNotEmpty
         ? p['invoice_primary_color']
@@ -153,6 +159,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       btwNumber: _btwController.text.trim(),
       iban: _ibanController.text.trim(),
       bankAccountName: _bankAccountNameController.text.trim(),
+      bic: _bicController.text.trim(),
+      invoiceFooter: _invoiceFooterController.text.trim(),
+      invoiceDefaultMessage: _invoiceDefaultMessageController.text.trim(),
       onboardingComplete: true,
       invoicePrimaryColor: _invoicePrimary,
       invoiceAccentColor: _invoiceAccent,
@@ -708,6 +717,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
                 _inputField(_ibanController, 'IBAN'),
                 const SizedBox(height: 12),
+                _inputField(
+                    _bicController,
+                    isNl
+                        ? 'BIC / SWIFT (voor betalingen buiten de EU)'
+                        : 'BIC / SWIFT (for payments outside the EU)'),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _bankAccountNameController,
                   decoration: InputDecoration(
@@ -718,6 +733,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ? 'Bijv. Jan de Vries (als dit afwijkt van je bedrijfsnaam)'
                         : 'E.g. Jan de Vries (if different from your company name)',
                     hintMaxLines: 2,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _invoiceFooterController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    labelText: isNl
+                        ? 'Factuur voettekst (optioneel)'
+                        : 'Invoice footer (optional)',
+                    hintText: isNl
+                        ? 'Verschijnt onderaan elke factuur-PDF'
+                        : 'Appears at the bottom of every invoice PDF',
+                    hintMaxLines: 2,
+                    alignLabelWithHint: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _invoiceDefaultMessageController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    labelText: isNl
+                        ? 'Standaard e-mailbericht (optioneel)'
+                        : 'Default email message (optional)',
+                    hintText: isNl
+                        ? 'Vooraf ingevuld bij het versturen van een factuur'
+                        : 'Prefilled when you send an invoice',
+                    hintMaxLines: 2,
+                    alignLabelWithHint: true,
                   ),
                 ),
               ],
