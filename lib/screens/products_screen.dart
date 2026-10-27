@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/products_service.dart';
+import '../services/product_groups_service.dart';
 import '../services/local_storage_service.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
@@ -252,6 +253,214 @@ class _ProductsScreenState extends State<ProductsScreen> {
     }
   }
 
+  // ─── Product groups ─────────────────────────────────────────
+
+  Future<void> _showGroupsManager(bool isNl) async {
+    final res = await ProductGroupsService.getGroups();
+    if (!mounted) return;
+    List groups = (res['success'] == true) ? (res['groups'] as List? ?? []) : [];
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheet) {
+          Future<void> reload() async {
+            final r = await ProductGroupsService.getGroups();
+            if (r['success'] == true) {
+              setSheet(() => groups = r['groups'] as List? ?? []);
+            }
+          }
+
+          return AlertDialog(
+            title: Text(isNl ? 'Productgroepen' : 'Product groups'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (groups.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                          isNl
+                              ? 'Nog geen groepen. Maak een groep van producten die je vaak samen factureert, dan voeg je ze in één keer toe aan een factuur.'
+                              : 'No groups yet. Make a group of products you often invoice together to add them to an invoice in one tap.',
+                          style: const TextStyle(
+                              color: BigDoggTheme.lightTextSecondary, fontSize: 13)),
+                    )
+                  else
+                    Flexible(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: groups.map<Widget>((g) {
+                          final count = (g['items'] as List? ?? []).length;
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(g['name'] ?? ''),
+                            subtitle: Text(
+                                isNl ? '$count product(en)' : '$count product(s)',
+                                style: const TextStyle(fontSize: 12)),
+                            onTap: () async {
+                              final changed =
+                                  await _showGroupEditor(isNl, existing: g);
+                              if (changed == true) await reload();
+                            },
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete_outline,
+                                  color: BigDoggTheme.error),
+                              onPressed: () async {
+                                await ProductGroupsService.deleteGroup(g['id']);
+                                await reload();
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final changed = await _showGroupEditor(isNl);
+                      if (changed == true) await reload();
+                    },
+                    icon: const Icon(Icons.add),
+                    label: Text(isNl ? 'Nieuwe groep' : 'New group'),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(isNl ? 'Sluiten' : 'Close')),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<bool?> _showGroupEditor(bool isNl, {Map? existing}) async {
+    final nameController =
+        TextEditingController(text: existing?['name'] ?? '');
+    final selected = <String>{
+      ...((existing?['items'] as List? ?? [])
+          .map((it) => it['product_id'] as String)),
+    };
+    final activeProducts =
+        _products.where((p) => (p['is_active'] ?? true) == true).toList();
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheet) => AlertDialog(
+          title: Text(existing == null
+              ? (isNl ? 'Nieuwe groep' : 'New group')
+              : (isNl ? 'Groep bewerken' : 'Edit group')),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration:
+                      InputDecoration(labelText: isNl ? 'Naam' : 'Name'),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                      isNl
+                          ? 'Producten in deze groep:'
+                          : 'Products in this group:',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: BigDoggTheme.lightTextSecondary)),
+                ),
+                if (activeProducts.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                        isNl
+                            ? 'Voeg eerst producten toe.'
+                            : 'Add some products first.',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: BigDoggTheme.lightTextHint)),
+                  )
+                else
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: activeProducts.map<Widget>((p) {
+                        final pid = p['id'] as String;
+                        return CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          value: selected.contains(pid),
+                          title: Text(p['name'] ?? ''),
+                          onChanged: (v) => setSheet(() {
+                            if (v == true) {
+                              selected.add(pid);
+                            } else {
+                              selected.remove(pid);
+                            }
+                          }),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(isNl ? 'Annuleren' : 'Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.trim().isEmpty || selected.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(isNl
+                          ? 'Geef een naam en kies minstens één product.'
+                          : 'Enter a name and pick at least one product.')));
+                  return;
+                }
+                // Keep the product order as shown in the list.
+                final items = activeProducts
+                    .where((p) => selected.contains(p['id']))
+                    .map<Map<String, dynamic>>((p) =>
+                        {'product_id': p['id'], 'default_quantity': 1})
+                    .toList();
+                final res = existing == null
+                    ? await ProductGroupsService.createGroup(
+                        name: nameController.text.trim(), items: items)
+                    : await ProductGroupsService.updateGroup(
+                        groupId: existing['id'],
+                        name: nameController.text.trim(),
+                        items: items);
+                if (!mounted) return;
+                if (res['success'] == true) {
+                  Navigator.pop(context, true);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      backgroundColor: BigDoggTheme.error,
+                      content: Text(res['message']?.toString() ??
+                          (isNl ? 'Opslaan mislukt' : 'Save failed'))));
+                }
+              },
+              child: Text(isNl ? 'Opslaan' : 'Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    nameController.dispose();
+    return saved;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isNl = context.watch<AppProvider>().language == 'nl';
@@ -351,6 +560,18 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       );
                     },
                   ),
+        Positioned(
+          bottom: 84,
+          right: 16,
+          child: FloatingActionButton.small(
+            heroTag: 'groupsFab',
+            backgroundColor: BigDoggTheme.teal100,
+            foregroundColor: BigDoggTheme.teal800,
+            tooltip: isNl ? 'Productgroepen' : 'Product groups',
+            onPressed: () => _showGroupsManager(isNl),
+            child: const Icon(Icons.library_add_outlined),
+          ),
+        ),
         Positioned(
           bottom: 16,
           right: 16,

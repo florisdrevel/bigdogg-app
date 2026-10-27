@@ -29,6 +29,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   // state of the "Verstuur zonder betaallink" checkbox in the send
   // dialog. Loaded fire-and-forget so opening the screen isn't blocked.
   bool _defaultExcludePaymentLink = false;
+  String _defaultInvoiceMessage = '';
 
   @override
   void initState() {
@@ -69,6 +70,8 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       setState(() {
         _defaultExcludePaymentLink =
             p['default_exclude_payment_link'] == true;
+        _defaultInvoiceMessage =
+            (p['invoice_default_message'] ?? '').toString();
       });
     }
   }
@@ -343,6 +346,8 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         paymentLink != null && _invoice!['payment_link_enabled'] != false;
     // Default the per-send "exclude" checkbox from the global preference.
     bool excludeLink = hasPaymentLink && _defaultExcludePaymentLink;
+    final messageController =
+        TextEditingController(text: _defaultInvoiceMessage);
 
     final confirm = await showDialog<bool>(
       context: context,
@@ -441,6 +446,23 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   ),
                 ),
               ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: messageController,
+                minLines: 2,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: isNl
+                      ? 'Bericht aan klant (optioneel)'
+                      : 'Message to client (optional)',
+                  hintText: isNl
+                      ? 'Persoonlijk bericht bovenaan de e-mail'
+                      : 'Personal note at the top of the email',
+                  hintMaxLines: 2,
+                  alignLabelWithHint: true,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
             ],
           ),
           actions: [
@@ -457,10 +479,14 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       ),
     );
 
+    final customMessage = messageController.text.trim();
+    messageController.dispose();
+
     if (confirm == true && mounted) {
       final result = await EmailService.sendInvoice(
         widget.invoiceId,
         includePaymentLink: !excludeLink,
+        message: customMessage,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
