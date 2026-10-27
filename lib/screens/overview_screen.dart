@@ -16,6 +16,30 @@ import '../widgets/subscription_web_widget.dart';
 import '../widgets/offline_chrome.dart';
 import '../services/pdf_opener.dart';
 
+// Formats a money value as Dutch currency: 1234.5 -> "\u20ac 1.234,50"
+// Accepts num, numeric String, or null (null/parse-fail -> "\u20ac 0,00").
+// Top-level so every widget/class in this file can use it.
+String _eur(dynamic v) {
+  num? n;
+  if (v is num) {
+    n = v;
+  } else if (v != null) {
+    n = num.tryParse(v.toString());
+  }
+  n ??= 0;
+  final neg = n < 0;
+  final s = n.abs().toStringAsFixed(2);
+  final dot = s.indexOf('.');
+  final intPart = s.substring(0, dot);
+  final dec = s.substring(dot + 1);
+  final buf = StringBuffer();
+  for (int i = 0; i < intPart.length; i++) {
+    if (i > 0 && (intPart.length - i) % 3 == 0) buf.write('.');
+    buf.write(intPart[i]);
+  }
+  return '\u20ac ${neg ? '-' : ''}$buf,$dec';
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Invoice Detail Sheet
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1451,29 +1475,6 @@ class _OverviewScreenState extends State<OverviewScreen>
         ]),
       ),
     );
-  }
-
-  // Formats a money value as Dutch currency: 1234.5 -> "€ 1.234,50"
-  // Accepts num, numeric String, or null (null/parse-fail -> "€ 0,00").
-  String _eur(dynamic v) {
-    num? n;
-    if (v is num) {
-      n = v;
-    } else if (v != null) {
-      n = num.tryParse(v.toString());
-    }
-    n ??= 0;
-    final neg = n < 0;
-    final s = n.abs().toStringAsFixed(2);
-    final dot = s.indexOf('.');
-    final intPart = s.substring(0, dot);
-    final dec = s.substring(dot + 1);
-    final buf = StringBuffer();
-    for (int i = 0; i < intPart.length; i++) {
-      if (i > 0 && (intPart.length - i) % 3 == 0) buf.write('.');
-      buf.write(intPart[i]);
-    }
-    return '\u20ac ${neg ? '-' : ''}$buf,$dec';
   }
 
   Widget _miniStat(String label, String value) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
