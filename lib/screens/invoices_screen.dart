@@ -1128,6 +1128,13 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                   icon: const Icon(Icons.add),
                   label: Text(isNl ? 'Regel toevoegen' : 'Add line'),
                 ),
+                TextButton.icon(
+                  onPressed: () => _showApplyGroup(context, isNl, (newLines) {
+                    setDialogState(() => lines.addAll(newLines));
+                  }),
+                  icon: const Icon(Icons.library_add_outlined),
+                  label: Text(isNl ? 'Groep toevoegen' : 'Add group'),
+                ),
               ],
             ),
           ),
