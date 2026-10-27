@@ -281,7 +281,7 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                       Text(inv['invoice_date'] ?? '', style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextHint)),
                                     ])),
                                     Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                                      Text('\u20ac${inv['total_incl_btw'] ?? '0'}',
+                                      Text(_eur(inv['total_incl_btw'] ?? '0'),
                                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: BigDoggTheme.teal800)),
                                       if (inv['pdf_url'] != null)
                                         TextButton(
@@ -323,7 +323,7 @@ class _QuarterDetailSheetState extends State<_QuarterDetailSheet>
                                       Text(exp['expense_date'] ?? '', style: const TextStyle(fontSize: 11, color: BigDoggTheme.lightTextHint)),
                                     ])),
                                     Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                                      Text('\u20ac${exp['total_incl_btw'] ?? exp['amount'] ?? '0'}',
+                                      Text(_eur(exp['total_incl_btw'] ?? exp['amount'] ?? '0'),
                                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: BigDoggTheme.teal800)),
                                       if (exp['receipt_url'] != null)
                                         TextButton(
@@ -1277,27 +1277,27 @@ class _OverviewScreenState extends State<OverviewScreen>
 
           _sectionTitle(isNl ? 'Omzet' : 'Revenue'),
           _overviewCard([
-            _overviewRow(isNl ? 'Omzet ex BTW' : 'Revenue ex VAT', '\u20ac${q['revenue_ex_btw']}'),
-            _overviewRow(isNl ? 'BTW ontvangen' : 'VAT received', '\u20ac${q['revenue_btw']}'),
-            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT', '\u20ac${q['revenue_total']}', bold: true),
+            _overviewRow(isNl ? 'Omzet ex BTW' : 'Revenue ex VAT', _eur(q['revenue_ex_btw'])),
+            _overviewRow(isNl ? 'BTW ontvangen' : 'VAT received', _eur(q['revenue_btw'])),
+            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT', _eur(q['revenue_total']), bold: true),
             const Divider(),
-            _overviewRow(isNl ? 'Betaald ontvangen' : 'Received', '\u20ac${q['paid_revenue']}', color: BigDoggTheme.success),
-            _overviewRow(isNl ? 'Nog openstaand' : 'Outstanding', '\u20ac${q['outstanding']}', color: BigDoggTheme.warning),
+            _overviewRow(isNl ? 'Betaald ontvangen' : 'Received', _eur(q['paid_revenue']), color: BigDoggTheme.success),
+            _overviewRow(isNl ? 'Nog openstaand' : 'Outstanding', _eur(q['outstanding']), color: BigDoggTheme.warning),
           ]),
           const SizedBox(height: 16),
           _sectionTitle(isNl ? 'Kosten' : 'Expenses'),
           _overviewCard([
-            _overviewRow(isNl ? 'Kosten ex BTW' : 'Expenses ex VAT', '\u20ac${q['expenses_ex_btw']}'),
-            _overviewRow(isNl ? 'BTW betaald' : 'VAT paid', '\u20ac${q['expenses_btw']}'),
-            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT', '\u20ac${q['expenses_total']}', bold: true),
+            _overviewRow(isNl ? 'Kosten ex BTW' : 'Expenses ex VAT', _eur(q['expenses_ex_btw'])),
+            _overviewRow(isNl ? 'BTW betaald' : 'VAT paid', _eur(q['expenses_btw'])),
+            _overviewRow(isNl ? 'Totaal incl BTW' : 'Total incl VAT', _eur(q['expenses_total']), bold: true),
           ]),
           const SizedBox(height: 16),
           _sectionTitle('BTW / VAT'),
           _overviewCard([
-            _overviewRow(isNl ? 'BTW ontvangen' : 'VAT received', '\u20ac${q['revenue_btw']}'),
-            _overviewRow(isNl ? 'BTW betaald op kosten' : 'VAT paid on expenses', '\u20ac${q['expenses_btw']}'),
+            _overviewRow(isNl ? 'BTW ontvangen' : 'VAT received', _eur(q['revenue_btw'])),
+            _overviewRow(isNl ? 'BTW betaald op kosten' : 'VAT paid on expenses', _eur(q['expenses_btw'])),
             const Divider(),
-            _overviewRow(isNl ? 'Te betalen BTW' : 'VAT to pay', '\u20ac${q['btw_to_pay']}',
+            _overviewRow(isNl ? 'Te betalen BTW' : 'VAT to pay', _eur(q['btw_to_pay']),
                 bold: true, large: true,
                 color: (q['btw_to_pay'] as num) > 0 ? BigDoggTheme.error : BigDoggTheme.success),
           ]),
@@ -1358,7 +1358,7 @@ class _OverviewScreenState extends State<OverviewScreen>
                   Text(isNl ? 'Jaaroverzicht' : 'Annual overview', style: const TextStyle(color: Colors.white70, fontSize: 13)),
                   const SizedBox(height: 2),
                   Text(isNl ? 'Netto winst' : 'Net profit', style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                  Text('\u20ac${a['net_profit_indicative']}',
+                  Text(_eur(a['net_profit_indicative']),
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
                 ])),
                 _yearPicker(isNl),
@@ -1371,11 +1371,11 @@ class _OverviewScreenState extends State<OverviewScreen>
           const SizedBox(height: 16),
           _sectionTitle(isNl ? 'Totaal $_selectedYear' : 'Total $_selectedYear'),
           _overviewCard([
-            _overviewRow(isNl ? 'Totale omzet ex BTW' : 'Total revenue ex VAT', '\u20ac${a['total_revenue_ex_btw']}', bold: true),
-            _overviewRow(isNl ? 'Totale kosten ex BTW' : 'Total expenses ex VAT', '\u20ac${a['total_expenses_ex_btw']}'),
+            _overviewRow(isNl ? 'Totale omzet ex BTW' : 'Total revenue ex VAT', _eur(a['total_revenue_ex_btw']), bold: true),
+            _overviewRow(isNl ? 'Totale kosten ex BTW' : 'Total expenses ex VAT', _eur(a['total_expenses_ex_btw'])),
             const Divider(),
-            _overviewRow(isNl ? 'Netto winst' : 'Net profit', '\u20ac${a['net_profit_indicative']}', bold: true, large: true),
-            _overviewRow(isNl ? 'Totale BTW te betalen' : 'Total VAT to pay', '\u20ac${a['total_btw_to_pay']}', color: BigDoggTheme.error),
+            _overviewRow(isNl ? 'Netto winst' : 'Net profit', _eur(a['net_profit_indicative']), bold: true, large: true),
+            _overviewRow(isNl ? 'Totale BTW te betalen' : 'Total VAT to pay', _eur(a['total_btw_to_pay']), color: BigDoggTheme.error),
           ]),
           const SizedBox(height: 16),
           _buildTaxReserveCard(isNl, a),
@@ -1441,9 +1441,9 @@ class _OverviewScreenState extends State<OverviewScreen>
           ]),
           const SizedBox(height: 10),
           Row(children: [
-            Expanded(child: _miniStat(isNl ? 'Omzet' : 'Revenue', '\u20ac${q['revenue_ex_btw']}')),
-            Expanded(child: _miniStat(isNl ? 'Kosten' : 'Expenses', '\u20ac${q['expenses_ex_btw']}')),
-            Expanded(child: _miniStat('BTW / VAT', '\u20ac${q['btw_to_pay']}')),
+            Expanded(child: _miniStat(isNl ? 'Omzet' : 'Revenue', _eur(q['revenue_ex_btw']))),
+            Expanded(child: _miniStat(isNl ? 'Kosten' : 'Expenses', _eur(q['expenses_ex_btw']))),
+            Expanded(child: _miniStat('BTW / VAT', _eur(q['btw_to_pay']))),
           ]),
           const SizedBox(height: 6),
           Text(isNl ? 'Tik om facturen & kosten te zien' : 'Tap to see invoices & expenses',
@@ -1451,6 +1451,29 @@ class _OverviewScreenState extends State<OverviewScreen>
         ]),
       ),
     );
+  }
+
+  // Formats a money value as Dutch currency: 1234.5 -> "€ 1.234,50"
+  // Accepts num, numeric String, or null (null/parse-fail -> "€ 0,00").
+  String _eur(dynamic v) {
+    num? n;
+    if (v is num) {
+      n = v;
+    } else if (v != null) {
+      n = num.tryParse(v.toString());
+    }
+    n ??= 0;
+    final neg = n < 0;
+    final s = n.abs().toStringAsFixed(2);
+    final dot = s.indexOf('.');
+    final intPart = s.substring(0, dot);
+    final dec = s.substring(dot + 1);
+    final buf = StringBuffer();
+    for (int i = 0; i < intPart.length; i++) {
+      if (i > 0 && (intPart.length - i) % 3 == 0) buf.write('.');
+      buf.write(intPart[i]);
+    }
+    return '\u20ac ${neg ? '-' : ''}$buf,$dec';
   }
 
   Widget _miniStat(String label, String value) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
