@@ -76,6 +76,7 @@ class ProfileService {
     String? invoicePrimaryColor,
     String? invoiceAccentColor,
     bool? defaultExcludePaymentLink,
+    int? invoiceNumberStart,
   }) async {
     final token = await _getToken();
     final result = await OfflineQueue.postOrEnqueue(
@@ -103,6 +104,7 @@ class ProfileService {
         'invoice_primary_color': invoicePrimaryColor,
         'invoice_accent_color': invoiceAccentColor,
         'default_exclude_payment_link': defaultExcludePaymentLink,
+        'invoice_number_start': invoiceNumberStart,
       },
       label: 'Profiel bijwerken',
     );

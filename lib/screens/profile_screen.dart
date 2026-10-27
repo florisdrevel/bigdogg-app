@@ -30,6 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _bicController = TextEditingController();
   final _invoiceFooterController = TextEditingController();
   final _invoiceDefaultMessageController = TextEditingController();
+  final _invoiceNumberStartController = TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
@@ -89,6 +90,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _bicController.text = p['bic'] ?? '';
     _invoiceFooterController.text = p['invoice_footer'] ?? '';
     _invoiceDefaultMessageController.text = p['invoice_default_message'] ?? '';
+    _invoiceNumberStartController.text =
+        (p['invoice_number_start'] ?? '').toString() == '0'
+            ? ''
+            : (p['invoice_number_start'] ?? '').toString();
     _logoUrl = p['logo_url'];
     _invoicePrimary = (p['invoice_primary_color']?.toString() ?? '').isNotEmpty
         ? p['invoice_primary_color']
@@ -165,6 +170,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       onboardingComplete: true,
       invoicePrimaryColor: _invoicePrimary,
       invoiceAccentColor: _invoiceAccent,
+      invoiceNumberStart:
+          int.tryParse(_invoiceNumberStartController.text.trim()),
     );
     setState(() {
       _saving = false;
@@ -765,6 +772,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         : 'Prefilled when you send an invoice',
                     hintMaxLines: 2,
                     alignLabelWithHint: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _invoiceNumberStartController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: isNl
+                        ? 'Startnummer facturen (optioneel)'
+                        : 'Invoice start number (optional)',
+                    hintText: isNl
+                        ? 'Bijv. 100001 — dan start je reeks bij 2026-100001'
+                        : 'E.g. 100001 — your series then starts at 2026-100001',
+                    hintMaxLines: 2,
                   ),
                 ),
               ],
