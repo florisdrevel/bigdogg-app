@@ -354,7 +354,8 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text(isNl ? 'Factuur versturen' : 'Send Invoice'),
-          content: Column(
+          content: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -464,6 +465,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                 ),
               ),
             ],
+            ),
           ),
           actions: [
             TextButton(
